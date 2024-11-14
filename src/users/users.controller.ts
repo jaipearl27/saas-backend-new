@@ -24,4 +24,9 @@ export class UsersController {
   createUser(@Body() createUserDto: CreateUserDto) {
     return this.usersService.createUser(createUserDto)
   }
+
+  @Get('/clients')
+  getClients(){
+    return this.usersService.getClients()
+  }
 }

@@ -5,11 +5,14 @@ import { UsersModule } from './users/users.module';
 import { AttendeesModule } from './attendees/attendees.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
+import configurations from './config/configurations';
+
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true
+      load: [configurations],
+      isGlobal: true,
     }),
     MongooseModule.forRoot(process.env.MONGO_URI),
     UsersModule,
