@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -7,6 +7,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import configurations from './config/configurations';
+import { GetAdminIdMiddleware } from './middlewares/get-admin-id.middleware';
 
 @Module({
   imports: [
@@ -22,4 +23,11 @@ import configurations from './config/configurations';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(GetAdminIdMiddleware)
+      .forRoutes('users/clients')
+  }
+
+}
