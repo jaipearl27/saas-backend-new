@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Req } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 // import { UpdateUserDto } from './dto/update-user.dto';
 // import { NotFoundException } from '@nestjs/common';
@@ -23,4 +23,14 @@ export class UsersService {
     const clientRoleId = this.configService.get('appRoles').ADMIN;
     return this.userModel.find({role: new mongoose.Types.ObjectId(`${clientRoleId}`)})
   }
+
+  getEmployees(request: Request){
+    const clientRoleId = this.configService.get('appRoles').ADMIN;
+    return this.userModel.find({role: new mongoose.Types.ObjectId(`${clientRoleId}`)})
+  }
+
+  getUser(userName: string){
+    return this.userModel.findOne({userName: userName})
+  }
+
 }

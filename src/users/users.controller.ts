@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   ValidationPipe,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
@@ -29,4 +30,12 @@ export class UsersController {
   getClients(){
     return this.usersService.getClients()
   }
+
+
+  @Get('/employees')
+  getEmployees(@Req() request:Request){
+    return this.usersService.getEmployees(request)
+  }
+
+
 }
