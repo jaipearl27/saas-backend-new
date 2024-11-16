@@ -1,6 +1,5 @@
 // src/configurations.ts
-export default () => {
-    
+export default () => {  
     return {
         appRoles: JSON.parse(process.env.ROLES),
     };

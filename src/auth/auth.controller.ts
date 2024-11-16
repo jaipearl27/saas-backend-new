@@ -6,8 +6,9 @@ import { ConfigService } from '@nestjs/config';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService,
-    private readonly configService: ConfigService
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Post('login')
@@ -19,12 +20,13 @@ export class AuthController {
 
     if (result.access_token) {
       response.cookie(
-        this.configService.get('ACCESS_TOKEN_NAME'), result.access_token);
+        this.configService.get('ACCESS_TOKEN_NAME'),
+        result.access_token,
+      );
     }
 
     return result.userData;
   }
-
 
   @Post('refresh')
   async refreshToken(
@@ -34,11 +36,12 @@ export class AuthController {
     const result = await this.authService.refreshToken(userName);
 
     if (result.access_token) {
-      response.cookie(this.configService.get('ACCESS_TOKEN_NAME'), result.access_token);
+      response.cookie(
+        this.configService.get('ACCESS_TOKEN_NAME'),
+        result.access_token,
+      );
     }
 
     return result.userData;
   }
-
-
 }

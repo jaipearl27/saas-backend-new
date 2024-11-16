@@ -15,6 +15,7 @@ import { UsersService } from './users.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AdminId } from 'src/decorators/custom.decorator';
 
 @Controller('users') // @route => /users
 export class UsersController {
@@ -23,19 +24,18 @@ export class UsersController {
   @Post()
   // @UsePipes(new ValidationPipe()) // or you can use validatoin pipe for a specific endpoint like this
   createUser(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.createUser(createUserDto)
+    return this.usersService.createUser(createUserDto);
   }
 
   @Get('/clients')
-  getClients(){
-    return this.usersService.getClients()
-  }
+  getClients(@AdminId() adminId) {
+    const clients = this.usersService.getClients(adminId);
 
+    return clients;
+  }
 
   @Get('/employees')
-  getEmployees(@Req() request:Request){
-    return this.usersService.getEmployees(request)
+  getEmployees() {
+    return this.usersService.getEmployees();
   }
-
-
 }

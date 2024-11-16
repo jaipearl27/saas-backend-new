@@ -6,6 +6,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
 import { User } from 'src/schemas/User.schema';
 import { ConfigService } from '@nestjs/config';
+import { Request } from 'express';
 
 @Injectable()
 export class UsersService {
@@ -19,12 +20,13 @@ export class UsersService {
     return newUser.save()
   }
 
-  getClients(){
+  getClients(adminId: string){
+    console.log(adminId, "Admin ID........")
     const clientRoleId = this.configService.get('appRoles').ADMIN;
     return this.userModel.find({role: new mongoose.Types.ObjectId(`${clientRoleId}`)})
   }
 
-  getEmployees(request: Request){
+  getEmployees(){
     const clientRoleId = this.configService.get('appRoles').ADMIN;
     return this.userModel.find({role: new mongoose.Types.ObjectId(`${clientRoleId}`)})
   }

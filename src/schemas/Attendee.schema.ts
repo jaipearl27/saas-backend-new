@@ -11,7 +11,7 @@ export class Attendee extends Document {
     required: [true, 'Email is required'],
     trim: true,
   })
-  email: string;
+  email: string; // E-Mail
 
   @Prop({
     type: String,
@@ -20,7 +20,7 @@ export class Attendee extends Document {
     trim: true,
     default: null,
   })
-  firstName: string | null;
+  firstName: string | null; // First Name
 
   @Prop({
     type: String,
@@ -29,7 +29,7 @@ export class Attendee extends Document {
     trim: true,
     default: null,
   })
-  lastName: string | null;
+  lastName: string | null; //Last Name
 
   @Prop({
     type: String,
@@ -38,10 +38,10 @@ export class Attendee extends Document {
     trim: true,
     default: null,
   })
-  phone: string | null;
+  phone: string | null; //Phone
 
   @Prop({ type: Number, default: 0 })
-  timeInSession: number;
+  timeInSession: number; //Time in session
 
   @Prop({
     type: String,
@@ -50,43 +50,23 @@ export class Attendee extends Document {
     trim: true,
     default: null,
   })
-  leadType: string | null;
+  leadType: string | null; //Lead Type
+
 
   @Prop({
-    type: String,
-    minlength: 1,
-    required: [true, 'Webinar Date is required'],
+    type: Types.ObjectId,
+    ref: "webinars",
+    required: true
   })
-  date: string;
+  webinar: Types.ObjectId; // Webinar Name
 
-  @Prop({
-    type: String,
-    minlength: 1,
-    trim: true,
-    validate: {
-      validator: function (value: string) {
-        return this.recordType === 'sales' ? !!value : true;
-      },
-      message: 'csvName is required for sales records',
-    },
-  })
-  csvName: string;
-
-  @Prop({
-    type: String,
-    minlength: 1,
-    trim: true,
-    required: [true, 'csv id is required'],
-  })
-  csvId: string;
 
   @Prop({
     type: String,
     minlength: 1,
     maxlength: 10,
-    enum: ['sales', 'reminder'],
-    default: 'sales',
-    required: [true, 'csv id is required'],
+    enum: ['preWebinar', 'postWebinar'],
+    required: [true, 'Record Type is required'],
   })
   recordType: string;
 
@@ -107,13 +87,24 @@ export class Attendee extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'User',
+    ref: 'users',
     required: [true, 'adminId is required'],
   })
   adminId: Types.ObjectId;
+
+  @Prop({
+    type: [
+      {
+        type: Types.ObjectId,
+        ref: 'products'
+      }
+    ],
+    required: false
+  })
+  products: string
 }
 
 export const AttendeeSchema = SchemaFactory.createForClass(Attendee);
 
 // Add index for csvId and recordType fields
-AttendeeSchema.index({ csvId: 1, recordType: 1 });
+AttendeeSchema.index({ webinar: 1, recordType: 1 });
