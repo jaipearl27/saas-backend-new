@@ -15,6 +15,10 @@ export class UsersService {
     private configService: ConfigService
   ) {}
 
+  getUsers() {
+    return this.userModel.find()
+  }
+
   createUser(createUserDto: CreateUserDto) {
     const newUser = new this.userModel(createUserDto)
     return newUser.save()

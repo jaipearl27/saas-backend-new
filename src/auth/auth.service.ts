@@ -10,6 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { SignInDto } from './dto/signIn.dto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { CreateEmployeeDto } from './dto/createEmployee.dto';
 
 @Injectable()
 export class AuthService {
@@ -66,6 +67,12 @@ export class AuthService {
         expiresIn: '15d'
     })
     return access_token
+
+  }
+
+  async createEmployee(createEmployeeDto: CreateEmployeeDto): Promise<any> {
+
+
 
   }
 }

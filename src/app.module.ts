@@ -8,6 +8,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import configurations from './config/configurations';
 import { GetAdminIdMiddleware } from './middlewares/get-admin-id.middleware';
+import { AuthSuperAdminMiddleware } from './middlewares/authSuperAdmin.Middleware';
 
 @Module({
   imports: [
@@ -27,7 +28,11 @@ export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(GetAdminIdMiddleware)
-      .forRoutes('users/clients')
+      .forRoutes('users/employee')
+
+      consumer
+      .apply(AuthSuperAdminMiddleware)
+      .forRoutes('users', 'users/clients')
   }
 
 }
