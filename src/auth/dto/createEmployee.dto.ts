@@ -24,5 +24,8 @@ export class CreateEmployeeDto {
     @IsNotEmpty()
     selectedRole: string
 
+    @IsString()
+    @IsNotEmpty()
+    role: string
 
 }

@@ -18,13 +18,17 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private readonly configService: ConfigService
-  ) {}
+  ) { }
 
   async signIn(signInDto: SignInDto): Promise<any> {
     const user = await this.usersService.getUser(signInDto.userName);
 
     if (!user) {
       throw new NotFoundException('Incorrect Username');
+    }
+
+    if (!user?.isActive) {
+      throw new UnauthorizedException("Access denied: User account is inactive. Please contact your administrator.")
     }
 
     const matchPassword = await bcrypt.compare(
@@ -46,7 +50,7 @@ export class AuthService {
       access_token: await this.jwtService.signAsync(payload, {
         secret: this.configService.get('ACCESS_TOKEN_SECRET'),
         expiresIn: '15s'
-    }),
+      }),
     };
   }
 
@@ -63,16 +67,16 @@ export class AuthService {
     const payload = { id: user?._id, role: user?.role, adminId: user?.adminId };
 
     const access_token = await this.jwtService.signAsync(payload, {
-        secret: this.configService.get('ACCESS_TOKEN_SECRET'),
-        expiresIn: '15d'
+      secret: this.configService.get('ACCESS_TOKEN_SECRET'),
+      expiresIn: '15d'
     })
-    return {access_token, user}
+    return { access_token, user }
 
   }
 
-  async createEmployee(createEmployeeDto: CreateEmployeeDto): Promise<any> {
+  async createEmployee(createEmployeeDto: CreateEmployeeDto, creatorDetails): Promise<any> {
 
-
+    return await this.usersService.createEmployee(createEmployeeDto, creatorDetails)
 
   }
 }

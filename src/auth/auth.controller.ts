@@ -10,7 +10,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   @Post('login')
   async signIn(
@@ -28,11 +28,11 @@ export class AuthController {
 
     return result.userData;
   }
-  
+
 
   @Post('refresh')
   async refreshToken(
-    @Body() body: {userName: string},
+    @Body() body: { userName: string },
     @Res({ passthrough: true }) response: Response,
   ) {
     const result = await this.authService.refreshToken(body.userName);
@@ -54,8 +54,8 @@ export class AuthController {
   async createEmployee(
     @Body() createEmplyeeDto: CreateEmployeeDto,
     @Req() req
-  ){
-    console.log(req)
-    return createEmplyeeDto
+  ) {
+    const creatorDetails = { id: req.id, role: req.role, plan: req.plan }
+    return this.authService.createEmployee(createEmplyeeDto, creatorDetails)
   }
 }
