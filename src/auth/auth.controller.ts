@@ -32,10 +32,10 @@ export class AuthController {
 
   @Post('refresh')
   async refreshToken(
-    @Body() userName: string,
+    @Body() body: {userName: string},
     @Res({ passthrough: true }) response: Response,
   ) {
-    const result = await this.authService.refreshToken(userName);
+    const result = await this.authService.refreshToken(body.userName);
 
     if (result.access_token) {
       response.cookie(
@@ -44,7 +44,10 @@ export class AuthController {
       );
     }
 
-    return result.userData;
+    return {
+      status: true,
+      message: 'Refresh token generated'
+    };
   }
 
   @Post('/employee')

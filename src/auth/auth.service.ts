@@ -66,7 +66,7 @@ export class AuthService {
         secret: this.configService.get('ACCESS_TOKEN_SECRET'),
         expiresIn: '15d'
     })
-    return access_token
+    return {access_token, user}
 
   }
 
