@@ -52,47 +52,7 @@ export class AuthController {
     @Body() createEmplyeeDto: CreateEmployeeDto,
     @Req() req
   ){
-    
-  if (req?.plan) {
-    plan = await this.plan.findById(req?.plan);
-  } else {
-    res.status(500).json({ status: false, message: "No Plan Found" });
-  }
-
-  const isUserExists = await usersModel.findOne({ email });
-  if (isUserExists) {
-    res.status(404).json({ status: false, message: "User already Exists" });
-    return;
-  }
-
-  // const AdminId = new mongoose.Schema.Types.ObjectId(adminId)
-
-  const employeeCount = await usersModel.countDocuments({ adminId: adminId });
-
-  if (employeeCount < plan.employeesCount) {
-    const hashPassword = await bcrypt.hash(password, 10);
-
-    // console.log(role,"role")
-
-    const savedUser = await usersModel.create({
-      userName,
-      email,
-      password: hashPassword,
-      phone,
-      role,
-      adminId,
-    });
-
-    res.status(200).json({
-      status: "SUCCESS",
-      message: "User created successfully",
-      data: savedUser,
-    });
-  } else {
-    res.status(500).json({
-      status: false,
-      message: "Employee limit reached for this plan.",
-    });
-  }
+    console.log(req)
+    return createEmplyeeDto
   }
 }

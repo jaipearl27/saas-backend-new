@@ -8,22 +8,16 @@ export class Plans extends Document {
         type:String,
         required: [true, 'Plan Name is required']
     })
-    name: string //action
+    name: string //plan name
 
     @Prop({
         type:String,
-        required: false,
+        required: [true, 'Plan Amount is required'],
         default: ''
     })
-    amount: string //details
+    amount: string //plan amount
 
-    @Prop({
-        type: Types.ObjectId,
-        ref: "users",
-        requried: [true, 'AdminId is required']
-    })
-    adminId:Types.ObjectId
-
+ 
 }
 
-export const LogsSchema = SchemaFactory.createForClass(Plans)
+export const PlansSchema = SchemaFactory.createForClass(Plans)
