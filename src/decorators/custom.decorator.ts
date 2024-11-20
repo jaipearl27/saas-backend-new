@@ -8,7 +8,7 @@ export const AdminId = createParamDecorator(
     }
 )
 
-export const id = createParamDecorator(
+export const Id = createParamDecorator(
     (data: unknown, ctx: ExecutionContext) => {
         const request = ctx.switchToHttp().getRequest()
 
@@ -16,10 +16,18 @@ export const id = createParamDecorator(
     }
 )
 
-export const role = createParamDecorator(
+export const Role = createParamDecorator(
     (data: unknown, ctx: ExecutionContext) => {
         const request = ctx.switchToHttp().getRequest()
 
         return request.role
+    }
+)
+
+export const Plan = createParamDecorator(
+    (data: unknown, ctx: ExecutionContext) => {
+        const request = ctx.switchToHttp().getRequest()
+
+        return request.plan
     }
 )

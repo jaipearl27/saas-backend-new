@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import configurations from './config/configurations';
 import { GetAdminIdMiddleware } from './middlewares/get-admin-id.middleware';
 import { AuthSuperAdminMiddleware } from './middlewares/authSuperAdmin.Middleware';
+import { AuthAdminTokenMiddleware } from './middlewares/authAdmin.Middleware';
 
 @Module({
   imports: [
@@ -28,11 +29,14 @@ export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(GetAdminIdMiddleware)
-      .forRoutes('users/employee')
+      .forRoutes({ path: 'users/employee', method: RequestMethod.GET });
 
-      consumer
+    consumer
+      .apply(AuthAdminTokenMiddleware)
+      .forRoutes({ path: 'auth/employee', method: RequestMethod.POST });
+
+    consumer
       .apply(AuthSuperAdminMiddleware)
-      .forRoutes('users', 'users/clients')
+      .forRoutes('users', 'users/clients');
   }
-
 }

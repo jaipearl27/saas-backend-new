@@ -7,7 +7,6 @@ import mongoose, { Model } from 'mongoose';
 import { User } from 'src/schemas/User.schema';
 import { ConfigService } from '@nestjs/config';
 import { CreateEmployeeDto } from 'src/auth/dto/createEmployee.dto';
-import { Plans } from 'src/schemas/Plans.schema';
 
 import * as bcrypt from 'bcrypt'
 
@@ -15,7 +14,6 @@ import * as bcrypt from 'bcrypt'
 export class UsersService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
-    @InjectModel(Plans.name) private plansModel: Model<Plans>,
     private configService: ConfigService
   ) { }
 
@@ -49,30 +47,7 @@ export class UsersService {
   }
 
   async createEmployee(createEmployeeDto: CreateEmployeeDto, creatorDetails): Promise<any> {
-
-    let plan;
-    if (creatorDetails?.plan) {
-      plan = await this.plansModel.findById(creatorDetails?.plan);
-    } else {
-      throw new NotFoundException('No plan found with this id')
-    }
-
-    const isUserExists = await this.userModel.findOne({ email: createEmployeeDto.email });
-
-    if (isUserExists) {
-      throw new BadRequestException('User already exists')
-    }
-
-    const employeeCount = await this.userModel.countDocuments({ adminId: creatorDetails.id, isActive: true });
-
-    if (employeeCount < plan.employeesCount) {
-      const hashPassword = await bcrypt.hash(createEmployeeDto.password, 10);
-      createEmployeeDto.password = hashPassword
-
-      const user = this.userModel.create({ ...createEmployeeDto })
-      return user
-    } else {
-      throw new NotAcceptableException('Employee creation limit reached for your plan.')
-    }
+    const user = await this.userModel.create({ ...createEmployeeDto }) 
+    return user
   }
 }

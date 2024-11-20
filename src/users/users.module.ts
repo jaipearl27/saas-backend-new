@@ -12,10 +12,7 @@ import { Plans, PlansSchema } from 'src/schemas/Plans.schema';
                 name: User.name,
                 schema: UserSchema
             },
-            {
-                name: Plans.name,
-                schema: PlansSchema
-            }
+         
         ])
     ],
     controllers: [UsersController],
