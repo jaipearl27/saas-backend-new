@@ -49,7 +49,7 @@ export class AuthService {
       userData: result,
       access_token: await this.jwtService.signAsync(payload, {
         secret: this.configService.get('ACCESS_TOKEN_SECRET'),
-        expiresIn: '15s'
+        expiresIn: '15d'
       }),
     };
   }
