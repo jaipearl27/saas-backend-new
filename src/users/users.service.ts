@@ -15,7 +15,7 @@ import * as bcrypt from 'bcrypt'
 export class UsersService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
-    @InjectModel(Plans.name) private plansModel: Model<User>,
+    @InjectModel(Plans.name) private plansModel: Model<Plans>,
     private configService: ConfigService
   ) { }
 
