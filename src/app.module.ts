@@ -10,6 +10,7 @@ import configurations from './config/configurations';
 import { GetAdminIdMiddleware } from './middlewares/get-admin-id.middleware';
 import { AuthSuperAdminMiddleware } from './middlewares/authSuperAdmin.Middleware';
 import { AuthAdminTokenMiddleware } from './middlewares/authAdmin.Middleware';
+import { SidebarLinksModule } from './sidebar-links/sidebar-links.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AuthAdminTokenMiddleware } from './middlewares/authAdmin.Middleware';
     UsersModule,
     AttendeesModule,
     AuthModule,
+    SidebarLinksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

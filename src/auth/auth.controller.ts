@@ -3,7 +3,7 @@ import { AuthService } from './auth.service';
 import { SignInDto } from './dto/signIn.dto';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
-import { CreateEmployeeDto } from './dto/createEmployee.dto';;
+import { CreateEmployeeDto } from './dto/createEmployee.dto';
 import { Id, Plan, Role } from 'src/decorators/custom.decorator';
 
 @Controller('auth')
@@ -27,6 +27,12 @@ export class AuthController {
       );
     }
     return result.userData;
+  }
+
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) response: Response) {
+    response.clearCookie(this.configService.get('ACCESS_TOKEN_NAME')); // Unset the access token cookie
+    return { message: 'Successfully logged out' };
   }
 
   @Post('refresh')
@@ -58,8 +64,11 @@ export class AuthController {
   ) {
     const creatorDetailsDto = { id: id, role: role, plan: plan };
 
-    const employee = await this.authService.createEmployee(createEmplyeeDto, creatorDetailsDto);
+    const employee = await this.authService.createEmployee(
+      createEmplyeeDto,
+      creatorDetailsDto,
+    );
 
-    return employee
+    return employee;
   }
 }
