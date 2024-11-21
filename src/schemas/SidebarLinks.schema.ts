@@ -1,4 +1,4 @@
-import { Prop, Schema } from '@nestjs/mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
 @Schema({ timestamps: true })
@@ -20,3 +20,5 @@ export class SidebarLinks extends Document {
   })
   link: string;
 }
+
+export const SidebarLinksSchema = SchemaFactory.createForClass(SidebarLinks)

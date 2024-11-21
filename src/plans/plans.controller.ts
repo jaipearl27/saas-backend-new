@@ -28,6 +28,11 @@ export class PlansController {
   addPlan(@Body() createPlansDto: CreatePlansDto) {
     return this.plansService.addPlan(createPlansDto);
   }
+  @Get(':id')
+  getPlan(@Param() params: any) { 
+    return this.plansService.getPlan(params.id);
+  }
+
   @Patch(':id')
   updatePlan(@Param() params: any, @Body() updatePlansDto: UpdatePlansDto) {
     return this.plansService.updatePlan(params.id, updatePlansDto);
