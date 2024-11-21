@@ -5,6 +5,7 @@ import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { CreateEmployeeDto } from './dto/createEmployee.dto';
 import { Id, Plan, Role } from 'src/decorators/custom.decorator';
+import { CreateClientDto } from './dto/createClient.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -73,5 +74,15 @@ export class AuthController {
   }
 
 
-  
+  @Post('/client')
+  async createClient(
+    @Body() createClientDto: CreateClientDto,
+    @Id() id: string,
+    @Role() role: string,
+    @Plan() plan: string,
+  ){
+    const creatorDetailsDto = { id: id, role: role, plan: plan };
+
+    return this.authService.createClient(createClientDto,creatorDetailsDto)
+  }
 }
