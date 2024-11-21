@@ -29,23 +29,4 @@ import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middlew
   controllers: [AuthController],
   providers: [AuthService],
 })
-export class AuthModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(AuthAdminTokenMiddleware)
-      .forRoutes(
-        { path: 'plans', method: RequestMethod.ALL },
-      )
-      .exclude({
-        path: 'plans',
-        method: RequestMethod.POST
-      });
-
-    consumer
-      .apply(AuthSuperAdminMiddleware)
-      .forRoutes(
-        { path: 'users', method: RequestMethod.GET },
-        { path: 'users/clients', method: RequestMethod.GET },
-      );
-  }
-}
+export class AuthModule {}

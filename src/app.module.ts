@@ -37,9 +37,7 @@ export class AppModule {
 
     consumer
       .apply(AuthAdminTokenMiddleware)
-      .forRoutes(
-        { path: 'auth/employee', method: RequestMethod.POST },
-      );
+      .forRoutes({ path: 'auth/employee', method: RequestMethod.POST });
 
     consumer
       .apply(AuthSuperAdminMiddleware)

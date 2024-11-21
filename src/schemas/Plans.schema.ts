@@ -6,6 +6,7 @@ export class Plans extends Document {
 
     @Prop({
         type:String,
+        unique: true,
         required: [true, 'Plan Name is required']
     })
     name: string //plan name
@@ -13,6 +14,7 @@ export class Plans extends Document {
     @Prop({
         type:Number,
         min: 1,
+        unique: true,
         required: [true, 'Plan Amount is required'],
     })
     amount: number //plan amount
@@ -48,3 +50,9 @@ export class Plans extends Document {
 }
 
 export const PlansSchema = SchemaFactory.createForClass(Plans)
+
+// Create unique index on name
+PlansSchema.index({ name: 1 }, { unique: true });
+
+// Create unique index on amount
+PlansSchema.index({ amount: 1 }, { unique: true });

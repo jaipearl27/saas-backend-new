@@ -15,6 +15,7 @@ import {
     ) {}
   
     async use(req /*:  Request */, res: Response, next: NextFunction) {
+      console.log('authAdminMiddleware')
       const access_token =
         req.cookies[this.configService.get('ACCESS_TOKEN_NAME')];
   
