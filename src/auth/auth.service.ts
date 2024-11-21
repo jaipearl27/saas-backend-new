@@ -18,6 +18,7 @@ import { User } from 'src/schemas/User.schema';
 import { Model } from 'mongoose';
 import { CreatorDetailsDto } from './dto/creatorDetails.dto';
 import { PlansService } from 'src/plans/plans.service';
+import { CreateClientDto } from './dto/createClient.dto';
 
 @Injectable()
 export class AuthService {
@@ -54,7 +55,12 @@ export class AuthService {
     const result = user.toObject();
     delete result['password'];
 
-    const payload = { id: user?._id, role: user?.role, adminId: user?.adminId, plan: user?.plan };
+    const payload = {
+      id: user?._id,
+      role: user?.role,
+      adminId: user?.adminId,
+      plan: user?.plan,
+    };
 
     return {
       userData: result,
@@ -88,12 +94,7 @@ export class AuthService {
     createEmployeeDto: CreateEmployeeDto,
     creatorDetailsDto: CreatorDetailsDto,
   ): Promise<any> {
-    let plan;
-    if (creatorDetailsDto?.plan) {
-      plan = await this.plansService.getPlan(creatorDetailsDto?.plan);
-    } else {
-      throw new NotFoundException('No plan found for this user.');
-    }
+    const plan = await this.plansService.getPlan(creatorDetailsDto?.plan);
 
     const isUserExists = await this.userModel.findOne({
       email: createEmployeeDto.email,
@@ -121,5 +122,18 @@ export class AuthService {
         'Employee creation limit reached for your plan.',
       );
     }
+  }
+
+  async createClient(
+    createClientDto: CreateClientDto,
+    creatorDetailsDto: CreatorDetailsDto,
+  ): Promise<any> {
+    const roleId =
+      await this.configService.get('appRoles')["ADMIN"];
+    if (roleId) {
+      createClientDto.role = roleId;
+    }
+
+    return this.usersService.createClient(createClientDto, creatorDetailsDto);
   }
 }

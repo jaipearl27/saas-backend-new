@@ -51,9 +51,10 @@ export class PlansService {
   }
 
   async updatePlan(id: string, updatePlanDto: UpdatePlansDto): Promise<any> {
-
     // Create the new plan
-    const plan = this.plansModel.findByIdAndUpdate(id, updatePlanDto, { new: true });
+    const plan = this.plansModel.findByIdAndUpdate(id, updatePlanDto, {
+      new: true,
+    });
     return plan;
   }
 

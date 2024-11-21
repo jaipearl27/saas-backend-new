@@ -17,7 +17,11 @@ export class CreateClientDto {
     @IsString()
     phone?: string
 
+    @IsOptional()
+    @IsString()
+    role: string
+
     @IsString()
     @IsNotEmpty()
-    selectedRole?: string
+    plan: string
 }
