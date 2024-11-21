@@ -11,6 +11,7 @@ import { GetAdminIdMiddleware } from './middlewares/get-admin-id.middleware';
 import { AuthSuperAdminMiddleware } from './middlewares/authSuperAdmin.Middleware';
 import { AuthAdminTokenMiddleware } from './middlewares/authAdmin.Middleware';
 import { SidebarLinksModule } from './sidebar-links/sidebar-links.module';
+import { PlansModule } from './plans/plans.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { SidebarLinksModule } from './sidebar-links/sidebar-links.module';
     AttendeesModule,
     AuthModule,
     SidebarLinksModule,
+    PlansModule,
   ],
   controllers: [AppController],
   providers: [AppService],
@@ -39,6 +41,9 @@ export class AppModule {
 
     consumer
       .apply(AuthSuperAdminMiddleware)
-      .forRoutes('users', 'users/clients');
+      .forRoutes(
+        { path: 'users', method: RequestMethod.GET },
+        { path: 'users/clients', method: RequestMethod.GET },
+      );
   }
 }

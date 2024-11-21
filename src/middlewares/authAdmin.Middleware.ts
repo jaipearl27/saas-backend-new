@@ -16,8 +16,7 @@ export class AuthAdminTokenMiddleware implements NestMiddleware {
   ) {}
 
   async use(req, res: Response, next: NextFunction) {
-
-    console.log('Middleware applied');  // <-- This will confirm middleware execution
+    console.log('auth admin Middleware applied'); // <-- This will confirm middleware execution
     const access_token =
       req.cookies[this.configService.get('ACCESS_TOKEN_NAME')];
 
@@ -32,6 +31,7 @@ export class AuthAdminTokenMiddleware implements NestMiddleware {
 
       const decodedToken = this.jwtService.verify(access_token, decodeOptions);
 
+
       if (
         decodedToken &&
         [
@@ -39,6 +39,7 @@ export class AuthAdminTokenMiddleware implements NestMiddleware {
           this.configService.get('appRoles').SUPER_ADMIN,
         ].includes(decodedToken.role)
       ) {
+        console.log('in decoded logiccc')
         req.id = decodedToken.id;
         req.role = decodedToken.role;
         req.plan = decodedToken.plan;
@@ -47,6 +48,7 @@ export class AuthAdminTokenMiddleware implements NestMiddleware {
         throw new UnauthorizedException('Unauthorized access token.');
       }
     } catch (error) {
+      console.log(error)
       throw new UnauthorizedException('Invalid or expired access token.');
     }
   }
