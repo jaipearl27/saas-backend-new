@@ -17,11 +17,13 @@ import { CreateEmployeeDto } from 'src/auth/dto/createEmployee.dto';
 import * as bcrypt from 'bcrypt';
 import { CreatorDetailsDto } from 'src/auth/dto/creatorDetails.dto';
 import { CreateClientDto } from 'src/auth/dto/createClient.dto';
+import { Plans } from 'src/schemas/Plans.schema';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(Plans.name) private plansModel: Model<Plans>,
     private configService: ConfigService,
   ) {}
 

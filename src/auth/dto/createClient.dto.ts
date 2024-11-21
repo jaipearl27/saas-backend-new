@@ -24,4 +24,10 @@ export class CreateClientDto {
     @IsString()
     @IsNotEmpty()
     plan: string
+
+    
+    @IsString()
+    @IsOptional()
+    currentPlanExpiry?: string
+    
 }

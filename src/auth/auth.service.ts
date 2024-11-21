@@ -134,6 +134,8 @@ export class AuthService {
       createClientDto.role = roleId;
     }
 
+    
+
     return this.usersService.createClient(createClientDto, creatorDetailsDto);
   }
 }
