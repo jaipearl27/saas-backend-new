@@ -4,13 +4,14 @@ import { SignInDto } from './dto/signIn.dto';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { CreateEmployeeDto } from './dto/createEmployee.dto';
+import { Id, Plan, Role } from 'src/decorators/custom.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   @Post('login')
   async signIn(
@@ -25,10 +26,14 @@ export class AuthController {
         result.access_token,
       );
     }
-
     return result.userData;
   }
 
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) response: Response) {
+    response.clearCookie(this.configService.get('ACCESS_TOKEN_NAME')); // Unset the access token cookie
+    return { message: 'Successfully logged out' };
+  }
 
   @Post('refresh')
   async refreshToken(
@@ -46,16 +51,24 @@ export class AuthController {
 
     return {
       status: true,
-      message: 'Refresh token generated'
+      message: 'Refresh token generated',
     };
   }
 
   @Post('/employee')
   async createEmployee(
     @Body() createEmplyeeDto: CreateEmployeeDto,
-    @Req() req
+    @Id() id: string,
+    @Role() role: string,
+    @Plan() plan: string,
   ) {
-    const creatorDetails = { id: req.id, role: req.role, plan: req.plan }
-    return this.authService.createEmployee(createEmplyeeDto, creatorDetails)
+    const creatorDetailsDto = { id: id, role: role, plan: plan };
+
+    const employee = await this.authService.createEmployee(
+      createEmplyeeDto,
+      creatorDetailsDto,
+    );
+
+    return employee;
   }
 }

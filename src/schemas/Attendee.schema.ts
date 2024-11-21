@@ -62,13 +62,11 @@ export class Attendee extends Document {
 
 
   @Prop({
-    type: String,
-    minlength: 1,
-    maxlength: 10,
-    enum: ['preWebinar', 'postWebinar'],
-    required: [true, 'Record Type is required'],
+    type: Boolean,
+    required: [true, 'Is Attended is required'],
+    default: false
   })
-  recordType: string;
+  isAttended: boolean; //Is attended
 
   @Prop({
     type: String,
