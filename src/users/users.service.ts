@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { CreateEmployeeDto } from 'src/auth/dto/createEmployee.dto';
 
 import * as bcrypt from 'bcrypt'
+import { CreatorDetailsDto } from 'src/auth/dto/creatorDetails.dto';
 
 @Injectable()
 export class UsersService {
@@ -46,8 +47,8 @@ export class UsersService {
     return this.userModel.findById(id)
   }
 
-  async createEmployee(createEmployeeDto: CreateEmployeeDto, creatorDetails): Promise<any> {
-    const user = await this.userModel.create({ ...createEmployeeDto }) 
+  async createEmployee(createEmployeeDto: CreateEmployeeDto, creatorDetailsDto: CreatorDetailsDto): Promise<any> {
+    const user = await this.userModel.create({ ...createEmployeeDto, adminId: creatorDetailsDto.id }) 
     return user
   }
 }

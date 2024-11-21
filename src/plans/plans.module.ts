@@ -17,6 +17,7 @@ import { Plans, PlansSchema } from 'src/schemas/Plans.schema';
   ],
   controllers: [PlansController],
   providers: [PlansService],
+  exports:[PlansService]
 })
 export class PlansModule {
   configure(consumer: MiddlewareConsumer) {
@@ -32,7 +33,7 @@ export class PlansModule {
       .apply(AuthSuperAdminMiddleware)
       .forRoutes(
         { path: 'plans', method: RequestMethod.POST },
-        { path: 'plans', method: RequestMethod.PATCH },
+        { path: 'plans/:id', method: RequestMethod.PATCH },
         { path: 'plans', method: RequestMethod.PUT },
         { path: 'plans', method: RequestMethod.DELETE },
       );

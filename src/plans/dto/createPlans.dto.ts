@@ -1,6 +1,6 @@
 import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 
-export class PlansDto {
+export class CreatePlansDto {
     @IsString()
     @IsNotEmpty()
     name: string

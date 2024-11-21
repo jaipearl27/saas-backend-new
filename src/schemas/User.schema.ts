@@ -66,6 +66,7 @@ export class User extends Document {
     type: String,
     required: false,
   })
+  
   pabblyToken: string;
 
   @Prop({
