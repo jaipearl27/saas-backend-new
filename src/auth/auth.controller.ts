@@ -73,8 +73,5 @@ export class AuthController {
   }
 
 
-  @Post('/client')
-  async createClient(
-    @Body() createClientDto: CreateClientDto
-  )
+  
 }
