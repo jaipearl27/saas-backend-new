@@ -71,4 +71,10 @@ export class AuthController {
 
     return employee;
   }
+
+
+  @Post('/client')
+  async createClient(
+    @Body() createClientDto: CreateClientDto
+  )
 }

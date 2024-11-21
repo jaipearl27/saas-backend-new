@@ -6,12 +6,12 @@ import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from 'src/schemas/User.schema';
 import { Plans, PlansSchema } from 'src/schemas/Plans.schema';
-import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
-import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
+import { PlansModule } from 'src/plans/plans.module';
 
 @Module({
   imports: [
     UsersModule,
+    PlansModule,
     JwtModule.register({
       global: true,
     }),

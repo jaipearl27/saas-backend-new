@@ -16,17 +16,17 @@ import { CreateEmployeeDto } from './dto/createEmployee.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from 'src/schemas/User.schema';
 import { Model } from 'mongoose';
-import { Plans } from 'src/schemas/Plans.schema';
 import { CreatorDetailsDto } from './dto/creatorDetails.dto';
+import { PlansService } from 'src/plans/plans.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
-    @InjectModel(Plans.name) private plansModel: Model<Plans>,
     private usersService: UsersService,
     private jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly plansService: PlansService,
   ) {}
 
   async signIn(signInDto: SignInDto): Promise<any> {
@@ -54,7 +54,7 @@ export class AuthService {
     const result = user.toObject();
     delete result['password'];
 
-    const payload = { id: user?._id, role: user?.role, adminId: user?.adminId };
+    const payload = { id: user?._id, role: user?.role, adminId: user?.adminId, plan: user?.plan };
 
     return {
       userData: result,
@@ -90,7 +90,7 @@ export class AuthService {
   ): Promise<any> {
     let plan;
     if (creatorDetailsDto?.plan) {
-      plan = await this.plansModel.findById(creatorDetailsDto?.plan);
+      plan = await this.plansService.getPlan(creatorDetailsDto?.plan);
     } else {
       throw new NotFoundException('No plan found for this user.');
     }
