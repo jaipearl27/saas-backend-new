@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UsersModule } from 'src/users/users.module';
@@ -6,6 +6,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from 'src/schemas/User.schema';
 import { Plans, PlansSchema } from 'src/schemas/Plans.schema';
+import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
+import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
 
 @Module({
   imports: [
@@ -27,4 +29,23 @@ import { Plans, PlansSchema } from 'src/schemas/Plans.schema';
   controllers: [AuthController],
   providers: [AuthService],
 })
-export class AuthModule {}
+export class AuthModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(AuthAdminTokenMiddleware)
+      .forRoutes(
+        { path: 'plans', method: RequestMethod.ALL },
+      )
+      .exclude({
+        path: 'plans',
+        method: RequestMethod.POST
+      });
+
+    consumer
+      .apply(AuthSuperAdminMiddleware)
+      .forRoutes(
+        { path: 'users', method: RequestMethod.GET },
+        { path: 'users/clients', method: RequestMethod.GET },
+      );
+  }
+}
