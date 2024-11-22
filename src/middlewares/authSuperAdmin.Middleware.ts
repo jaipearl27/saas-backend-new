@@ -15,7 +15,7 @@ export class AuthSuperAdminMiddleware implements NestMiddleware {
   ) {}
 
   async use(req /*:  Request */, res: Response, next: NextFunction) {
-    console.log('authAdminMiddleware');
+    console.log('authAdminMiddleware', req.cookies);
     const access_token =
       req.cookies[this.configService.get('ACCESS_TOKEN_NAME')];
 
