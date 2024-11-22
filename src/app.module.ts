@@ -12,6 +12,7 @@ import { AuthSuperAdminMiddleware } from './middlewares/authSuperAdmin.Middlewar
 import { AuthAdminTokenMiddleware } from './middlewares/authAdmin.Middleware';
 import { SidebarLinksModule } from './sidebar-links/sidebar-links.module';
 import { PlansModule } from './plans/plans.module';
+import { SubscriptionModule } from './subscription/subscription.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { PlansModule } from './plans/plans.module';
     AuthModule,
     SidebarLinksModule,
     PlansModule,
+    SubscriptionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -11,18 +11,17 @@ import {
   Req,
   ValidationPipe,
 } from '@nestjs/common';
-  import { UsersService } from './users.service';
+import { UsersService } from './users.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+// import { UpdateUserDto } from './dto/update-user.dto';
 import { AdminId } from 'src/decorators/custom.decorator';
 
 @Controller('users') // @route => /users
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
-
-  @Get('')
+  @Get()
   getUsers() {
     const users = this.usersService.getUsers();
     return users;
@@ -34,11 +33,9 @@ export class UsersController {
     return this.usersService.createUser(createUserDto);
   }
 
-  
-
   @Get('/clients')
-  getClients(@AdminId() adminId) {
-    const clients = this.usersService.getClients(adminId);
+  getClients() {
+    const clients = this.usersService.getClients();
 
     return clients;
   }

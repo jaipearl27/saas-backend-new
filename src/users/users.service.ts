@@ -6,8 +6,6 @@ import {
   Req,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
-// import { UpdateUserDto } from './dto/update-user.dto';
-// import { NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model, Types } from 'mongoose';
 import { User } from 'src/schemas/User.schema';
@@ -34,8 +32,7 @@ export class UsersService {
     return newUser.save();
   }
 
-  getClients(adminId: string) {
-    console.log(adminId, 'Admin ID........');
+  getClients() {
     const clientRoleId = this.configService.get('appRoles').ADMIN;
     return this.userModel.find({
       role: new mongoose.Types.ObjectId(`${clientRoleId}`),
@@ -49,8 +46,9 @@ export class UsersService {
     });
   }
 
-  getUser(userName: string) {
-    return this.userModel.findOne({ userName: userName });
+ async getUser(userName: string): Promise<any> {
+    const user = await this.userModel.findOne({ userName: userName });
+    return user
   }
 
   getUserById(id: string) {
@@ -80,13 +78,14 @@ export class UsersService {
 
     let date = new Date();
     let currentPlanExpiry = date.setDate(date.getDate() + plan.planDuration);
-
     createClientDto.currentPlanExpiry = currentPlanExpiry;
+
     /**
-     * test for date in frontend to be in IST
+    // * test for date in frontend to be in IST
      * let date = new Date('2024-12-02T06:14:48.287Z')
       console.log(date.toLocaleString('en-IN'))
      */
+
     // Check if a user already exists
     const existingUser = await this.userModel.findOne({
       $or: [
@@ -99,10 +98,12 @@ export class UsersService {
         'User with this UserName/E-Mail already exists.',
       );
     }
+    
     const user = await this.userModel.create({
       ...createClientDto,
       adminId: creatorDetailsDto.id,
     });
+
     return user;
   }
 }

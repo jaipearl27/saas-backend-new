@@ -23,18 +23,8 @@ export class Subscription extends Document {
   @Prop({ type: Date, required: true })
   expiryDate: Date; // Calculated based on the plan duration
 
-  @Prop([
-    {
-      date: { type: Date, default: Date.now },
-      plan: { type: Types.ObjectId, ref: 'plans' },
-      amount: { type: Number },
-    },
-  ])
-  billingHistory: {
-    date: Date;
-    plan: Types.ObjectId;
-    amount: number;
-  }[]; // Billing and upgrade history
+  @Prop([{ type: Types.ObjectId, ref: 'billingHisotry' }])
+  billingHistory: string[]; // Billing and upgrade history
 }
 
 export const SubscriptionSchema = SchemaFactory.createForClass(Subscription);

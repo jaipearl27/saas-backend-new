@@ -23,8 +23,9 @@ export class SidebarLinksService {
     return this.sidebarLinksModel.findById(id).exec();
   }
 
-  async update(id: string, updateSidebarLinkDto: UpdateSidebarLinkDto): Promise<SidebarLinks> {
-    return this.sidebarLinksModel.findByIdAndUpdate(id, updateSidebarLinkDto, { new: true }).exec();
+  async update(id: string, updateSidebarLinkDto: UpdateSidebarLinkDto): Promise<any> {
+    let result = await this.sidebarLinksModel.findByIdAndUpdate(id, updateSidebarLinkDto, { new: true }).exec();
+    return result
   }
 
   async remove(id: string): Promise<void> {
