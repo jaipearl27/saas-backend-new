@@ -47,7 +47,13 @@ export class AuthController {
       response.cookie(
         this.configService.get('ACCESS_TOKEN_NAME'),
         result.access_token,
+        {
+          httpOnly: true,
+          secure: this.configService.get('NODE_ENV') === 'production',
+          sameSite: 'strict',
+        },
       );
+      
     }
 
     return {
