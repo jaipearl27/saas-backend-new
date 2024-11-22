@@ -66,13 +66,15 @@ export class AuthService {
       userData: result,
       access_token: await this.jwtService.signAsync(payload, {
         secret: this.configService.get('ACCESS_TOKEN_SECRET'),
-        expiresIn: '15m',
+        expiresIn: '15s',
       }),
     };
   }
 
   async refreshToken(userName: string): Promise<any> {
     const user = await this.usersService.getUser(userName);
+
+    console.log(userName, '<--- user ---> ', user?._id);
 
     if (!user) {
       throw new NotFoundException('Incorrect Username');
@@ -83,9 +85,10 @@ export class AuthService {
 
     const payload = { id: user?._id, role: user?.role, adminId: user?.adminId };
 
+    console.log('access token --> ', this.configService.get('ACCESS_TOKEN_SECRET'))
     const access_token = await this.jwtService.signAsync(payload, {
       secret: this.configService.get('ACCESS_TOKEN_SECRET'),
-      expiresIn: '15d',
+      expiresIn: '15s',
     });
     return { access_token, user };
   }
