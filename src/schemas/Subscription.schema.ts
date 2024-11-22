@@ -23,9 +23,6 @@ export class Subscription extends Document {
   @Prop({ type: Date, required: true })
   expiryDate: Date; // Calculated based on the plan duration
 
-  @Prop({ type: Number, required: true })
-  price: number; // Price at purchase
-
   @Prop([
     {
       date: { type: Date, default: Date.now },
