@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import {IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 
 export class CreateClientDto {
     @IsString()
@@ -26,8 +26,8 @@ export class CreateClientDto {
     plan: string
 
     
-    @IsString()
+    @IsNumber()
     @IsOptional()
-    currentPlanExpiry?: string
+    currentPlanExpiry?: Number
     
 }

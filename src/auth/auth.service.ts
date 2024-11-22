@@ -128,13 +128,13 @@ export class AuthService {
     createClientDto: CreateClientDto,
     creatorDetailsDto: CreatorDetailsDto,
   ): Promise<any> {
-    const roleId =
-      await this.configService.get('appRoles')["ADMIN"];
+    const roleId = await this.configService.get('appRoles')['ADMIN'];
     if (roleId) {
       createClientDto.role = roleId;
     }
 
-    
+    const hashPassword = await bcrypt.hash(createClientDto.password, 10);
+    createClientDto.password = hashPassword;
 
     return this.usersService.createClient(createClientDto, creatorDetailsDto);
   }

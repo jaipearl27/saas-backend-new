@@ -9,12 +9,10 @@ import { CreateUserDto } from './dto/create-user.dto';
 // import { UpdateUserDto } from './dto/update-user.dto';
 // import { NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import mongoose, { Model } from 'mongoose';
+import mongoose, { Model, Types } from 'mongoose';
 import { User } from 'src/schemas/User.schema';
 import { ConfigService } from '@nestjs/config';
 import { CreateEmployeeDto } from 'src/auth/dto/createEmployee.dto';
-
-import * as bcrypt from 'bcrypt';
 import { CreatorDetailsDto } from 'src/auth/dto/creatorDetails.dto';
 import { CreateClientDto } from 'src/auth/dto/createClient.dto';
 import { Plans } from 'src/schemas/Plans.schema';
@@ -74,6 +72,21 @@ export class UsersService {
     createClientDto: CreateClientDto,
     creatorDetailsDto: CreatorDetailsDto,
   ): Promise<any> {
+    const plan = await this.plansModel.findOne({
+      _id: new Types.ObjectId(`${createClientDto.plan}`),
+    });
+
+    if (!plan) throw new NotFoundException('No Plans Found with the given ID.');
+
+    let date = new Date();
+    let currentPlanExpiry = date.setDate(date.getDate() + plan.planDuration);
+
+    createClientDto.currentPlanExpiry = currentPlanExpiry;
+    /**
+     * test for date in frontend to be in IST
+     * let date = new Date('2024-12-02T06:14:48.287Z')
+      console.log(date.toLocaleString('en-IN'))
+     */
     // Check if a user already exists
     const existingUser = await this.userModel.findOne({
       $or: [
