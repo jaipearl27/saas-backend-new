@@ -67,6 +67,22 @@ export class UsersService {
         },
       },
       {
+        $lookup: {
+          from: 'attendees',
+          let: { adminId: '$_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$adminId', '$$adminId'] } } },
+            { $count: 'totalCount' },
+          ],
+          as: 'attendeesCount'
+        },
+      },
+      {
+        $addFields: {
+          attendeesCount: {$arrayElemAt: ['$attendeesCount.totalCount',0]}
+        }
+      },
+      {
         $project: {
           password: 0,
         },
@@ -74,7 +90,7 @@ export class UsersService {
       { $skip: skip || 0 },
       { $limit: limit || 25 },
     ];
-    console.log(pipeline)
+    console.log(pipeline);
     const result = await this.userModel.aggregate(pipeline);
     return result;
   }
