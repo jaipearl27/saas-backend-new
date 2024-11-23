@@ -20,6 +20,12 @@ export class Subscription extends Document {
   })
   startDate: Date;
 
+  @Prop({
+    type: Number,
+    required: [true, 'Contact limit is required']
+  })
+  contactLimit: number
+
   @Prop({ type: Date, required: true })
   expiryDate: Date; // Calculated based on the plan duration
 }

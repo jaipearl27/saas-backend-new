@@ -12,7 +12,11 @@ export class SubscriptionDto {
 
   @IsNumber()
   @IsOptional()
-  expiryDate?: Number;
+  contactLimit?: number;
+
+  @IsNumber()
+  @IsOptional()
+  expiryDate?: number;
 }
 
 export class UpdateSubscriptionDto extends PartialType(SubscriptionDto) {}

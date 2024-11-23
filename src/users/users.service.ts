@@ -149,6 +149,7 @@ export class UsersService {
     let subscriptionPayload: SubscriptionDto = {
       admin: String(user._id),
       plan: String(plan._id),
+      contactLimit: plan.contactLimit,
       expiryDate: currentPlanExpiry,
     };
     const subscription =

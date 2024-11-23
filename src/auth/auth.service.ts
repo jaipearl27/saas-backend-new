@@ -45,6 +45,15 @@ export class AuthService {
       );
     }
 
+
+    const admin = await this.usersService.getUserById(user._id)
+
+    if(!admin.isActive){
+      throw new UnauthorizedException(
+        'Access denied: Admin account is inactive. Please contact your administrator.',
+      );
+    } 
+
     const matchPassword = await bcrypt.compare(
       signInDto.password,
       user.password,

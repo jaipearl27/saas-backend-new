@@ -19,7 +19,7 @@ export class AuthController {
     @Body() signInDto: SignInDto,
     @Res({ passthrough: true }) response: Response,
   ) {
-    console.log('in thisss')
+
     const result = await this.authService.signIn(signInDto);
 
     if (result.access_token) {

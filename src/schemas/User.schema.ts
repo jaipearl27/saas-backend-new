@@ -13,7 +13,6 @@ export class User extends Document {
 
   @Prop({
     type: String,
-    required: [true, 'Company name is required'],
     trim: true,
   })
   companyName: string; //company name
@@ -79,7 +78,24 @@ export class User extends Document {
 
 }
 
-export const UserSchema = SchemaFactory.createForClass(User);
+const UserSchema = SchemaFactory.createForClass(User);
+
+
+UserSchema.pre('save', function (next) {
+  if (typeof this.adminId === 'string') {
+    this.adminId = new Types.ObjectId(`${this.adminId}`);
+  }
+  if (typeof this.plan === 'string') {
+    this.plan = new Types.ObjectId(`${this.plan}`);
+  }
+  if (typeof this.role === 'string') {
+    this.role = new Types.ObjectId(`${this.role}`);
+  }
+  next();
+});
 
 const rolesEnv = process.env.ROLES ? JSON.parse(process.env.ROLES) : {};
 UserSchema.path('adminId').default(() => rolesEnv.SUPER_ADMIN);
+
+
+export {UserSchema}
