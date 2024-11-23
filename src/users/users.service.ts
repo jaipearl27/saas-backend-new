@@ -79,7 +79,7 @@ export class UsersService {
       },
       {
         $addFields: {
-          attendeesCount: {$arrayElemAt: ['$attendeesCount.totalCount',0]}
+          attendeesCount: { $ifNull: [{ $arrayElemAt: ['$attendeesCount.totalCount', 0] }, 0] }
         }
       },
       {
