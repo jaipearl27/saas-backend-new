@@ -41,7 +41,7 @@ export class UsersService {
   async getClients(skip: number, limit: number): Promise<any> {
     const clientRoleId = this.configService.get('appRoles').ADMIN;
     const pipeline: mongoose.PipelineStage[] = [
-      { $match: { role: clientRoleId } },
+      { $match: { role: new Types.ObjectId(`${clientRoleId}`) } },
       {
         $lookup: {
           from: 'subscriptions',
@@ -74,7 +74,7 @@ export class UsersService {
       { $skip: skip || 0 },
       { $limit: limit || 25 },
     ];
-
+    console.log(pipeline)
     const result = await this.userModel.aggregate(pipeline);
     return result;
   }
