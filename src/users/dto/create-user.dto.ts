@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateUserDto {
 
@@ -17,4 +17,8 @@ export class CreateUserDto {
     message: 'Valid role required.',
   })
   role: 'Super Admin' | 'Admin' | 'Sales Employee' | 'Reminder Employee';
+
+  @IsString()
+  @IsOptional()
+  companyName?: string
 }

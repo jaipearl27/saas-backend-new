@@ -42,7 +42,6 @@ export class UsersService {
     const clientRoleId = this.configService.get('appRoles').ADMIN;
     const pipeline: mongoose.PipelineStage[] = [
       { $match: { role: clientRoleId } },
-
       {
         $lookup: {
           from: 'subscriptions',
@@ -64,7 +63,7 @@ export class UsersService {
           from: 'users',
           localField: '_id',
           foreignField: 'adminId',
-          as: 'employees'
+          as: 'employees',
         },
       },
       {
