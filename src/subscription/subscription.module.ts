@@ -18,5 +18,6 @@ import {
   ],
   controllers: [SubscriptionController],
   providers: [SubscriptionService],
+  exports: [SubscriptionService]
 })
 export class SubscriptionModule {}

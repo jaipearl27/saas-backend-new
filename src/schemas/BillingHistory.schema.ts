@@ -1,8 +1,11 @@
-import { Prop, Schema } from '@nestjs/mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class BillingHistory extends Document {
+  @Prop({ type: Types.ObjectId, ref: 'users', required: true })
+  admin: Types.ObjectId; // Admin user
+
   @Prop({
     type: Date,
     default: Date.now(),
@@ -22,3 +25,6 @@ export class BillingHistory extends Document {
   })
   amount: number;
 }
+
+
+export const BillingHistorySchema = SchemaFactory.createForClass(BillingHistory)

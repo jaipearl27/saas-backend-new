@@ -20,6 +20,7 @@ import { CreatorDetailsDto } from './dto/creatorDetails.dto';
 import { PlansService } from 'src/plans/plans.service';
 import { CreateClientDto } from './dto/createClient.dto';
 
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -28,6 +29,7 @@ export class AuthService {
     private jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly plansService: PlansService,
+
   ) {}
 
   async signIn(signInDto: SignInDto): Promise<any> {

@@ -14,6 +14,10 @@ import { CreateEmployeeDto } from 'src/auth/dto/createEmployee.dto';
 import { CreatorDetailsDto } from 'src/auth/dto/creatorDetails.dto';
 import { CreateClientDto } from 'src/auth/dto/createClient.dto';
 import { Plans } from 'src/schemas/Plans.schema';
+import { BillingHistoryService } from 'src/billing-history/billing-history.service';
+import { SubscriptionService } from 'src/subscription/subscription.service';
+import { BillingHistoryDto } from 'src/billing-history/dto/bililngHistory.dto';
+import { SubscriptionDto } from 'src/subscription/dto/subscription.dto';
 
 @Injectable()
 export class UsersService {
@@ -21,6 +25,8 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Plans.name) private plansModel: Model<Plans>,
     private configService: ConfigService,
+    private readonly billingHistoryService: BillingHistoryService,
+    private readonly subscriptionService: SubscriptionService,
   ) {}
 
   getUsers() {
@@ -46,9 +52,9 @@ export class UsersService {
     });
   }
 
- async getUser(userName: string): Promise<any> {
+  async getUser(userName: string): Promise<any> {
     const user = await this.userModel.findOne({ userName: userName });
-    return user
+    return user;
   }
 
   getUserById(id: string) {
@@ -98,12 +104,33 @@ export class UsersService {
         'User with this UserName/E-Mail already exists.',
       );
     }
-    
+
     const user = await this.userModel.create({
       ...createClientDto,
       adminId: creatorDetailsDto.id,
     });
 
-    return user;
+    //creating subscription and billing history initial entry
+
+    let subscriptionPayload: SubscriptionDto = {
+      admin: String(user._id),
+      plan: String(plan._id),
+      expiryDate: currentPlanExpiry,
+    };
+    const subscription = await this.subscriptionService.addSubscription(
+      subscriptionPayload,
+    );
+
+    let billingHistoryPayload: BillingHistoryDto = {
+
+      admin: String(user._id),
+      plan: String(plan._id),
+      amount: plan.amount,
+    };
+    const billingHistory = await this.billingHistoryService.addBillingHistory(
+      billingHistoryPayload,
+    );
+
+    return {user, subscription, billingHistory};
   }
 }

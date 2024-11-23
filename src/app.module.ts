@@ -13,6 +13,7 @@ import { AuthAdminTokenMiddleware } from './middlewares/authAdmin.Middleware';
 import { SidebarLinksModule } from './sidebar-links/sidebar-links.module';
 import { PlansModule } from './plans/plans.module';
 import { SubscriptionModule } from './subscription/subscription.module';
+import { BillingHistoryModule } from './billing-history/billing-history.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { SubscriptionModule } from './subscription/subscription.module';
     SidebarLinksModule,
     PlansModule,
     SubscriptionModule,
+    BillingHistoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
