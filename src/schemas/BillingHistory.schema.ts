@@ -26,5 +26,17 @@ export class BillingHistory extends Document {
   amount: number;
 }
 
+const BillingHistorySchema = SchemaFactory.createForClass(BillingHistory);
 
-export const BillingHistorySchema = SchemaFactory.createForClass(BillingHistory)
+// Add pre-save middleware to transform `admin` and `plan` to ObjectId
+BillingHistorySchema.pre('save', function (next) {
+  if (typeof this.admin === 'string') {
+    this.admin = new Types.ObjectId(`${this.admin}`);
+  }
+  if (typeof this.plan === 'string') {
+    this.plan = new Types.ObjectId(`${this.plan}`);
+  }
+  next();
+});
+
+export { BillingHistorySchema };

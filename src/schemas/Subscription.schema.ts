@@ -22,7 +22,19 @@ export class Subscription extends Document {
 
   @Prop({ type: Date, required: true })
   expiryDate: Date; // Calculated based on the plan duration
- 
 }
 
-export const SubscriptionSchema = SchemaFactory.createForClass(Subscription);
+const SubscriptionSchema = SchemaFactory.createForClass(Subscription);
+
+// Add pre-save middleware to transform `admin` and `plan` to ObjectId
+SubscriptionSchema.pre('save', function (next) {
+  if (typeof this.admin === 'string') {
+    this.admin = new Types.ObjectId(`${this.admin}`);
+  }
+  if (typeof this.plan === 'string') {
+    this.plan = new Types.ObjectId(`${this.plan}`);
+  }
+  next();
+});
+
+export { SubscriptionSchema };
