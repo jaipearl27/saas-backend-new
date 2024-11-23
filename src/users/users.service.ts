@@ -38,11 +38,46 @@ export class UsersService {
     return newUser.save();
   }
 
-  getClients() {
+  async getClients(skip: number, limit: number): Promise<any> {
     const clientRoleId = this.configService.get('appRoles').ADMIN;
-    return this.userModel.find({
-      role: new mongoose.Types.ObjectId(`${clientRoleId}`),
-    });
+    const pipeline: mongoose.PipelineStage[] = [
+      { $match: { role: clientRoleId } },
+
+      {
+        $lookup: {
+          from: 'subscriptions',
+          localField: '_id',
+          foreignField: 'admin',
+          as: 'subscription',
+        },
+      },
+      {
+        $lookup: {
+          from: 'billinghistories',
+          localField: '_id',
+          foreignField: 'admin',
+          as: 'billingHistory',
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: 'adminId',
+          as: 'employees'
+        },
+      },
+      {
+        $project: {
+          password: 0,
+        },
+      },
+      { $skip: skip || 0 },
+      { $limit: limit || 25 },
+    ];
+
+    const result = await this.userModel.aggregate(pipeline);
+    return result;
   }
 
   getEmployees() {
@@ -117,12 +152,10 @@ export class UsersService {
       plan: String(plan._id),
       expiryDate: currentPlanExpiry,
     };
-    const subscription = await this.subscriptionService.addSubscription(
-      subscriptionPayload,
-    );
+    const subscription =
+      await this.subscriptionService.addSubscription(subscriptionPayload);
 
     let billingHistoryPayload: BillingHistoryDto = {
-
       admin: String(user._id),
       plan: String(plan._id),
       amount: plan.amount,
@@ -131,6 +164,6 @@ export class UsersService {
       billingHistoryPayload,
     );
 
-    return {user, subscription, billingHistory};
+    return { user, subscription, billingHistory };
   }
 }

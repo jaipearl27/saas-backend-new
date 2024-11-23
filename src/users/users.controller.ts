@@ -34,8 +34,13 @@ export class UsersController {
   }
 
   @Get('/clients')
-  getClients() {
-    const clients = this.usersService.getClients();
+  getClients(@Query() query: {page: string, limit: string}) {
+    let page = Number(query.page)
+    let limit = Number(query.limit)
+    if(page <= 0) page = 1
+    if(limit <= 0) limit = 25
+    const skip: number = (page - 1) *  Number(query.limit)
+    const clients = this.usersService.getClients(skip, Number(query.limit));
 
     return clients;
   }
