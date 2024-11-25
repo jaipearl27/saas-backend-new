@@ -1,21 +1,16 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
-  ParseIntPipe,
-  Patch,
   Post,
   Query,
-  Req,
-  ValidationPipe,
+
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
-// import { UpdateUserDto } from './dto/update-user.dto';
-import { AdminId } from 'src/decorators/custom.decorator';
+
 
 @Controller('users') // @route => /users
 export class UsersController {
@@ -44,6 +39,12 @@ export class UsersController {
     const clients = this.usersService.getClients(skip, Number(query.limit));
 
     return clients;
+  }
+
+  @Get('/clients/:id')
+  async getClient(@Param('id') id: string): Promise<any> {
+    const client = await this.usersService.getClient(id)
+    return client
   }
 
   @Get('/employees')

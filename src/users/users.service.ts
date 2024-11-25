@@ -94,6 +94,62 @@ export class UsersService {
     return result;
   }
 
+  async getClient(id: string): Promise<any> {
+    const pipeline: mongoose.PipelineStage[] = [
+      { $match: { _id: new Types.ObjectId(`${id}`) } },
+      {
+        $lookup: {
+          from: 'subscriptions',
+          localField: '_id',
+          foreignField: 'admin',
+          as: 'subscription',
+        },
+      },
+      {
+        $lookup: {
+          from: 'billinghistories',
+          localField: '_id',
+          foreignField: 'admin',
+          as: 'billingHistory',
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: 'adminId',
+          as: 'employees',
+        },
+      },
+      {
+        $lookup: {
+          from: 'attendees',
+          let: { adminId: '$_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$adminId', '$$adminId'] } } },
+            { $count: 'totalCount' },
+          ],
+          as: 'contactsCount'
+        },
+      },
+      {
+        $addFields: {
+          contactsCount: { $ifNull: [{ $arrayElemAt: ['$contactsCount.totalCount', 0] }, 0] }
+        }
+      },
+      {
+        $project: {
+          password: 0,
+        },
+      },
+    ];  
+
+    const result = await this.userModel.aggregate(pipeline);
+    return result;
+
+  }
+
+
   getEmployees() {
     const clientRoleId = this.configService.get('appRoles').ADMIN;
     return this.userModel.find({

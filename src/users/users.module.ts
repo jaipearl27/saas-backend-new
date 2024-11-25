@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -6,6 +6,7 @@ import { User, UserSchema } from 'src/schemas/User.schema';
 import { Plans, PlansSchema } from 'src/schemas/Plans.schema';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { BillingHistoryModule } from 'src/billing-history/billing-history.module';
+import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
 
 @Module({
   imports: [
@@ -26,4 +27,10 @@ import { BillingHistoryModule } from 'src/billing-history/billing-history.module
   providers: [UsersService],
   exports: [UsersService],
 })
-export class UsersModule {}
+export class UsersModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(AuthSuperAdminMiddleware)
+      .forRoutes({ path: 'users/clients/*', method: RequestMethod.ALL });
+  }
+}
