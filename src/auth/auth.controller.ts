@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignInDto } from './dto/signIn.dto';
 import { Response } from 'express';
@@ -19,7 +19,6 @@ export class AuthController {
     @Body() signInDto: SignInDto,
     @Res({ passthrough: true }) response: Response,
   ) {
-
     const result = await this.authService.signIn(signInDto);
 
     if (result.access_token) {
@@ -74,16 +73,22 @@ export class AuthController {
     return employee;
   }
 
-
   @Post('/client')
   async createClient(
     @Body() createClientDto: CreateClientDto,
     @Id() id: string,
     @Role() role: string,
     @Plan() plan: string,
-  ){
+  ) {
     const creatorDetailsDto = { id: id, role: role, plan: plan };
 
-    return this.authService.createClient(createClientDto,creatorDetailsDto)
+    return this.authService.createClient(createClientDto, creatorDetailsDto);
   }
+
+  // @Get('/token/:id')
+  // async pabblyToken(
+  //   @Param() param
+  // ): Promise<any> {
+  //   return this.authService.pabblyToken(param.id)
+  // }
 }
