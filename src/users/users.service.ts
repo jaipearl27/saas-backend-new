@@ -74,12 +74,12 @@ export class UsersService {
             { $match: { $expr: { $eq: ['$adminId', '$$adminId'] } } },
             { $count: 'totalCount' },
           ],
-          as: 'attendeesCount'
+          as: 'contactsCount'
         },
       },
       {
         $addFields: {
-          attendeesCount: { $ifNull: [{ $arrayElemAt: ['$attendeesCount.totalCount', 0] }, 0] }
+          contactsCount: { $ifNull: [{ $arrayElemAt: ['$contactsCount.totalCount', 0] }, 0] }
         }
       },
       {
@@ -89,8 +89,7 @@ export class UsersService {
       },
       { $skip: skip || 0 },
       { $limit: limit || 25 },
-    ];
-    console.log(pipeline);
+    ];  
     const result = await this.userModel.aggregate(pipeline);
     return result;
   }

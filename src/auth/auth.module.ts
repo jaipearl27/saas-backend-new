@@ -7,6 +7,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from 'src/schemas/User.schema';
 import { Plans, PlansSchema } from 'src/schemas/Plans.schema';
 import { PlansModule } from 'src/plans/plans.module';
+import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
 
 @Module({
   imports: [
@@ -29,4 +30,10 @@ import { PlansModule } from 'src/plans/plans.module';
   controllers: [AuthController],
   providers: [AuthService],
 })
-export class AuthModule {}
+export class AuthModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(AuthSuperAdminMiddleware)
+      .forRoutes({ path: 'auth/client', method: RequestMethod.ALL });
+  }
+}
