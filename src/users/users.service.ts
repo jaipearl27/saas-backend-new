@@ -40,6 +40,15 @@ export class UsersService {
 
   async getClients(skip: number, limit: number): Promise<any> {
     const clientRoleId = this.configService.get('appRoles').ADMIN;
+
+    const totalUsers = await this.userModel.countDocuments({
+      role: new Types.ObjectId(`${clientRoleId}`),
+    });
+
+    console.log(totalUsers);
+
+    const totalPages = Math.ceil(totalUsers / limit);
+
     const pipeline: mongoose.PipelineStage[] = [
       { $match: { role: new Types.ObjectId(`${clientRoleId}`) } },
       {
@@ -68,30 +77,50 @@ export class UsersService {
       },
       {
         $lookup: {
+          from: 'plans',
+          localField: 'plan',
+          foreignField: '_id',
+          as: 'plan',
+        },
+      },
+
+      {
+        $addFields: {
+          plan: {
+            $arrayElemAt: ['$plan', 0],
+          },
+        },
+      },
+      {
+        $lookup: {
           from: 'attendees',
           let: { adminId: '$_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$adminId', '$$adminId'] } } },
             { $count: 'totalCount' },
           ],
-          as: 'contactsCount'
+          as: 'contactsCount',
         },
       },
+
       {
         $addFields: {
-          contactsCount: { $ifNull: [{ $arrayElemAt: ['$contactsCount.totalCount', 0] }, 0] }
-        }
+          contactsCount: {
+            $ifNull: [{ $arrayElemAt: ['$contactsCount.totalCount', 0] }, 0],
+          },
+        },
       },
       {
         $project: {
           password: 0,
         },
       },
+      {$sort: {'userName': 1}},
       { $skip: skip || 0 },
       { $limit: limit || 25 },
-    ];  
+    ];
     const result = await this.userModel.aggregate(pipeline);
-    return result;
+    return { result, totalPages };
   }
 
   async getClient(id: string): Promise<any> {
@@ -123,32 +152,48 @@ export class UsersService {
       },
       {
         $lookup: {
+          from: 'plans',
+          localField: 'plan',
+          foreignField: '_id',
+          as: 'plan',
+        },
+      },
+
+      {
+        $addFields: {
+          plan: {
+            $arrayElemAt: ['$plan', 0],
+          },
+        },
+      },
+      {
+        $lookup: {
           from: 'attendees',
           let: { adminId: '$_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$adminId', '$$adminId'] } } },
             { $count: 'totalCount' },
           ],
-          as: 'contactsCount'
+          as: 'contactsCount',
         },
       },
       {
         $addFields: {
-          contactsCount: { $ifNull: [{ $arrayElemAt: ['$contactsCount.totalCount', 0] }, 0] }
-        }
+          contactsCount: {
+            $ifNull: [{ $arrayElemAt: ['$contactsCount.totalCount', 0] }, 0],
+          },
+        },
       },
       {
         $project: {
           password: 0,
         },
       },
-    ];  
+    ];
 
     const result = await this.userModel.aggregate(pipeline);
     return result;
-
   }
-
 
   getEmployees() {
     const clientRoleId = this.configService.get('appRoles').ADMIN;

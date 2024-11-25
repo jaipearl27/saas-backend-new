@@ -15,16 +15,17 @@ export class AuthSuperAdminMiddleware implements NestMiddleware {
   ) {}
 
   async use(req /*:  Request */, res: Response, next: NextFunction) {
+    // console.log(req)
     const access_token =
       req.cookies[this.configService.get('ACCESS_TOKEN_NAME')];
-    const pabbly_access_token =
-      req.cookies[this.configService.get('PABBLY_ACCESS_TOKEN_NAME')];
-    console.log(!access_token && !pabbly_access_token)
+    const pabbly_access_token = this.extractTokenFromHeader(req)
+
     if (!access_token && !pabbly_access_token) {
       throw new UnauthorizedException('Access token not found.');
     }
 
     try {
+
       if (access_token) {
         const decodeOptions = {
           secret: this.configService.get('ACCESS_TOKEN_SECRET'),
@@ -49,12 +50,13 @@ export class AuthSuperAdminMiddleware implements NestMiddleware {
           );
         }
       } else if (pabbly_access_token) {
+        
         const decodeOptions = {
           secret: this.configService.get('PABBLY_ACCESS_TOKEN_SECRET'),
         };
 
         const decodedToken = this.jwtService.verify(
-          access_token,
+          pabbly_access_token,
           decodeOptions,
         );
 
@@ -62,9 +64,11 @@ export class AuthSuperAdminMiddleware implements NestMiddleware {
           decodedToken &&
           decodedToken.role === this.configService.get('appRoles').SUPER_ADMIN
         ) {
+
           req.id = decodedToken.id;
           req.role = decodedToken.role;
           req.plan = decodedToken.plan;
+          console.log('authoriseddd')
           next();
         } else {
           throw new UnauthorizedException(
@@ -73,7 +77,15 @@ export class AuthSuperAdminMiddleware implements NestMiddleware {
         }
       }
     } catch (error) {
+      // console.log(error)
       throw new UnauthorizedException('Invalid or expired access token.');
     }
   }
+
+  private extractTokenFromHeader(req): string | undefined {
+    const [type, token] = req.headers.authorization?.split(' ') ?? [];
+    return type === 'Bearer' ? token : undefined;
+  }
 }
+
+

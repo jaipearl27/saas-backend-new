@@ -1,13 +1,11 @@
 import {
   BadRequestException,
-  HttpException,
-  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { Plans } from 'src/schemas/Plans.schema';
 import { CreatePlansDto } from './dto/createPlans.dto';
 import { UpdatePlansDto } from './dto/updatePlans.dto';
@@ -39,6 +37,7 @@ export class PlansService {
     const existingPlan = await this.plansModel.findOne({
       $or: [{ name: createPlanDto.name }, { amount: createPlanDto.amount }],
     });
+
     if (existingPlan) {
       throw new BadRequestException(
         'A plan with the same name/amount already exists.',
@@ -59,7 +58,6 @@ export class PlansService {
   }
 
   async deletePlan(id: string): Promise<any> {
-    // delete plan
     const plan = this.plansModel.findByIdAndDelete(id);
     return plan;
   }

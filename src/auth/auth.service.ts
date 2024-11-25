@@ -20,7 +20,6 @@ import { CreatorDetailsDto } from './dto/creatorDetails.dto';
 import { PlansService } from 'src/plans/plans.service';
 import { CreateClientDto } from './dto/createClient.dto';
 
-
 @Injectable()
 export class AuthService {
   constructor(
@@ -29,7 +28,6 @@ export class AuthService {
     private jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly plansService: PlansService,
-
   ) {}
 
   async signIn(signInDto: SignInDto): Promise<any> {
@@ -45,14 +43,13 @@ export class AuthService {
       );
     }
 
+    const admin = await this.usersService.getUserById(user._id);
 
-    const admin = await this.usersService.getUserById(user._id)
-
-    if(!admin.isActive){
+    if (!admin.isActive) {
       throw new UnauthorizedException(
         'Access denied: Admin account is inactive. Please contact your administrator.',
       );
-    } 
+    }
 
     const matchPassword = await bcrypt.compare(
       signInDto.password,
@@ -148,5 +145,25 @@ export class AuthService {
     createClientDto.password = hashPassword;
 
     return this.usersService.createClient(createClientDto, creatorDetailsDto);
+  }
+
+  async pabblyToken(id: string): Promise<any> {
+    const user = await this.userModel.findById(id);
+
+    if (!user) throw new NotFoundException('No user found with the given ID.');
+
+    const payload = {
+      id: user?._id,
+      role: user?.role,
+      adminId: user?.adminId,
+      plan: user?.plan,
+    };
+
+    //create jwt with payload here
+    const token = await this.jwtService.signAsync(payload, {
+      secret: this.configService.get('PABBLY_ACCESS_TOKEN_NAME'),
+    });
+
+    return token
   }
 }
