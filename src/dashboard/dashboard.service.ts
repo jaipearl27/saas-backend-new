@@ -109,6 +109,38 @@ export class DashboardService {
       },
 
       {
+        $lookup: {
+          from: 'attendees',
+          let: { userId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$admin', '$$userId'] },
+                    {
+                      $gte: ['$createdAt', new Date(startDate)],
+                    },
+                    {
+                      $lte: ['$createdAt', new Date(endDate)],
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+          as: 'attendees',
+        },
+      },
+
+      // Add the contactsUsed field by counting the number of attendees
+      {
+        $addFields: {
+          contactsUsed: { $size: '$attendees' }, // Count the number of attendees
+        },
+      },
+
+      {
         // Group back to consolidate billingHistory and calculate total revenue
         $group: {
           _id: '$_id',
@@ -122,6 +154,7 @@ export class DashboardService {
           }, // Active accounts
           revenue: { $sum: '$billingHistory.amount' }, // Sum up revenue from billing history
           contactsLimit: { $sum: '$subscriptions.contactLimit' },
+          contactsUsed: { $sum: '$contactsUsed' }, // Sum up contactsUsed for each user
         },
       },
       {
@@ -134,6 +167,7 @@ export class DashboardService {
           activeAccounts: { $sum: '$activeAccounts' }, // Total active accounts
           totalRevenue: { $sum: '$revenue' }, // Total revenue from billing history
           totalContactsLimit: { $sum: '$contactsLimit' },
+          totalContactsUsed: { $sum: '$contactsUsed' },
         },
       },
 
@@ -147,7 +181,7 @@ export class DashboardService {
           activeAccounts: 1,
           totalRevenue: 1,
           totalContactsLimit: 1,
-          user: 1,
+          totalContactsUsed: 1,
         },
       },
     ];
