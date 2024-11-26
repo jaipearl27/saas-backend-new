@@ -115,7 +115,7 @@ export class UsersService {
           password: 0,
         },
       },
-      {$sort: {'userName': 1}},
+      { $sort: { userName: 1 } },
       { $skip: skip || 0 },
       { $limit: limit || 25 },
     ];
