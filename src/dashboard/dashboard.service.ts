@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { Subscription } from 'src/schemas/Subscription.schema';
 import { User } from 'src/schemas/User.schema';
 import { UsersService } from 'src/users/users.service';
 
@@ -9,6 +10,8 @@ import { UsersService } from 'src/users/users.service';
 export class DashboardService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(Subscription.name)
+    private subscriptionsModel: Model<Subscription>,
     private usersService: UsersService,
     private readonly configService: ConfigService,
   ) {}
@@ -189,4 +192,45 @@ export class DashboardService {
     const result = await this.userModel.aggregate(pipeline);
     return result;
   }
+
+  async plansMetric(startDate: string, endDate: string): Promise<any> {
+    const pipeline = [
+      {
+        $match: {
+          updatedAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate),
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: 'plans',
+          localField: 'plan',
+          foreignField: '_id',
+          as: 'plan',
+        },
+      },
+      {
+        $group: {
+          _id: { $arrayElemAt: ['$plan', 0] },
+          total: {
+            $sum: 1,
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0, // Exclude the default _id field
+          plan: '$_id', // Rename _id to plan
+          total: 1, // Include the total field
+        },
+      },
+    ];
+
+    const result = await this.subscriptionsModel.aggregate(pipeline);
+    return result;
+  }
+
+  
 }

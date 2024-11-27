@@ -15,4 +15,15 @@ export class DashboardController {
     );
     return result;
   }
+
+  @Get('plans')
+  async plansMetric(
+    @Query() query: { startDate: string; endDate: string },
+  ): Promise<any> {
+    const result = await this.dashboardService.plansMetric(
+      query.startDate,
+      query.endDate,
+    );
+    return result;
+  }
 }
