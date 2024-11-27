@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
 
@@ -10,6 +11,7 @@ import {
 import { UsersService } from './users.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserInfoDto } from './dto/update-user.dto';
 
 
 @Controller('users') // @route => /users
@@ -44,6 +46,16 @@ export class UsersController {
   @Get('/clients/:id')
   async getClient(@Param('id') id: string): Promise<any> {
     const client = await this.usersService.getClient(id)
+    return client
+  }
+
+  
+  @Patch('/clients/:id')
+  async updateClient(
+    @Param('id') id: string,
+    @Body() updateUserInfoDto: UpdateUserInfoDto 
+  ): Promise<any> {
+    const client = await this.usersService.updateClient(id, updateUserInfoDto)
     return client
   }
 

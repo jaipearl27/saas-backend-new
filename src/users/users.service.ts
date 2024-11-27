@@ -4,6 +4,7 @@ import {
   NotAcceptableException,
   NotFoundException,
   Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -18,6 +19,7 @@ import { BillingHistoryService } from 'src/billing-history/billing-history.servi
 import { SubscriptionService } from 'src/subscription/subscription.service';
 import { BillingHistoryDto } from 'src/billing-history/dto/bililngHistory.dto';
 import { SubscriptionDto } from 'src/subscription/dto/subscription.dto';
+import { UpdateUserInfoDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -192,6 +194,27 @@ export class UsersService {
     ];
 
     const result = await this.userModel.aggregate(pipeline);
+    return result;
+  }
+
+  async updateClient(
+    id: string,
+    updateUserInfoDto: UpdateUserInfoDto,
+  ): Promise<any> {
+ 
+    if (updateUserInfoDto.userName || updateUserInfoDto.email) {
+      const isExisting = await this.userModel.findOne({$or: [{userName: updateUserInfoDto.userName}, {email: updateUserInfoDto.email}]});
+ 
+      if (isExisting) {
+        throw new NotAcceptableException('UserName/E-Mail already exists');
+      }
+    }
+
+    const result = await this.userModel.findByIdAndUpdate(
+      id,
+      updateUserInfoDto,
+      { new: true },
+    );
     return result;
   }
 
