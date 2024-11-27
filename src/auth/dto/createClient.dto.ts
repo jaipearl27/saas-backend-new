@@ -3,6 +3,11 @@ import {IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-valida
 export class CreateClientDto {
     @IsString()
     @IsNotEmpty()
+    @IsOptional()
+    companyName: string
+
+    @IsString()
+    @IsNotEmpty()
     userName: string
 
     @IsString()

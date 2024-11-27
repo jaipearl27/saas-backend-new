@@ -240,7 +240,7 @@ export class DashboardService {
     startDate: string,
     endDate: string,
   ): Promise<any> {
-    const pipeline = [
+    const pipeline: any[] = [
       {
         $match: {
           updatedAt: {
@@ -260,9 +260,22 @@ export class DashboardService {
         },
       },
       {
+        $addFields: {
+          // Convert date string to a Date object
+          dateObj: { $dateFromString: { dateString: '$_id' } },
+        },
+      },
+
+      {
+        $sort: {
+          dateObj: 1, // Ascending order
+        },
+      },
+
+      {
         $project: {
           _id: 0,
-          date: '$_id',
+          dateObj: 1,
           total: 1,
         },
       },
@@ -273,15 +286,16 @@ export class DashboardService {
   }
 
   async revenueMetrics(startDate: string, endDate: string): Promise<any> {
-    const pipeline = [
+    const pipeline: any[] = [
       {
         $match: {
-          updatedAt: {
+          date: {
             $gte: new Date(startDate),
             $lte: new Date(endDate),
           },
         },
       },
+
       {
         $group: {
           _id: {
@@ -292,10 +306,24 @@ export class DashboardService {
           },
         },
       },
+
+      {
+        $addFields: {
+          // Convert date string to a Date object
+          dateObj: { $dateFromString: { dateString: '$_id' } },
+        },
+      },
+
+      {
+        $sort: {
+          dateObj: 1, // Ascending order
+        },
+      },
+
       {
         $project: {
           _id: 0,
-          date: '$_id',
+          dateObj: 1,
           totalRevenue: 1,
         },
       },
