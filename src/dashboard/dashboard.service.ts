@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { BillingHistory } from 'src/schemas/BillingHistory.schema';
+import { Plans } from 'src/schemas/Plans.schema';
 import { Subscription } from 'src/schemas/Subscription.schema';
 import { User } from 'src/schemas/User.schema';
 import { UsersService } from 'src/users/users.service';
@@ -12,6 +14,8 @@ export class DashboardService {
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Subscription.name)
     private subscriptionsModel: Model<Subscription>,
+    @InjectModel(BillingHistory.name)
+    private billingHistoryModel: Model<BillingHistory>,
     private usersService: UsersService,
     private readonly configService: ConfigService,
   ) {}
@@ -232,5 +236,72 @@ export class DashboardService {
     return result;
   }
 
-  
+  async userRegisterationMetrics(
+    startDate: string,
+    endDate: string,
+  ): Promise<any> {
+    const pipeline = [
+      {
+        $match: {
+          updatedAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }, // Extract date only
+          },
+          total: {
+            $sum: 1,
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          date: '$_id',
+          total: 1,
+        },
+      },
+    ];
+
+    const result = await this.userModel.aggregate(pipeline);
+    return result;
+  }
+
+  async revenueMetrics(startDate: string, endDate: string): Promise<any> {
+    const pipeline = [
+      {
+        $match: {
+          updatedAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }, // Extract date only
+          },
+          totalRevenue: {
+            $sum: '$amount',
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          date: '$_id',
+          totalRevenue: 1,
+        },
+      },
+    ];
+
+    const result = await this.billingHistoryModel.aggregate(pipeline);
+    return result;
+  }
 }

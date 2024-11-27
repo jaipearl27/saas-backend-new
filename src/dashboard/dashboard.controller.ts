@@ -26,4 +26,26 @@ export class DashboardController {
     );
     return result;
   }
+
+  @Get('users')
+  async userRegisterationMetrics(
+    @Query() query: { startDate: string; endDate: string },
+  ): Promise<any> {
+    const result = await this.dashboardService.userRegisterationMetrics(
+      query.startDate,
+      query.endDate,
+    );
+    return result;
+  }
+
+  @Get('revenue')
+  async revenueMetrics(
+    @Query() query: { startDate: string; endDate: string },
+  ): Promise<any> {
+    const result = await this.dashboardService.revenueMetrics(
+      query.startDate,
+      query.endDate,
+    );
+    return result;
+  }
 }

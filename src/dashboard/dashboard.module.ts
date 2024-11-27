@@ -5,7 +5,12 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from 'src/schemas/User.schema';
 import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
 import { UsersModule } from 'src/users/users.module';
-import { Subscription, SubscriptionSchema } from 'src/schemas/Subscription.schema';
+import {
+  Subscription,
+  SubscriptionSchema,
+} from 'src/schemas/Subscription.schema';
+import { Plans, PlansSchema } from 'src/schemas/Plans.schema';
+import { BillingHistory, BillingHistorySchema } from 'src/schemas/BillingHistory.schema';
 
 @Module({
   imports: [
@@ -19,6 +24,10 @@ import { Subscription, SubscriptionSchema } from 'src/schemas/Subscription.schem
         name: Subscription.name,
         schema: SubscriptionSchema,
       },
+      {
+        name: BillingHistory.name,
+        schema: BillingHistorySchema,
+      },
     ]),
   ],
   providers: [DashboardService],
@@ -28,8 +37,11 @@ export class DashboardModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthSuperAdminMiddleware)
-      .forRoutes({ path: 'dashboard/superAdmin', method: RequestMethod.ALL },
-        { path: 'dashboard/plans', method: RequestMethod.ALL }
+      .forRoutes(
+        { path: 'dashboard/superAdmin', method: RequestMethod.ALL },
+        { path: 'dashboard/plans', method: RequestMethod.ALL },
+        { path: 'dashboard/users', method: RequestMethod.ALL },
+        { path: 'dashboard/revenue', method: RequestMethod.ALL },
       );
   }
 }
