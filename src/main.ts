@@ -11,6 +11,7 @@ async function bootstrap() {
       'http://localhost:3001',
       'http://localhost:5173',
       'http://localhost:5174',
+      'https://saas.rittikbansal.com',
     ],
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
     credentials: true,
