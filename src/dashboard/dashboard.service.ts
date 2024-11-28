@@ -198,7 +198,7 @@ export class DashboardService {
   }
 
   async plansMetric(startDate: string, endDate: string): Promise<any> {
-    const pipeline = [
+    const pipeline: any[] = [
       {
         $match: {
           updatedAt: {
@@ -223,10 +223,24 @@ export class DashboardService {
           },
         },
       },
+
+      {
+        $addFields: {
+          // Convert date string to a Date object
+          planObj: '$_id',
+        },
+      },
+
+      {
+        $sort: {
+          "planObj.name": 1, // Ascending order
+        },
+      },
+
       {
         $project: {
           _id: 0, // Exclude the default _id field
-          plan: '$_id', // Rename _id to plan
+          planObj: '$_id', // Rename _id to plan
           total: 1, // Include the total field
         },
       },
