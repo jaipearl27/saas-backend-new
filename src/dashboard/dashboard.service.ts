@@ -240,7 +240,7 @@ export class DashboardService {
       {
         $project: {
           _id: 0, // Exclude the default _id field
-          planObj: '$_id', // Rename _id to plan
+          plan: '$planObj', // Rename _id to plan
           total: 1, // Include the total field
         },
       },
