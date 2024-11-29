@@ -15,6 +15,7 @@ import { PlansModule } from './plans/plans.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { BillingHistoryModule } from './billing-history/billing-history.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { UserActivityModule } from './user-activity/user-activity.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     SubscriptionModule,
     BillingHistoryModule,
     DashboardModule,
+    UserActivityModule,
   ],
   controllers: [AppController],
   providers: [AppService],
