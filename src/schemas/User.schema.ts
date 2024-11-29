@@ -39,6 +39,15 @@ export class User extends Document {
 
   @Prop({
     type: String,
+    required: false,
+    minlength: 1,
+    maxlength: 1000,
+    trim: true
+  })
+  statusChangeNote: string; //isActive
+
+  @Prop({
+    type: String,
     required: [true, 'password is required'],
     trim: true,
   })

@@ -1,4 +1,4 @@
-import {IsEmail, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import {IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, ValidateIf } from "class-validator";
 
 export class UpdateUserInfoDto {
     @IsString()
@@ -18,5 +18,14 @@ export class UpdateUserInfoDto {
     @IsOptional()
     @IsString()
     phone?: string
+
+    @IsOptional()
+    @IsBoolean()
+    isActive?: boolean
+
+    @ValidateIf((o) => o.isActive !== undefined)
+    @IsString()
+    @IsNotEmpty({message: "Status change note is required when isActive is provided."})
+    statusChangeNote?: string
     
 }

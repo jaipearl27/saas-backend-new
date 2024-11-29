@@ -203,7 +203,15 @@ export class UsersService {
   ): Promise<any> {
  
     if (updateUserInfoDto.userName || updateUserInfoDto.email) {
-      const isExisting = await this.userModel.findOne({$or: [{userName: updateUserInfoDto.userName}, {email: updateUserInfoDto.email}]});
+   
+      const isExisting = await this.userModel.findOne({
+        $or: [
+          { userName: updateUserInfoDto.userName },
+          { email: updateUserInfoDto.email },
+        ],
+        _id: { $ne: id },
+      });
+
  
       if (isExisting) {
         throw new NotAcceptableException('UserName/E-Mail already exists');
@@ -216,6 +224,11 @@ export class UsersService {
       { new: true },
     );
     return result;
+  }
+
+  async updateClientStatus(id: string, statusChangeNote: string, isActive: boolean): Promise<any>{
+    const result  = this.userModel.findByIdAndUpdate(id, {isActive, statusChangeNote}, {new: true})
+    return result
   }
 
   getEmployees() {
