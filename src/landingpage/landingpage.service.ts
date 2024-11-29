@@ -11,6 +11,12 @@ export class LandingpageService {
     @InjectModel(LandingPage.name) private landingPageModel: Model<LandingPage>,
   ) {}
 
+  async getLandingPage(): Promise<any> {
+    const result = await this.landingPageModel.find({});
+
+    return result[0];
+  }
+
   async addLandingPage(createLandingDto: CreateLandingDto): Promise<any> {
     const oldData: any[] = await this.landingPageModel.find();
 

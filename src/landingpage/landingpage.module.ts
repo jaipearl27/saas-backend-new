@@ -32,6 +32,6 @@ export class LandingpageModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthSuperAdminMiddleware)
-      .forRoutes({ path: '/landingpage', method: RequestMethod.ALL });
+      .forRoutes({ path: '/landingpage', method: RequestMethod.POST });
   }
 }

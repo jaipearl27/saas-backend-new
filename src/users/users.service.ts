@@ -243,6 +243,37 @@ export class UsersService {
     return this.userModel.findById(id);
   }
 
+  async updateUser(
+    id: string,
+    updateUserInfoDto: UpdateUserInfoDto,
+  ): Promise<any> {
+    if (updateUserInfoDto.userName || updateUserInfoDto.email) {
+      const isExisting = await this.userModel.findOne({
+        $or: [
+          { userName: updateUserInfoDto.userName },
+          { email: updateUserInfoDto.email },
+        ],
+        _id: { $ne: id },
+      });
+
+      if (isExisting) {
+        throw new NotAcceptableException('UserName/E-Mail already exists');
+      }
+    }
+
+    if (updateUserInfoDto.password) {
+      const hashPassword = await bcrypt.hash(updateUserInfoDto.password, 10);
+      updateUserInfoDto.password = hashPassword;
+    }
+
+    const result = await this.userModel.findByIdAndUpdate(
+      id,
+      updateUserInfoDto,
+      { new: true },
+    );
+    return result;
+  }
+
   async createEmployee(
     createEmployeeDto: CreateEmployeeDto,
     creatorDetailsDto: CreatorDetailsDto,
@@ -254,6 +285,8 @@ export class UsersService {
     return user;
   }
 
+  
+  
   async createClient(
     createClientDto: CreateClientDto,
     creatorDetailsDto: CreatorDetailsDto,
