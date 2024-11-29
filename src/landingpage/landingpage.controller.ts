@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   NotAcceptableException,
   Post,
   UploadedFile,
@@ -14,6 +15,12 @@ import { LandingpageService } from './landingpage.service';
 export class LandingpageController {
   constructor(private readonly landingPageService: LandingpageService) {}
 
+  @Get()
+  async getLandingPage() {
+    const result = await this.landingPageService.getLandingPage()
+    return result
+  }
+
   @Post()
   @UseInterceptors(FileInterceptor('file'))
   async addData(
@@ -25,9 +32,8 @@ export class LandingpageController {
         'File is required to create landing page',
       );
     }
-console.log(file, 'file,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,')
     createLandingDto.file = file;
-    console.log(createLandingDto)
+
     const result =
       await this.landingPageService.addLandingPage(createLandingDto);
     return result;
