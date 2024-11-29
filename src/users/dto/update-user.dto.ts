@@ -33,3 +33,5 @@ export class UpdateUserInfoDto {
     statusChangeNote?: string
     
 }
+
+
