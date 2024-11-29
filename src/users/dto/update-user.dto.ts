@@ -20,6 +20,10 @@ export class UpdateUserInfoDto {
     phone?: string
 
     @IsOptional()
+    @IsString()
+    password?: string
+
+    @IsOptional()
     @IsBoolean()
     isActive?: boolean
 
