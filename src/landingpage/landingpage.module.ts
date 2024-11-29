@@ -1,10 +1,11 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { LandingpageController } from './landingpage.controller';
 import { LandingpageService } from './landingpage.service';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { MongooseModule } from '@nestjs/mongoose';
 import { LandingPage, LandingPageSchema } from 'src/schemas/LandingPage.schema';
+import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
 
 @Module({
   imports: [
@@ -20,11 +21,17 @@ import { LandingPage, LandingPageSchema } from 'src/schemas/LandingPage.schema';
     MongooseModule.forFeature([
       {
         name: LandingPage.name,
-        schema: LandingPageSchema
-      }
-    ])
+        schema: LandingPageSchema,
+      },
+    ]),
   ],
   controllers: [LandingpageController],
-  providers: [LandingpageService]
+  providers: [LandingpageService],
 })
-export class LandingpageModule {}
+export class LandingpageModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(AuthSuperAdminMiddleware)
+      .forRoutes({ path: '/landingpage', method: RequestMethod.ALL });
+  }
+}

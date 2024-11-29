@@ -1,5 +1,4 @@
 import {
-  IsBoolean,
   IsNotEmpty,
   IsNotEmptyObject,
   IsObject,
