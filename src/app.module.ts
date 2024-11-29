@@ -15,6 +15,9 @@ import { PlansModule } from './plans/plans.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { BillingHistoryModule } from './billing-history/billing-history.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { LandingpageModule } from './landingpage/landingpage.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { UserActivityModule } from './user-activity/user-activity.module';
 
 @Module({
@@ -24,6 +27,10 @@ import { UserActivityModule } from './user-activity/user-activity.module';
       isGlobal: true,
     }),
     MongooseModule.forRoot(process.env.MONGO_URI),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/uploads',
+    }),
     UsersModule,
     AttendeesModule,
     AuthModule,
@@ -32,6 +39,7 @@ import { UserActivityModule } from './user-activity/user-activity.module';
     SubscriptionModule,
     BillingHistoryModule,
     DashboardModule,
+    LandingpageModule,
     UserActivityModule,
   ],
   controllers: [AppController],

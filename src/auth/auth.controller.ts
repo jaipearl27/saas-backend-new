@@ -4,7 +4,7 @@ import { SignInDto } from './dto/signIn.dto';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { CreateEmployeeDto } from './dto/createEmployee.dto';
-import { Id, Plan, Role } from 'src/decorators/custom.decorator';
+import { AdminId, Id, Plan, Role } from 'src/decorators/custom.decorator';
 import { CreateClientDto } from './dto/createClient.dto';
 
 @Controller('auth')
