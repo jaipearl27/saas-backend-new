@@ -3,6 +3,7 @@ import {
   Injectable,
   NotAcceptableException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -19,6 +20,7 @@ import { BillingHistoryDto } from 'src/billing-history/dto/bililngHistory.dto';
 import { SubscriptionDto } from 'src/subscription/dto/subscription.dto';
 import { UpdateUserInfoDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { UpdatePasswordDto } from './dto/updatePassword.dto';
 
 @Injectable()
 export class UsersService {
@@ -272,6 +274,41 @@ export class UsersService {
       { new: true },
     );
     return result;
+  }
+
+  async updatePassword(
+    id: string,
+    updatePasswordDto: UpdatePasswordDto,
+  ): Promise<any> {
+    const user = await this.userModel.findById(id);
+    
+
+    console.log(user)
+
+
+    const verifyOldPassword = await bcrypt.compare(
+      updatePasswordDto.oldPassword,
+      user.password,
+    );
+
+    if (!verifyOldPassword)
+      throw new NotAcceptableException(
+        "Old password does not match the one in our database, If you don't recall it, please try Forgot Password option.",
+      );
+
+    if (updatePasswordDto.password !== updatePasswordDto.confirmPassword)
+      throw new NotAcceptableException(
+        'New password does not match, please enter correct one and try again.',
+      );
+
+    const newPassword = await bcrypt.hash(updatePasswordDto.password, 10);
+
+    const result = await this.userModel.findByIdAndUpdate(
+      id,
+      { password: newPassword },
+      { new: true },
+    );
+    return { message: 'Password updated successfully!' };
   }
 
   async createEmployee(

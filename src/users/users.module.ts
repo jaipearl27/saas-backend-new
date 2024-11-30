@@ -31,14 +31,16 @@ import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
 })
 export class UsersModule {
   configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(AuthTokenMiddleware)
+      .forRoutes(
+        { path: 'users', method: RequestMethod.PATCH },
+        { path: 'users/password', method: RequestMethod.PATCH },
+      );
 
     consumer
-    .apply(AuthTokenMiddleware)
-    .forRoutes({ path: 'users', method: RequestMethod.PATCH });
-
-    consumer
-    .apply(AuthAdminTokenMiddleware)
-    .forRoutes({ path: 'users/employees/*', method: RequestMethod.ALL });
+      .apply(AuthAdminTokenMiddleware)
+      .forRoutes({ path: 'users/employees/*', method: RequestMethod.ALL });
 
     consumer
       .apply(AuthSuperAdminMiddleware)

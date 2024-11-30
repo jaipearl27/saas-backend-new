@@ -13,6 +13,7 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserInfoDto } from './dto/update-user.dto';
 import { Id } from 'src/decorators/custom.decorator';
+import { UpdatePasswordDto } from './dto/updatePassword.dto';
 
 
 @Controller('users') // @route => /users
@@ -39,6 +40,16 @@ export class UsersController {
     const client = await this.usersService.updateUser(id, updateUserInfoDto)
     return client
   }
+
+  @Patch('password')
+  async updatePassword(
+    @Id() id: string,
+    @Body() updatePasswordDto: UpdatePasswordDto  
+  ): Promise<any> {
+    const client = await this.usersService.updatePassword(id, updatePasswordDto)
+    return client
+  }
+
 
 
   @Get('/clients')
