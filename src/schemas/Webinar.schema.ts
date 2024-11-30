@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Types } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Webinar extends Document {
@@ -24,5 +24,16 @@ export class Webinar extends Document {
 }
 
 export const WebinarSchema = SchemaFactory.createForClass(Webinar);
+
+
+// Add pre-save middleware to transform `admin` and `plan` to ObjectId
+WebinarSchema.pre('save', function (next) {
+
+  if (typeof this.adminId === 'string') {
+    this.adminId = new Types.ObjectId(`${this.adminId}`);
+  }
+  next();
+});
+
 
 WebinarSchema.index({user: 1})

@@ -19,6 +19,7 @@ import { LandingpageModule } from './landingpage/landingpage.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { UserActivityModule } from './user-activity/user-activity.module';
+import { WebinarModule } from './webinar/webinar.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { UserActivityModule } from './user-activity/user-activity.module';
     DashboardModule,
     LandingpageModule,
     UserActivityModule,
+    WebinarModule,
   ],
   controllers: [AppController],
   providers: [AppService],
