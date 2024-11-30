@@ -42,12 +42,18 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const result = await this.authService.refreshToken(body.userName);
-
+    console.log(this.configService.get('NODE_ENV') === 'production', "--- log ---", this.configService.get('NODE_ENV'))
     if (result.access_token) {
       response.cookie(
         this.configService.get('ACCESS_TOKEN_NAME'),
         result.access_token,
+        {
+          httpOnly: true,
+          secure: this.configService.get('NODE_ENV') === 'production',
+          sameSite: 'strict',
+        },
       );
+      
     }
 
     return {
