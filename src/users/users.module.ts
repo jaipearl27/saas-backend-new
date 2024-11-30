@@ -8,6 +8,7 @@ import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { BillingHistoryModule } from 'src/billing-history/billing-history.module';
 import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
 import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
+import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
 
 @Module({
   imports: [
@@ -30,6 +31,10 @@ import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
 })
 export class UsersModule {
   configure(consumer: MiddlewareConsumer) {
+
+    consumer
+    .apply(AuthTokenMiddleware)
+    .forRoutes({ path: 'users', method: RequestMethod.PATCH });
 
     consumer
     .apply(AuthAdminTokenMiddleware)

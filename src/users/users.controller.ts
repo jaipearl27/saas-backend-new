@@ -12,6 +12,7 @@ import { UsersService } from './users.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserInfoDto } from './dto/update-user.dto';
+import { Id } from 'src/decorators/custom.decorator';
 
 
 @Controller('users') // @route => /users
@@ -29,6 +30,16 @@ export class UsersController {
   createUser(@Body() createUserDto: CreateUserDto) {
     return this.usersService.createUser(createUserDto);
   }
+
+  @Patch()
+  async updateUser(
+    @Id() id: string,
+    @Body() updateUserInfoDto: UpdateUserInfoDto 
+  ): Promise<any> {
+    const client = await this.usersService.updateUser(id, updateUserInfoDto)
+    return client
+  }
+
 
   @Get('/clients')
   async getClients(@Query() query: { page: string; limit: string }): Promise<any> {
@@ -59,6 +70,7 @@ export class UsersController {
     return client
   }
 
+  
   @Get('/employees')
   getEmployees() {
     return this.usersService.getEmployees();

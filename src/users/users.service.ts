@@ -261,10 +261,10 @@ export class UsersService {
       }
     }
 
-    if (updateUserInfoDto.password) {
-      const hashPassword = await bcrypt.hash(updateUserInfoDto.password, 10);
-      updateUserInfoDto.password = hashPassword;
-    }
+    //deleting updateUserInfoDto unus
+    delete updateUserInfoDto.password;
+    delete updateUserInfoDto.isActive;
+    delete updateUserInfoDto.statusChangeNote;
 
     const result = await this.userModel.findByIdAndUpdate(
       id,
@@ -285,8 +285,6 @@ export class UsersService {
     return user;
   }
 
-  
-  
   async createClient(
     createClientDto: CreateClientDto,
     creatorDetailsDto: CreatorDetailsDto,
