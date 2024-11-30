@@ -18,6 +18,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { LandingpageModule } from './landingpage/landingpage.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { UserActivityModule } from './user-activity/user-activity.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { join } from 'path';
     BillingHistoryModule,
     DashboardModule,
     LandingpageModule,
+    UserActivityModule,
   ],
   controllers: [AppController],
   providers: [AppService],
