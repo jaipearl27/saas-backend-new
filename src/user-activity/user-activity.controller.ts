@@ -1,18 +1,69 @@
 // user-activity.controller.ts
-import { Controller, Get, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { Request } from 'express';
-import { AdminId } from 'src/decorators/custom.decorator';
+import { AdminId, Id } from 'src/decorators/custom.decorator';
+import { CreateUserActivityDto } from './dto/user-activity.dto';
+import { UserActivityService } from './user-activity.service';
+import { Types } from 'mongoose';
 
 @Controller('user-activities')
 export class UserActivityController {
-  @Get()
-  getUserActivities(@Req() req: Request, 
-  @AdminId() adminId: string,
-) {
-    // const adminId = req.adminId;  // Extracted adminId from middleware
-    console.log('Admin ID:', adminId);
+  constructor(private readonly userActivityService: UserActivityService) {}
 
-    // You can now use adminId for further processing
-    return { message: 'User activities retrieved', adminId };
+  @Post()
+  async addUserActivity(
+    @Body() dto: CreateUserActivityDto,
+    @Req() req: Request,
+    @AdminId() adminId: string,
+    @Id() id: string,
+  ) {
+    const newLog = await this.userActivityService.addUserActivity(
+      id,
+      adminId,
+      dto,
+    );
+
+    return {
+      statusCode: 201,
+      message: 'User activity log added successfully.',
+      data: newLog,
+    };
+  }
+
+  @Get(':userId')
+  async getUserActivitiesByUser(
+    @Req() req: Request,
+    @Param('userId') userId: string,
+    @Query('page') page: string,
+    @Query('limit') limit: string,
+  ) {
+
+    if (!userId) {
+      throw new BadRequestException('User ID is required.');
+    }
+
+    const activities = await this.userActivityService.getUserActivitiesByUser(
+      new Types.ObjectId(userId),
+      parseInt(page) || 1,
+      parseInt(limit) || 10,
+    );
+
+    return {
+      message: 'User activities for specified user ID',
+      data: activities.data,
+      pagination: activities.pagination,
+    };
+  }
+
+  @Get()
+  getUserActivities(
+    @Req() req: Request,
+    @AdminId() adminId: string,
+    @Id() id: string,
+  ) {
+    console.log('Admin ID:', adminId);
+    console.log('ID:', id);
+
+    return { message: 'User activities retrieved', adminId, id };
   }
 }

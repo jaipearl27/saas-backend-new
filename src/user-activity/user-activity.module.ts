@@ -6,10 +6,10 @@ import {
 } from 'src/schemas/UserActivity.schema';
 import { UserActivityController } from './user-activity.controller';
 import { UserActivityService } from './user-activity.service';
-import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
 import { User, UserSchema } from 'src/schemas/User.schema';
 import { UsersModule } from 'src/users/users.module';
 import { JwtModule } from '@nestjs/jwt';
+import { GetAdminIdForUserActivityMiddleware } from 'src/middlewares/getAdminIdForUserActivity.Middleware';
 
 @Module({
   imports: [
@@ -31,7 +31,7 @@ import { JwtModule } from '@nestjs/jwt';
 export class UserActivityModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(GetAdminIdMiddleware)
+      .apply(GetAdminIdForUserActivityMiddleware)
       .forRoutes(UserActivityController);
   }
 }
