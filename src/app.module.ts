@@ -21,6 +21,7 @@ import { join } from 'path';
 import { UserActivityModule } from './user-activity/user-activity.module';
 import { WebinarModule } from './webinar/webinar.module';
 import { ExportExcelModule } from './export-excel/export-excel.module';
+import { CronModule } from './cron/cron.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { ExportExcelModule } from './export-excel/export-excel.module';
     UserActivityModule,
     WebinarModule,
     ExportExcelModule,
+    CronModule,
   ],
   controllers: [AppController],
   providers: [AppService],

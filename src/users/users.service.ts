@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotAcceptableException,
   NotFoundException,
   UnauthorizedException,
@@ -24,6 +25,7 @@ import { UpdatePasswordDto } from './dto/updatePassword.dto';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Plans.name) private plansModel: Model<Plans>,
@@ -381,5 +383,28 @@ export class UsersService {
     );
 
     return { user, subscription, billingHistory };
+  }
+
+  // Method to check expired plans and deactivate users
+  async deactivateExpiredPlans(): Promise<void> {
+    const now = new Date();
+
+    try {
+      const result = await this.userModel.updateMany(
+        {
+          currentPlanExpiry: { $lt: now },
+          isActive: true,
+        },
+        {
+          $set: { isActive: false, plan: null },
+        },
+      );
+      //TODO: send email to super admin
+      this.logger.log(
+        `Deactivated ${result.modifiedCount} users with expired plans.`,
+      );
+    } catch (error) {
+      this.logger.error('Error during plan deactivation:', error.message);
+    }
   }
 }
