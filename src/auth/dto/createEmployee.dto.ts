@@ -1,24 +1,41 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import {
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 export class CreateEmployeeDto {
-    @IsString()
-    @IsNotEmpty()
-    userName: string
+  @IsString()
+  @IsNotEmpty()
+  userName: string;
 
-    @IsString()
-    @IsNotEmpty()
-    password: string
+  @IsString()
+  @IsNotEmpty()
+  password: string;
 
-    @IsEmail()
-    @IsNotEmpty()
-    email: string
+  @IsEmail()
+  email: string;
 
-    @IsOptional()
-    @IsString()
-    phone?: string
+  @IsEnum(['Sales Employee', 'Reminder Employee'], {
+    message: 'Valid role required.',
+  })
+  role: 'Sales Employee' | 'Reminder Employee';
 
-    @IsString()
-    @IsNotEmpty()
-    role: string
+  @IsString()
+  @IsOptional()
+  phone?: string;
 
+  @IsOptional()
+  @IsNumber()
+  @Min(0, { message: 'Valid call time must be at least 0 hours.' })
+  validCallTime?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0, { message: 'Daily contact limit must be at least 0.' })
+  dailyContactLimit?: number;
 }

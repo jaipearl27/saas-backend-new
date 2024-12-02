@@ -8,6 +8,7 @@ import { User, UserSchema } from 'src/schemas/User.schema';
 import { Plans, PlansSchema } from 'src/schemas/Plans.schema';
 import { PlansModule } from 'src/plans/plans.module';
 import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
+import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
 
 @Module({
   imports: [
@@ -35,5 +36,8 @@ export class AuthModule {
     consumer
       .apply(AuthSuperAdminMiddleware)
       .forRoutes({ path: 'auth/client', method: RequestMethod.ALL });
+    consumer
+      .apply(AuthAdminTokenMiddleware)
+      .forRoutes({ path: 'auth/employee', method: RequestMethod.ALL });
   }
 }
