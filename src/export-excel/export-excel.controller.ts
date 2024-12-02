@@ -7,7 +7,7 @@ import * as fs from 'fs';
 export class ExportExcelController {
   constructor(private readonly exportExcelService: ExportExcelService) {}
 
-  @Get()
+  @Get('/client')
   async downloadExcel(
     @Query('limit') limit: string,
     @Query('columns') columns: string,
