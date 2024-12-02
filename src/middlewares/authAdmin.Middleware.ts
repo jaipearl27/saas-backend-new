@@ -16,7 +16,7 @@ export class AuthAdminTokenMiddleware implements NestMiddleware {
   ) {}
 
   async use(req, res: Response, next: NextFunction) {
-    console.log('auth admin Middleware applied', req.cookies); // <-- This will confirm middleware execution
+    // console.log('auth admin Middleware applied', req.cookies); // <-- This will confirm middleware execution
     const access_token =
       req.cookies[this.configService.get('ACCESS_TOKEN_NAME')];
 

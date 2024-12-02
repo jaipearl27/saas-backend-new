@@ -231,11 +231,11 @@ export class UsersService {
     return result;
   }
 
-  getEmployees() {
-    const clientRoleId = this.configService.get('appRoles').ADMIN;
-    return this.userModel.find({
-      role: new mongoose.Types.ObjectId(`${clientRoleId}`),
-    });
+  getEmployees(adminId: string) {
+    return this.userModel
+      .find({
+        adminId: new mongoose.Types.ObjectId(`${adminId}`),
+      });
   }
 
   async getUser(userName: string): Promise<any> {
@@ -283,10 +283,8 @@ export class UsersService {
     updatePasswordDto: UpdatePasswordDto,
   ): Promise<any> {
     const user = await this.userModel.findById(id);
-    
 
-    console.log(user)
-
+    console.log(user);
 
     const verifyOldPassword = await bcrypt.compare(
       updatePasswordDto.oldPassword,

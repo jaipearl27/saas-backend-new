@@ -83,7 +83,9 @@ export class UsersController {
 
   
   @Get('/employees')
-  getEmployees() {
-    return this.usersService.getEmployees();
+  getEmployees(
+    @Id() id: string,
+  ) {
+    return this.usersService.getEmployees(id);
   }
 }

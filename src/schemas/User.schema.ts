@@ -82,8 +82,22 @@ export class User extends Document {
     type: String,
     required: false,
   })
-  
   pabblyToken: string; //pabbly token for super admin or admin
+
+  @Prop({
+    type: Number,
+    required: false,
+    min: 0,
+  })
+  validCallTime: number; 
+  
+  @Prop({
+    type: Number,
+    required: false,
+    min: 0,
+  })
+  dailyContactLimit: number;
+  
 
 }
 
