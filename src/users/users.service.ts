@@ -22,12 +22,14 @@ import { SubscriptionDto } from 'src/subscription/dto/subscription.dto';
 import { UpdateUserInfoDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
+import { Roles } from 'src/schemas/Roles.schema';
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(Roles.name) private rolesModel: Model<Roles>,
     @InjectModel(Plans.name) private plansModel: Model<Plans>,
     private configService: ConfigService,
     private readonly billingHistoryService: BillingHistoryService,
@@ -315,8 +317,15 @@ export class UsersService {
     createEmployeeDto: CreateEmployeeDto,
     creatorDetailsDto: CreatorDetailsDto,
   ): Promise<any> {
+
+    const role = await this.rolesModel.findOne({
+      name: createEmployeeDto?.role,
+    });
+    if (!role) throw new NotFoundException('No Role Found with the given ID.');
+
     const user = await this.userModel.create({
       ...createEmployeeDto,
+      role: role._id,
       adminId: creatorDetailsDto.id,
     });
     return user;

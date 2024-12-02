@@ -91,7 +91,7 @@ export class AuthService {
     const result = user.toObject();
     delete result['password'];
 
-    const payload = { id: user?._id, role: user?.role, adminId: user?.adminId };
+    const payload = { id: user?._id, role: user?.role, adminId: user?.adminId, plan: user?.plan };
 
     console.log('access token --> ', this.configService.get('ACCESS_TOKEN_SECRET'))
     const access_token = await this.jwtService.signAsync(payload, {
@@ -120,7 +120,7 @@ export class AuthService {
       isActive: true,
     });
 
-    if (employeeCount < plan.employeesCount) {
+    if (employeeCount < plan.employeeCount) {
       const hashPassword = await bcrypt.hash(createEmployeeDto.password, 10);
       createEmployeeDto.password = hashPassword;
 
