@@ -5,8 +5,14 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   Min,
 } from 'class-validator';
+
+export enum EmployeeRole {
+  EMPLOYEE_SALES = 'EMPLOYEE_SALES',
+  EMPLOYEE_REMINDER = 'EMPLOYEE_REMINDER',
+}
 
 export class CreateEmployeeDto {
   @IsString()
@@ -20,22 +26,23 @@ export class CreateEmployeeDto {
   @IsEmail()
   email: string;
 
-  @IsEnum(['EMPLOYEE_SALES', 'EMPLOYEE_REMINDER'], {
-    message: 'Valid role required.',
-  })
-  role: 'EMPLOYEE_SALES' | 'EMPLOYEE_REMINDER';
-
-  @IsString()
   @IsOptional()
+  @IsEnum(EmployeeRole, { message: 'Valid role required.' })
+  role: EmployeeRole;
+
+  @IsOptional()
+  @Matches(/^\d{10}$/, {
+    message: 'Phone number must be exactly 10 numeric digits.',
+  })
   phone?: string;
 
   @IsOptional()
-  @IsNumber()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
   @Min(0, { message: 'Valid call time must be at least 0 hours.' })
   validCallTime?: number;
 
   @IsOptional()
-  @IsNumber()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
   @Min(0, { message: 'Daily contact limit must be at least 0.' })
   dailyContactLimit?: number;
 }
