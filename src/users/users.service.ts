@@ -23,6 +23,7 @@ import { UpdateUserInfoDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
 import { Roles } from 'src/schemas/Roles.schema';
+import { UpdateEmployeeDto } from './dto/update-employee.dto';
 
 @Injectable()
 export class UsersService {
@@ -234,11 +235,16 @@ export class UsersService {
   }
 
   getEmployees(adminId: string) {
-    return this.userModel
-      .find({
-        adminId: new mongoose.Types.ObjectId(`${adminId}`),
-      });
+    return this.userModel.find({
+      adminId: new mongoose.Types.ObjectId(`${adminId}`),
+    });
   }
+
+  getEmployee(id: string) {
+    const employee = this.userModel.findById(id);
+    return employee;
+  }
+
 
   async getUser(userName: string): Promise<any> {
     const user = await this.userModel.findOne({ userName: userName });
@@ -317,7 +323,6 @@ export class UsersService {
     createEmployeeDto: CreateEmployeeDto,
     creatorDetailsDto: CreatorDetailsDto,
   ): Promise<any> {
-
     const role = await this.rolesModel.findOne({
       name: createEmployeeDto?.role,
     });
@@ -329,6 +334,49 @@ export class UsersService {
       adminId: creatorDetailsDto.id,
     });
     return user;
+  }
+
+  async updateEmployee(
+    id: string,
+    updateEmployeeDto: UpdateEmployeeDto,
+  ): Promise<any> {
+    if (updateEmployeeDto.userName || updateEmployeeDto.email) {
+      const isExisting = await this.userModel.findOne({
+        $or: [
+          { userName: updateEmployeeDto.userName },
+          { email: updateEmployeeDto.email },
+        ],
+        _id: { $ne: id },
+      });
+
+      if (isExisting) {
+        throw new NotAcceptableException('UserName/E-Mail already exists');
+      }
+    }
+
+    if (updateEmployeeDto.password) {
+      const hashPassword = await bcrypt.hash(updateEmployeeDto.password, 10);
+      updateEmployeeDto.password = hashPassword;
+    }
+    const role = await this.rolesModel.findOne({
+      name: updateEmployeeDto?.role,
+    });
+
+    if(!role)
+      throw new NotFoundException('No Role Found with the given ID.');
+
+    const result = await this.userModel.findByIdAndUpdate(
+      id,
+      { 
+        userName: updateEmployeeDto.userName,
+        email: updateEmployeeDto.email,
+        phone: updateEmployeeDto.phone,
+        validCallTime: updateEmployeeDto.validCallTime,
+        dailyContactLimit:updateEmployeeDto.dailyContactLimit,
+        role: role._id},
+      { new: true },
+    );
+    return result;
   }
 
   async createClient(

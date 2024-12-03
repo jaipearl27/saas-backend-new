@@ -14,6 +14,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserInfoDto } from './dto/update-user.dto';
 import { Id } from 'src/decorators/custom.decorator';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
+import { UpdateEmployeeDto } from './dto/update-employee.dto';
 
 
 @Controller('users') // @route => /users
@@ -82,10 +83,28 @@ export class UsersController {
   }
 
   
-  @Get('/employees')
+  @Get('/employee')
   getEmployees(
     @Id() id: string,
   ) {
     return this.usersService.getEmployees(id);
+  }
+
+  @Patch('/employee/:id')
+  async updateEmployee(
+    @Param('id') id: string,
+    @Body() updateEmployeeDto: UpdateEmployeeDto,
+  ): Promise<any> {
+    const employee = await this.usersService.updateEmployee(
+      id,
+      updateEmployeeDto,
+    );
+    return employee;
+  }
+
+  @Get('/employee/:id')
+  async getEmployee(@Param('id') id: string): Promise<any> {
+    const client = await this.usersService.getEmployee(id)
+    return client
   }
 }

@@ -45,7 +45,7 @@ export class UsersModule {
 
     consumer
       .apply(AuthAdminTokenMiddleware)
-      .forRoutes({ path: 'users/employees', method: RequestMethod.ALL });
+      .forRoutes({ path: 'users/employee', method: RequestMethod.ALL });
 
     consumer
       .apply(AuthSuperAdminMiddleware)
