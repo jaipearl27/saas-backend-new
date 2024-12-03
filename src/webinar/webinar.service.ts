@@ -14,7 +14,7 @@ export class WebinarService {
 
   async createWebiar(createWebinarDto: CreateWebinarDto): Promise<any> {
     //create webinar
-    console.log(createWebinarDto)
+    console.log(createWebinarDto);
     const result = await this.webinarModel.create(createWebinarDto);
     return result;
   }
@@ -36,7 +36,7 @@ export class WebinarService {
 
     const result = await this.webinarModel.find({
       _id: new Types.ObjectId(`${id}`),
-      adminId: adminId,
+      adminId: new Types.ObjectId(`${adminId}`),
     });
     return result;
   }
@@ -62,7 +62,7 @@ export class WebinarService {
     //update webinar
     const result = await this.webinarModel.findOneAndDelete({
       _id: new Types.ObjectId(`${id}`),
-      adminId: adminId,
+      adminId: new Types.ObjectId(`${adminId}`),
     });
     return result;
   }
