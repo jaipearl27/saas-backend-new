@@ -20,10 +20,10 @@ export class CreateEmployeeDto {
   @IsEmail()
   email: string;
 
-  @IsEnum(['Sales Employee', 'Reminder Employee'], {
+  @IsEnum(['EMPLOYEE_SALES', 'EMPLOYEE_REMINDER'], {
     message: 'Valid role required.',
   })
-  role: 'Sales Employee' | 'Reminder Employee';
+  role: 'EMPLOYEE_SALES' | 'EMPLOYEE_REMINDER';
 
   @IsString()
   @IsOptional()
