@@ -12,4 +12,8 @@ export class RolesService {
     getRoles() {
         return this.rolesModel.find().exec();
     }
+
+    addRole(name: string) {
+        return this.rolesModel.create(name)
+    }
 }

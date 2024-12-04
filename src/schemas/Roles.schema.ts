@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import mongoose, { Document } from "mongoose";
 
 @Schema({timestamps: true})
 
@@ -13,3 +13,5 @@ export class Roles extends Document {
 }
 
 export const RolesSchema = SchemaFactory.createForClass(Roles)
+
+export const RolesModel = mongoose.model('roles', RolesSchema, 'roles');

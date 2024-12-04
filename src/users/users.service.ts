@@ -22,7 +22,7 @@ import { SubscriptionDto } from 'src/subscription/dto/subscription.dto';
 import { UpdateUserInfoDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
-import { Roles } from 'src/schemas/Roles.schema';
+import { Roles, RolesModel } from 'src/schemas/Roles.schema';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { Subscription } from 'src/schemas/Subscription.schema';
 
@@ -245,6 +245,7 @@ export class UsersService {
 
   getEmployee(id: string) {
     const employee = this.userModel.findById(id);
+
     return employee;
   }
 

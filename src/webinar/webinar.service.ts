@@ -64,6 +64,9 @@ export class WebinarService {
       _id: new Types.ObjectId(`${id}`),
       adminId: new Types.ObjectId(`${adminId}`),
     });
-    return result;
+
+    //logic for deleting webinar's attendees when webinar is deleted
+
+    return {message: "Webinar Deleted successfully"};
   }
 }
