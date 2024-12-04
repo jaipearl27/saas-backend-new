@@ -21,14 +21,19 @@ export class WebinarService {
 
   async getWebinars(adminId: string, page, limit): Promise<any> {
     const skip = (page - 1) * limit;
-    console.log(adminId);
+
+    const pipeline = { adminId: new Types.ObjectId(`${adminId}`) }
+
+    const totalWebinars = await this.webinarModel.countDocuments(pipeline)
+
+    const totalPages = Math.ceil(totalWebinars / limit)
     //get all webinars for adminas per user id
     const result = await this.webinarModel
-      .find({ adminId: new Types.ObjectId(`${adminId}`) })
+      .find(pipeline)
       .sort({ createdAt: 1 })
       .skip(skip)
       .limit(limit);
-    return result;
+    return {result, page, totalPages};
   }
 
   async getWebinar(id: string, adminId: string): Promise<any> {
@@ -67,6 +72,6 @@ export class WebinarService {
 
     //logic for deleting webinar's attendees when webinar is deleted
 
-    return {message: "Webinar Deleted successfully"};
+    return { message: 'Webinar Deleted successfully' };
   }
 }
