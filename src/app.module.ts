@@ -22,6 +22,7 @@ import { UserActivityModule } from './user-activity/user-activity.module';
 import { WebinarModule } from './webinar/webinar.module';
 import { ExportExcelModule } from './export-excel/export-excel.module';
 import { CronModule } from './cron/cron.module';
+import { RolesModule } from './roles/roles.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { CronModule } from './cron/cron.module';
     WebinarModule,
     ExportExcelModule,
     CronModule,
+    RolesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

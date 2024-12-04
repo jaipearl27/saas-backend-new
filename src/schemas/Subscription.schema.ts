@@ -22,12 +22,20 @@ export class Subscription extends Document {
 
   @Prop({
     type: Number,
-    required: [true, 'Contact limit is required']
+    required: [true, 'Contact limit is required'],
   })
-  contactLimit: number
+  contactLimit: number;
 
   @Prop({ type: Date, required: true })
   expiryDate: Date; // Calculated based on the plan duration
+
+  @Prop({
+    type: Number,
+    min: 0,
+    default: 0,
+    required: [true, 'Toggle Limit is required'],
+  })
+  toggleLimit: number; //Plan duration
 }
 
 const SubscriptionSchema = SchemaFactory.createForClass(Subscription);
@@ -42,5 +50,11 @@ SubscriptionSchema.pre('save', function (next) {
   }
   next();
 });
+
+// Attach the instance method to the schema
+SubscriptionSchema.methods.isExpired = function (): boolean {
+  const now = new Date();
+  return this.expiryDate < now;
+};
 
 export { SubscriptionSchema };

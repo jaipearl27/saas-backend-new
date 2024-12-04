@@ -27,12 +27,13 @@ export class LandingpageController {
     @UploadedFile() file: Express.Multer.File,
     @Body() createLandingDto: CreateLandingDto,
   ): Promise<any> {
-    if (!file) {
-      throw new NotAcceptableException(
-        'File is required to create landing page',
-      );
+    if (file) {
+      createLandingDto.file = file;
     }
-    createLandingDto.file = file;
+    else{
+      createLandingDto.file = null;
+    }
+    
 
     const result =
       await this.landingPageService.addLandingPage(createLandingDto);

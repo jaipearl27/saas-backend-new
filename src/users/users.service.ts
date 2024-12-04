@@ -22,7 +22,9 @@ import { SubscriptionDto } from 'src/subscription/dto/subscription.dto';
 import { UpdateUserInfoDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
-import { Roles } from 'src/schemas/Roles.schema';
+import { Roles, RolesModel } from 'src/schemas/Roles.schema';
+import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { Subscription } from 'src/schemas/Subscription.schema';
 
 @Injectable()
 export class UsersService {
@@ -31,6 +33,8 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Roles.name) private rolesModel: Model<Roles>,
     @InjectModel(Plans.name) private plansModel: Model<Plans>,
+    @InjectModel(Subscription.name)
+    private subscriptionModel: Model<Subscription>,
     private configService: ConfigService,
     private readonly billingHistoryService: BillingHistoryService,
     private readonly subscriptionService: SubscriptionService,
@@ -234,10 +238,15 @@ export class UsersService {
   }
 
   getEmployees(adminId: string) {
-    return this.userModel
-      .find({
-        adminId: new mongoose.Types.ObjectId(`${adminId}`),
-      });
+    return this.userModel.find({
+      adminId: new mongoose.Types.ObjectId(`${adminId}`),
+    });
+  }
+
+  getEmployee(id: string) {
+    const employee = this.userModel.findById(id);
+
+    return employee;
   }
 
   async getUser(userName: string): Promise<any> {
@@ -317,7 +326,6 @@ export class UsersService {
     createEmployeeDto: CreateEmployeeDto,
     creatorDetailsDto: CreatorDetailsDto,
   ): Promise<any> {
-
     const role = await this.rolesModel.findOne({
       name: createEmployeeDto?.role,
     });
@@ -329,6 +337,85 @@ export class UsersService {
       adminId: creatorDetailsDto.id,
     });
     return user;
+  }
+
+  async updateEmployee(
+    id: string,
+    updateEmployeeDto: UpdateEmployeeDto,
+  ): Promise<any> {
+    if (updateEmployeeDto.userName || updateEmployeeDto.email) {
+      const isExisting = await this.userModel.findOne({
+        $or: [
+          { userName: updateEmployeeDto.userName },
+          { email: updateEmployeeDto.email },
+        ],
+        _id: { $ne: id },
+      });
+
+      if (isExisting) {
+        throw new NotAcceptableException('UserName/E-Mail already exists');
+      }
+    }
+
+    if (updateEmployeeDto.password) {
+      const hashPassword = await bcrypt.hash(updateEmployeeDto.password, 10);
+      updateEmployeeDto.password = hashPassword;
+    }
+    const role = await this.rolesModel.findOne({
+      name: updateEmployeeDto?.role,
+    });
+
+    if (!role) throw new NotFoundException('No Role Found with the given ID.');
+
+    const result = await this.userModel.findByIdAndUpdate(
+      id,
+      {
+        userName: updateEmployeeDto.userName,
+        email: updateEmployeeDto.email,
+        phone: updateEmployeeDto.phone,
+        validCallTime: updateEmployeeDto.validCallTime,
+        dailyContactLimit: updateEmployeeDto.dailyContactLimit,
+        role: role._id,
+      },
+      { new: true },
+    );
+    return result;
+  }
+
+  async changeEmployeeStatus(
+    userId: string,
+    adminId: string,
+    status: boolean,
+  ): Promise<any> {
+    const subscription = await this.subscriptionModel
+      .findOne({ admin: new mongoose.Types.ObjectId(`${adminId}`) })
+      .exec();
+
+    if (!subscription) {
+      throw new NotFoundException('No Subscription Found with the given ID.');
+    }
+
+    if (new Date(subscription.expiryDate) < new Date()) {
+      throw new NotAcceptableException(
+        'Your subscription has expired. Please renew your subscription to continue.',
+      );
+    }
+
+    if (subscription.toggleLimit <= 0) {
+      throw new NotAcceptableException('Your toggle limit has expired.');
+    }
+
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new NotFoundException('No User Found with the given ID.');
+    }
+
+    user.isActive = status;
+    await user.save();
+
+    subscription.toggleLimit = subscription.toggleLimit - 1;
+    await subscription.save();
+    return { message: 'Status updated successfully!', subscription };
   }
 
   async createClient(
@@ -375,6 +462,7 @@ export class UsersService {
       admin: String(user._id),
       plan: String(plan._id),
       contactLimit: plan.contactLimit,
+      toggleLimit: plan.toggleLimit,
       expiryDate: currentPlanExpiry,
     };
     const subscription =

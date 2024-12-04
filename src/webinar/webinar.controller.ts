@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -57,6 +58,19 @@ export class WebinarController {
       id,
       adminId,
       updateWebinarDto,
+    );
+    return result;
+  }
+
+  
+  @Delete(':id')
+  async deleteWebinar(
+    @Id() adminId: string,
+    @Param('id') id: string,
+  ): Promise<any> {
+    const result = await this.webinarService.deleteWebinar(
+      id,
+      adminId,
     );
     return result;
   }

@@ -10,6 +10,7 @@ import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middlew
 import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
 import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
 import { Roles, RolesSchema } from 'src/schemas/Roles.schema';
+import { Subscription, SubscriptionSchema } from 'src/schemas/Subscription.schema';
 
 @Module({
   imports: [
@@ -27,6 +28,10 @@ import { Roles, RolesSchema } from 'src/schemas/Roles.schema';
       {
         name: Roles.name,
         schema: RolesSchema,
+      },
+      {
+        name: Subscription.name,
+        schema: SubscriptionSchema,
       }
     ]),
   ],
@@ -45,7 +50,7 @@ export class UsersModule {
 
     consumer
       .apply(AuthAdminTokenMiddleware)
-      .forRoutes({ path: 'users/employees', method: RequestMethod.ALL });
+      .forRoutes({ path: 'users/employee*', method: RequestMethod.ALL });
 
     consumer
       .apply(AuthSuperAdminMiddleware)
