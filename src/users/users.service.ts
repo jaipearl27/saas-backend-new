@@ -22,7 +22,7 @@ import { SubscriptionDto } from 'src/subscription/dto/subscription.dto';
 import { UpdateUserInfoDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
-import { Roles } from 'src/schemas/Roles.schema';
+import { Roles, RolesModel } from 'src/schemas/Roles.schema';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 
 @Injectable()
@@ -242,9 +242,9 @@ export class UsersService {
 
   getEmployee(id: string) {
     const employee = this.userModel.findById(id);
+
     return employee;
   }
-
 
   async getUser(userName: string): Promise<any> {
     const user = await this.userModel.findOne({ userName: userName });
@@ -362,18 +362,18 @@ export class UsersService {
       name: updateEmployeeDto?.role,
     });
 
-    if(!role)
-      throw new NotFoundException('No Role Found with the given ID.');
+    if (!role) throw new NotFoundException('No Role Found with the given ID.');
 
     const result = await this.userModel.findByIdAndUpdate(
       id,
-      { 
+      {
         userName: updateEmployeeDto.userName,
         email: updateEmployeeDto.email,
         phone: updateEmployeeDto.phone,
         validCallTime: updateEmployeeDto.validCallTime,
-        dailyContactLimit:updateEmployeeDto.dailyContactLimit,
-        role: role._id},
+        dailyContactLimit: updateEmployeeDto.dailyContactLimit,
+        role: role._id,
+      },
       { new: true },
     );
     return result;

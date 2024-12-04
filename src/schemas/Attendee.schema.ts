@@ -90,16 +90,16 @@ export class Attendee extends Document {
   })
   adminId: Types.ObjectId;
 
-  @Prop({
-    type: [
-      {
-        type: Types.ObjectId,
-        ref: 'products'
-      }
-    ],
-    required: false
-  })
-  products: string
+  // @Prop({
+  //   type: [
+  //     {
+  //       type: Types.ObjectId,
+  //       ref: 'products'
+  //     }
+  //   ],
+  //   required: false
+  // })
+  // products: string
 }
 
 export const AttendeeSchema = SchemaFactory.createForClass(Attendee);
