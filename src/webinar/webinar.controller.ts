@@ -19,7 +19,7 @@ export class WebinarController {
   @Get()
   async getWebinars(
     @Id() adminId: string,
-    @Query('query') query: { page: string; limit: string },
+    @Query() query: { page: string; limit: string },
   ): Promise<any> {
     let page = Number(query?.page) || 1;
     let limit = Number(query?.limit) || 12;

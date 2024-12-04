@@ -19,7 +19,7 @@ export class WebinarService {
     return result;
   }
 
-  async getWebinars(adminId: string, page, limit): Promise<any> {
+  async getWebinars(adminId: string, page: number, limit: number): Promise<any> {
     const skip = (page - 1) * limit;
 
     const pipeline = { adminId: new Types.ObjectId(`${adminId}`) }
