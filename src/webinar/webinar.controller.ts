@@ -21,8 +21,9 @@ export class WebinarController {
     @Id() adminId: string,
     @Query() query: { page: string; limit: string },
   ): Promise<any> {
-    let page = Number(query?.page) || 1;
-    let limit = Number(query?.limit) || 12;
+
+    let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
+    let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
 
     const result = await this.webinarService.getWebinars(adminId, page, limit);
     return result;
