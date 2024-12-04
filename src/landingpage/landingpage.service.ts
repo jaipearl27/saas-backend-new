@@ -18,27 +18,39 @@ export class LandingpageService {
   }
 
   async addLandingPage(createLandingDto: CreateLandingDto): Promise<any> {
-    const oldData: any[] = await this.landingPageModel.find();
-
-    if (oldData.length > 0) {
-      const filePath = oldData[0].file.path;
-      // Remove the file
-      fs.unlink(filePath, (err) => {
-        if (err) {
-          console.error(`Error removing file: ${err}`);
-          return;
+    const existingLandingPage = await this.landingPageModel.findOne();
+    console.log('file exists cheack -----> ', createLandingDto)
+    if (existingLandingPage) {
+      if (createLandingDto.file) {
+        console.log('file exists')
+        try {
+          const oldFilePath = existingLandingPage.file.path;
+          await fs.promises.unlink(oldFilePath);
+          console.log(`File ${oldFilePath} has been successfully removed.`);
+        } catch (error) {
+          console.error(`Error removing file: ${error.message}`);
+          // throw new Error('Failed to remove the old file.');
         }
-        console.log(`File ${filePath} has been successfully removed.`);
-      });
+      } else {
+        console.log('file not exists')
 
-      const updateData = await this.landingPageModel.findByIdAndUpdate(
-        oldData[0]._id,
+        delete createLandingDto.file;
+      }
+      console.log('file exists cheack -----> ', createLandingDto)
+
+      const updatedData = await this.landingPageModel.findByIdAndUpdate(
+        existingLandingPage._id,
         createLandingDto,
+        { new: true },
       );
-      return updateData;
-    } else {
-      const createData = await this.landingPageModel.create(createLandingDto);
-      return createData;
+      return updatedData;
     }
+
+    if (!createLandingDto.file) {
+      throw new Error('File is required to create a new landing page.');
+    }
+
+    const newLandingPage = await this.landingPageModel.create(createLandingDto);
+    return newLandingPage;
   }
 }
