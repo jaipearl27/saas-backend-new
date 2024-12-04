@@ -12,7 +12,7 @@ import { UsersService } from './users.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserInfoDto } from './dto/update-user.dto';
-import { Id } from 'src/decorators/custom.decorator';
+import { AdminId, Id } from 'src/decorators/custom.decorator';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 
@@ -87,6 +87,7 @@ export class UsersController {
   getEmployees(
     @Id() id: string,
   ) {
+    console.log('id ------> ', id)
     return this.usersService.getEmployees(id);
   }
 
@@ -100,6 +101,16 @@ export class UsersController {
       updateEmployeeDto,
     );
     return employee;
+  }
+
+  @Patch('/employee/status/:id')
+  async updateEmployeeStatus(
+    @Param('id') userId: string,
+    @Id() id: string,
+    @Body() body: {isActive: boolean},
+  ): Promise<any> {
+    console.log(userId, id, body?.isActive)
+    return this.usersService.changeEmployeeStatus(userId,id,body?.isActive)
   }
 
   @Get('/employee/:id')
