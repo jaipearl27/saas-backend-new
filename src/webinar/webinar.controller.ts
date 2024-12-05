@@ -11,17 +11,17 @@ import {
 import { Id } from 'src/decorators/custom.decorator';
 import { WebinarService } from './webinar.service';
 import { CreateWebinarDto, UpdateWebinarDto } from './dto/createWebinar.dto';
-
 @Controller('webinar')
 export class WebinarController {
-  constructor(private readonly webinarService: WebinarService) {}
+  constructor(
+    private readonly webinarService: WebinarService,
+  ) {}
 
   @Get()
   async getWebinars(
     @Id() adminId: string,
     @Query() query: { page: string; limit: string },
   ): Promise<any> {
-
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
 
@@ -33,7 +33,6 @@ export class WebinarController {
   async getWebinar(
     @Id() adminId: string,
     @Param('id') id: string,
-    @Query('query') query: { page: string; limit: string },
   ): Promise<any> {
     const result = await this.webinarService.getWebinar(id, adminId);
     return result;
@@ -63,16 +62,12 @@ export class WebinarController {
     return result;
   }
 
-  
   @Delete(':id')
   async deleteWebinar(
     @Id() adminId: string,
     @Param('id') id: string,
   ): Promise<any> {
-    const result = await this.webinarService.deleteWebinar(
-      id,
-      adminId,
-    );
+    const result = await this.webinarService.deleteWebinar(id, adminId);
     return result;
   }
 }

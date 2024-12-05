@@ -4,9 +4,11 @@ import { WebinarController } from './webinar.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Webinar, WebinarSchema } from 'src/schemas/Webinar.schema';
 import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
+import { AttendeesModule } from 'src/attendees/attendees.module';
 
 @Module({
   imports: [
+    AttendeesModule,
     MongooseModule.forFeature([
       {
         name: Webinar.name,
