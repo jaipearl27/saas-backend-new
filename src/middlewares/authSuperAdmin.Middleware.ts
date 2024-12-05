@@ -15,7 +15,6 @@ export class AuthSuperAdminMiddleware implements NestMiddleware {
   ) {}
 
   async use(req /*:  Request */, res: Response, next: NextFunction) {
-    console.log('authAdminMiddleware');
     const access_token =
       req.cookies[this.configService.get('ACCESS_TOKEN_NAME')];
     const pabbly_access_token = this.extractTokenFromHeader(req)
@@ -68,7 +67,6 @@ export class AuthSuperAdminMiddleware implements NestMiddleware {
           req.id = decodedToken.id;
           req.role = decodedToken.role;
           req.plan = decodedToken.plan;
-          console.log('authoriseddd')
           next();
         } else {
           throw new UnauthorizedException(

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Subscription } from 'src/schemas/Subscription.schema';
 import { SubscriptionDto, UpdateSubscriptionDto } from './dto/subscription.dto';
 
@@ -20,6 +20,13 @@ export class SubscriptionService {
     async updateSubscription(id: string, updateSubscriptionDto: UpdateSubscriptionDto): Promise<any> {
         const result = await this.SubscriptionModel.findByIdAndUpdate(id, updateSubscriptionDto)
 
+        return result
+    }
+
+    async getSubscription(adminId: string): Promise<any> {
+        console.log('reqest here' , adminId  )
+        const result = await this.SubscriptionModel.findOne({admin: new Types.ObjectId(adminId)});
+        console.log(result)
         return result
     }
 
