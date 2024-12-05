@@ -39,7 +39,6 @@ export class AuthAdminTokenMiddleware implements NestMiddleware {
           this.configService.get('appRoles').SUPER_ADMIN,
         ].includes(decodedToken.role)
       ) {
-        console.log('in decoded logiccc')
         req.id = decodedToken.id;
         req.role = decodedToken.role;
         req.plan = decodedToken.plan;

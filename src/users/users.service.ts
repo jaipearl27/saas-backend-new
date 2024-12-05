@@ -396,7 +396,7 @@ export class UsersService {
     if (!subscription) {
       throw new NotFoundException('No Subscription Found with the given ID.');
     }
-
+    console.log("subsriptio ----> ",subscription)
     if (new Date(subscription.expiryDate) < new Date()) {
       throw new NotAcceptableException(
         'Your subscription has expired. Please renew your subscription to continue.',
