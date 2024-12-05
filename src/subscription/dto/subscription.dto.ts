@@ -1,5 +1,5 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class SubscriptionDto {
   @IsString()
@@ -13,6 +13,11 @@ export class SubscriptionDto {
   @IsNumber()
   @IsOptional()
   contactLimit?: number;
+
+  @IsInt({ message: 'Toggle limit must be an integer value.' })
+  @Min(0, { message: 'Toggle limit cannot be less than 0.' })
+  @IsNotEmpty({ message: 'Toggle limit is required.' })
+  toggleLimit: number;
 
   @IsNumber()
   @IsOptional()
