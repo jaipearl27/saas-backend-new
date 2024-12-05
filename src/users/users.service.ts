@@ -25,6 +25,7 @@ import { UpdatePasswordDto } from './dto/updatePassword.dto';
 import { Roles, RolesModel } from 'src/schemas/Roles.schema';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { Subscription } from 'src/schemas/Subscription.schema';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class UsersService {
@@ -38,6 +39,7 @@ export class UsersService {
     private configService: ConfigService,
     private readonly billingHistoryService: BillingHistoryService,
     private readonly subscriptionService: SubscriptionService,
+    private readonly jwtService: JwtService,
   ) {}
 
   getUsers() {
@@ -451,10 +453,32 @@ export class UsersService {
       );
     }
 
-    const user = await this.userModel.create({
+    const userData = await this.userModel.create({
       ...createClientDto,
       adminId: creatorDetailsDto.id,
     });
+    console.log(userData);
+
+    const payload = {
+      id: userData?._id,
+      role: userData?.role,
+      adminId: userData?.adminId,
+      plan: userData?.plan,
+    };
+
+    //create jwt with payload here
+    const token = await this.jwtService.signAsync(payload, {
+      secret: this.configService.get('PABBLY_CLIENT_ACCESS_TOKEN_SECRET'),
+    });
+
+    const user = await this.userModel
+      .findByIdAndUpdate(
+        String(userData?._id),
+        { pabblyToken: token },
+        { new: true },
+      )
+      .select('-password');
+
 
     //creating subscription and billing history initial entry
 
@@ -465,6 +489,7 @@ export class UsersService {
       toggleLimit: plan.toggleLimit,
       expiryDate: currentPlanExpiry,
     };
+
     const subscription =
       await this.subscriptionService.addSubscription(subscriptionPayload);
 

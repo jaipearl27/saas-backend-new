@@ -4,12 +4,13 @@ import {
   Get,
   NotAcceptableException,
   Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
-import { Id } from 'src/decorators/custom.decorator';
+import { AdminId, Id } from 'src/decorators/custom.decorator';
 import { AttendeesService } from './attendees.service';
-import { CreateAttendeeDto } from './dto/attendees.dto';
+import { CreateAttendeeDto, UpdateAttendeeDto } from './dto/attendees.dto';
 import { Types } from 'mongoose';
 
 @Controller('attendees')
@@ -20,7 +21,7 @@ export class AttendeesController {
   async getAttendees(
     @Param('id') webinarId: string,
     @Query() query: { page?: string; limit?: string; isAttended: string },
-    @Id() adminId: string,
+    @AdminId() adminId: string,
   ) {
     if (!query?.isAttended)
       throw new NotAcceptableException('isAttended search query is required');
@@ -31,7 +32,7 @@ export class AttendeesController {
 
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
-    
+
     const result = await this.attendeesService.getAttendees(
       webinarId,
       adminId,
@@ -49,9 +50,26 @@ export class AttendeesController {
     @Body()
     body: { data: [CreateAttendeeDto]; webinarId: string; isAttended: boolean },
   ): Promise<any> {
-    console.log(body);
     const data = body.data;
+
+    //add reminder type attendees
+    if (!body.isAttended) {
+      // !!!! test if any data exists in postWebinar here !!!!
+      const postWebinarExists =
+        await this.attendeesService.getPostWebinarAttendee(
+          body.webinarId,
+          adminId,
+        );
+
+      if (postWebinarExists)
+        throw new NotAcceptableException(
+          'Cannot add Pre-Webinar data as it already exists in Post-Webinar.',
+        );
+    }
+
+    //Inserting data here:
     const dataLen = data.length;
+
     for (let i = 0; i < dataLen; i++) {
       data[i].webinar = new Types.ObjectId(`${body.webinarId}`);
       data[i].isAttended = body.isAttended;
@@ -60,5 +78,15 @@ export class AttendeesController {
 
     const result = await this.attendeesService.addAttendees(data);
     return result;
+  }
+
+  @Patch(':id')
+  async updateAttendee(
+    @Param('id') id: string,
+    @Body() updateAttendeeDto: UpdateAttendeeDto ,
+    @AdminId() adminId: string,
+  ): Promise<any> {
+      const result = await this.attendeesService.updateAttendee(id, adminId, updateAttendeeDto)
+      return result
   }
 }
