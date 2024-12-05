@@ -6,7 +6,6 @@ export class Attendee extends Document {
   
   @Prop({
     type: String,
-    minlength: 1,
     maxlength: 100,
     required: [true, 'Email is required'],
     trim: true,
@@ -15,7 +14,6 @@ export class Attendee extends Document {
 
   @Prop({
     type: String,
-    minlength: 1,
     maxlength: 100,
     trim: true,
     default: null,
@@ -24,7 +22,6 @@ export class Attendee extends Document {
 
   @Prop({
     type: String,
-    minlength: 1,
     maxlength: 100,
     trim: true,
     default: null,
@@ -33,7 +30,6 @@ export class Attendee extends Document {
 
   @Prop({
     type: String,
-    minlength: 1,
     maxlength: 20,
     trim: true,
     default: null,
@@ -45,13 +41,11 @@ export class Attendee extends Document {
 
   @Prop({
     type: String,
-    minlength: 1,
     maxlength: 50,
     trim: true,
     default: null,
   })
   leadType: string | null; //Lead Type
-
 
   @Prop({
     type: Types.ObjectId,
@@ -70,7 +64,6 @@ export class Attendee extends Document {
 
   @Prop({
     type: String,
-    minlength: 1,
     maxlength: 10,
     enum: ['male', 'female', 'others'],
   })
@@ -78,7 +71,6 @@ export class Attendee extends Document {
 
   @Prop({
     type: String,
-    minlength: 1,
     maxlength: 100,
   })
   location: string;
