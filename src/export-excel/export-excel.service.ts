@@ -13,7 +13,7 @@ export class ExportExcelService {
     private readonly configService: ConfigService,
   ) { }
 
-  async generateExcel(limit: number, columns: string[], filterData: any = {}): Promise<string> {
+  async generateExcelForClients(limit: number, columns: string[], filterData: any = {}): Promise<string> {
     const data = [];
 
     const defaultColumns = [

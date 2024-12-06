@@ -26,6 +26,7 @@ import { Roles, RolesModel } from 'src/schemas/Roles.schema';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { Subscription } from 'src/schemas/Subscription.schema';
 import { JwtService } from '@nestjs/jwt';
+import { GetClientsFilterDto } from './dto/filters.dto';
 
 @Injectable()
 export class UsersService {
@@ -51,7 +52,11 @@ export class UsersService {
     return newUser.save();
   }
 
-  async getClients(skip: number, limit: number): Promise<any> {
+  async getClients(
+    skip: number,
+    limit: number,
+    filterData: GetClientsFilterDto,
+  ): Promise<any> {
     const clientRoleId = this.configService.get('appRoles').ADMIN;
 
     const totalUsers = await this.userModel.countDocuments({
@@ -62,24 +67,151 @@ export class UsersService {
 
     const totalPages = Math.ceil(totalUsers / limit);
 
+    const matchFilters = {};
+    if (filterData.email) {
+      matchFilters['email'] = filterData.email;
+    }
+    if (filterData.companyName) {
+      matchFilters['companyName'] = filterData.companyName;
+    }
+    if (filterData.userName) {
+      matchFilters['userName'] = filterData.userName;
+    }
+    if (filterData.phone) {
+      matchFilters['phone'] = filterData.phone;
+    }
+    if (filterData.isActive) {
+      matchFilters['isActive'] = filterData.isActive;
+    }
+
+    const subscriptionFilter = {};
+    if (filterData.planStartDate) {
+      subscriptionFilter['startDate'] = {};
+
+      if (filterData.planStartDate.$gte) {
+        subscriptionFilter['startDate']['$gte'] = new Date(
+          filterData.planStartDate.$gte,
+        );
+      }
+
+      if (filterData.planStartDate.$lte) {
+        subscriptionFilter['startDate']['$lte'] = new Date(
+          filterData.planStartDate.$lte,
+        );
+      }
+    }
+
+    // For planExpiry
+    if (filterData.planExpiry) {
+      subscriptionFilter['expiryDate'] = {};
+
+      if (filterData.planExpiry.$gte) {
+        subscriptionFilter['expiryDate']['$gte'] = new Date(
+          filterData.planExpiry.$gte,
+        );
+      }
+
+      if (filterData.planExpiry.$lte) {
+        subscriptionFilter['expiryDate']['$lte'] = new Date(
+          filterData.planExpiry.$lte,
+        );
+      }
+    }
+    console.log(filterData, subscriptionFilter);
+    if (filterData.contactsLimit) {
+      subscriptionFilter['contactLimit'] = filterData.contactsLimit;
+    }
+    if (filterData.toggleLimit) {
+      subscriptionFilter['toggleLimit'] = filterData.toggleLimit;
+    }
+
+    const planFilter = {};
+    if (filterData.planName) {
+      planFilter['name'] = filterData.planName;
+    }
+
+    const employeeCountFilter = {};
+    if (filterData.totalEmployees) {
+      employeeCountFilter['totalEmployees'] = filterData.totalEmployees;
+    }
+    if (filterData.employeeSalesCount) {
+      employeeCountFilter['employeeSalesCount'] = filterData.employeeSalesCount;
+    }
+    if (filterData.employeeReminderCount) {
+      employeeCountFilter['employeeReminderCount'] =
+        filterData.employeeReminderCount;
+    }
+
+    const projectStage = {
+      $project: {
+        email: 1,
+        companyName: 1,
+        userName: 1,
+        phone: 1,
+        isActive: 1,
+        planName: 1,
+        planStartDate: 1,
+        planExpiry: 1,
+        contactsLimit: 1,
+        toggleLimit: 1,
+        totalEmployees: 1,
+        employeeSalesCount: 1,
+        employeeReminderCount: 1,
+        contactsCount: 1,
+      },
+    };
+
     const pipeline: mongoose.PipelineStage[] = [
-      { $match: { role: new Types.ObjectId(`${clientRoleId}`) } },
+      {
+        $match: {
+          role: new Types.ObjectId(`${clientRoleId}`),
+          ...matchFilters,
+        },
+      },
       {
         $lookup: {
           from: 'subscriptions',
           localField: '_id',
           foreignField: 'admin',
+          pipeline: [
+            {
+              $match: subscriptionFilter,
+            },
+            {
+              $project: {
+                startDate: 1,
+                expiryDate: 1,
+                contactLimit: 1,
+                toggleLimit: 1,
+              },
+            },
+          ],
           as: 'subscription',
         },
       },
       {
+        $unwind: { path: '$subscription', preserveNullAndEmptyArrays: false },
+      },
+      {
         $lookup: {
-          from: 'billinghistories',
-          localField: '_id',
-          foreignField: 'admin',
-          as: 'billingHistory',
+          from: 'plans',
+          localField: 'plan',
+          foreignField: '_id',
+          pipeline: [
+            {
+              $match: planFilter,
+            },
+            {
+              $project: {
+                name: 1,
+              },
+            },
+          ],
+          as: 'plan',
         },
       },
+
+      { $unwind: { path: '$plan', preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
           from: 'users',
@@ -89,46 +221,51 @@ export class UsersService {
         },
       },
       {
-        $lookup: {
-          from: 'plans',
-          localField: 'plan',
-          foreignField: '_id',
-          as: 'plan',
-        },
-      },
-
-      {
         $addFields: {
-          plan: {
-            $arrayElemAt: ['$plan', 0],
+          planName: '$plan.name',
+          planStartDate: '$subscription.startDate',
+          planExpiry: '$subscription.expiryDate',
+          contactsLimit: '$subscription.contactLimit',
+          toggleLimit: '$subscription.toggleLimit',
+          totalEmployees: { $size: '$employees' },
+          employeeSalesCount: {
+            $size: {
+              $filter: {
+                input: '$employees',
+                as: 'emp',
+                cond: {
+                  $eq: [
+                    '$$emp.role',
+                    new Types.ObjectId('66b758544892ce3d994745cb'),
+                  ],
+                },
+              },
+            },
           },
+          employeeReminderCount: {
+            $size: {
+              $filter: {
+                input: '$employees',
+                as: 'emp',
+                cond: {
+                  $eq: [
+                    '$$emp.role',
+                    new Types.ObjectId('66b7585d4892ce3d994745ce'),
+                  ],
+                },
+              },
+            },
+          },
+          // ...(columnKeysSet.has('contactsCount')
+          //   ? { contactsCount: { $ifNull: ['$contactsCount.totalCount', 0] } }
+          //   : {}),
         },
       },
       {
-        $lookup: {
-          from: 'attendees',
-          let: { adminId: '$_id' },
-          pipeline: [
-            { $match: { $expr: { $eq: ['$adminId', '$$adminId'] } } },
-            { $count: 'totalCount' },
-          ],
-          as: 'contactsCount',
-        },
+        $match: employeeCountFilter,
       },
+      projectStage,
 
-      {
-        $addFields: {
-          contactsCount: {
-            $ifNull: [{ $arrayElemAt: ['$contactsCount.totalCount', 0] }, 0],
-          },
-        },
-      },
-      {
-        $project: {
-          password: 0,
-        },
-      },
-      { $sort: { userName: 1 } },
       { $skip: skip || 0 },
       { $limit: limit || 25 },
     ];
@@ -396,7 +533,7 @@ export class UsersService {
     if (!subscription) {
       throw new NotFoundException('No Subscription Found with the given ID.');
     }
-    console.log("subsriptio ----> ",subscription)
+    console.log('subsriptio ----> ', subscription);
     if (new Date(subscription.expiryDate) < new Date()) {
       throw new NotAcceptableException(
         'Your subscription has expired. Please renew your subscription to continue.',
@@ -478,7 +615,6 @@ export class UsersService {
         { new: true },
       )
       .select('-password');
-
 
     //creating subscription and billing history initial entry
 

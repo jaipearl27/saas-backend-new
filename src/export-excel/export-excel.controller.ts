@@ -14,7 +14,7 @@ export class ExportExcelController {
     @Res() res: Response,
   ): Promise<void> {
     try {
-      const filePath = await this.exportExcelService.generateExcel(
+      const filePath = await this.exportExcelService.generateExcelForClients(
         parseInt(limit) || 1000, 
         columns ? columns.split(',') : []
       );
