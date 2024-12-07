@@ -5,9 +5,9 @@ export class CreateFilterPresetDto {
   @IsNotEmpty()
   name: string;
 
-  @IsMongoId()
-  @IsNotEmpty()
-  userId: string;
+  // @IsMongoId()
+  // @IsNotEmpty()
+  // userId: string;
 
   @IsString()
   @IsNotEmpty()
