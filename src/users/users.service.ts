@@ -52,84 +52,51 @@ export class UsersService {
     return newUser.save();
   }
 
-  async getClients(
-    skip: number,
-    limit: number,
-    filterData: GetClientsFilterDto,
-  ): Promise<any> {
-    const clientRoleId = this.configService.get('appRoles').ADMIN;
-
-    const totalUsers = await this.userModel.countDocuments({
-      role: new Types.ObjectId(`${clientRoleId}`),
-    });
-
-    console.log(totalUsers);
-
-    const totalPages = Math.ceil(totalUsers / limit);
-
+   createClientPipeline(filterData: GetClientsFilterDto) {
     const matchFilters = {};
-    if (filterData.email) {
-      matchFilters['email'] = filterData.email;
-    }
-    if (filterData.companyName) {
-      matchFilters['companyName'] = filterData.companyName;
-    }
-    if (filterData.userName) {
-      matchFilters['userName'] = filterData.userName;
-    }
-    if (filterData.phone) {
-      matchFilters['phone'] = filterData.phone;
-    }
-    if (filterData.isActive) {
-      matchFilters['isActive'] = filterData.isActive;
-    }
-
+    if (filterData.email) matchFilters['email'] = filterData.email;
+    if (filterData.companyName) matchFilters['companyName'] = filterData.companyName;
+    if (filterData.userName) matchFilters['userName'] = filterData.userName;
+    if (filterData.phone) matchFilters['phone'] = filterData.phone;
+    if (filterData.isActive) matchFilters['isActive'] = filterData.isActive === 'active';
+  
     const subscriptionFilter = {};
     if (filterData.planStartDate) {
       subscriptionFilter['startDate'] = {};
-
       if (filterData.planStartDate.$gte) {
         subscriptionFilter['startDate']['$gte'] = new Date(
           filterData.planStartDate.$gte,
         );
       }
-
       if (filterData.planStartDate.$lte) {
         subscriptionFilter['startDate']['$lte'] = new Date(
           filterData.planStartDate.$lte,
         );
       }
     }
-
-    // For planExpiry
     if (filterData.planExpiry) {
       subscriptionFilter['expiryDate'] = {};
-
       if (filterData.planExpiry.$gte) {
         subscriptionFilter['expiryDate']['$gte'] = new Date(
           filterData.planExpiry.$gte,
         );
       }
-
       if (filterData.planExpiry.$lte) {
         subscriptionFilter['expiryDate']['$lte'] = new Date(
           filterData.planExpiry.$lte,
         );
       }
     }
-    console.log(filterData, subscriptionFilter);
     if (filterData.contactsLimit) {
       subscriptionFilter['contactLimit'] = filterData.contactsLimit;
     }
     if (filterData.toggleLimit) {
       subscriptionFilter['toggleLimit'] = filterData.toggleLimit;
     }
-
+  
     const planFilter = {};
-    if (filterData.planName) {
-      planFilter['name'] = filterData.planName;
-    }
-
+    if (filterData.planName) planFilter['name'] = filterData.planName;
+  
     const employeeCountFilter = {};
     if (filterData.totalEmployees) {
       employeeCountFilter['totalEmployees'] = filterData.totalEmployees;
@@ -138,30 +105,13 @@ export class UsersService {
       employeeCountFilter['employeeSalesCount'] = filterData.employeeSalesCount;
     }
     if (filterData.employeeReminderCount) {
-      employeeCountFilter['employeeReminderCount'] =
-        filterData.employeeReminderCount;
+      employeeCountFilter['employeeReminderCount'] = filterData.employeeReminderCount;
     }
-
-    const projectStage = {
-      $project: {
-        email: 1,
-        companyName: 1,
-        userName: 1,
-        phone: 1,
-        isActive: 1,
-        planName: 1,
-        planStartDate: 1,
-        planExpiry: 1,
-        contactsLimit: 1,
-        toggleLimit: 1,
-        totalEmployees: 1,
-        employeeSalesCount: 1,
-        employeeReminderCount: 1,
-        contactsCount: 1,
-      },
-    };
-
-    const pipeline: mongoose.PipelineStage[] = [
+  
+    const clientRoleId = this.configService.get('appRoles').ADMIN;
+    const empSalesId = this.configService.get('appRoles').EMPLOYEE_SALES;
+    const empReminderId = this.configService.get('appRoles').EMPLOYEE_REMINDER;
+    return [
       {
         $match: {
           role: new Types.ObjectId(`${clientRoleId}`),
@@ -210,7 +160,6 @@ export class UsersService {
           as: 'plan',
         },
       },
-
       { $unwind: { path: '$plan', preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
@@ -234,10 +183,7 @@ export class UsersService {
                 input: '$employees',
                 as: 'emp',
                 cond: {
-                  $eq: [
-                    '$$emp.role',
-                    new Types.ObjectId('66b758544892ce3d994745cb'),
-                  ],
+                  $eq: ['$$emp.role', new Types.ObjectId(`${empSalesId}`)],
                 },
               },
             },
@@ -248,30 +194,58 @@ export class UsersService {
                 input: '$employees',
                 as: 'emp',
                 cond: {
-                  $eq: [
-                    '$$emp.role',
-                    new Types.ObjectId('66b7585d4892ce3d994745ce'),
-                  ],
+                  $eq: ['$$emp.role', new Types.ObjectId(`${empReminderId}`)],
                 },
               },
             },
           },
-          // ...(columnKeysSet.has('contactsCount')
-          //   ? { contactsCount: { $ifNull: ['$contactsCount.totalCount', 0] } }
-          //   : {}),
         },
       },
       {
         $match: employeeCountFilter,
       },
-      projectStage,
-
+      {
+        $project: {
+          email: 1,
+          companyName: 1,
+          userName: 1,
+          phone: 1,
+          isActive: 1,
+          planName: 1,
+          planStartDate: 1,
+          planExpiry: 1,
+          contactsLimit: 1,
+          toggleLimit: 1,
+          totalEmployees: 1,
+          employeeSalesCount: 1,
+          employeeReminderCount: 1,
+          contactsCount: 1,
+        },
+      },
+    ];
+  }
+  
+  async getClients(skip: number, limit: number, filterData: GetClientsFilterDto): Promise<any> {
+    const pipeline = await this.createClientPipeline(filterData);
+  
+    const totalUsersPipeline = [
+      ...pipeline,
+      { $count: 'totalUsers' },
+    ];
+  
+    const totalUsersResult = await this.userModel.aggregate(totalUsersPipeline);
+    const totalUsers = totalUsersResult[0]?.totalUsers || 0;
+    const totalPages = Math.ceil(totalUsers / limit);
+  
+    const result = await this.userModel.aggregate([
+      ...pipeline,
       { $skip: skip || 0 },
       { $limit: limit || 25 },
-    ];
-    const result = await this.userModel.aggregate(pipeline);
+    ]);
+  
     return { result, totalPages };
   }
+  
 
   async getClient(id: string): Promise<any> {
     const pipeline: mongoose.PipelineStage[] = [

@@ -38,8 +38,8 @@ export class GetClientsFilterDto {
   phone?: string;
 
   @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
+  @IsString()
+  isActive?: string;
 
   @IsOptional()
   @IsString()

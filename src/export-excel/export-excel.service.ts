@@ -5,15 +5,129 @@ import { Worker } from 'worker_threads';
 import * as path from 'path';
 import { User } from '../schemas/User.schema';
 import { ConfigService } from '@nestjs/config';
+import { GetClientsFilterDto } from 'src/users/dto/filters.dto';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class ExportExcelService {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly configService: ConfigService,
+    private readonly usersService: UsersService
   ) { }
+  
+  async generateExcelForClients(limit: number, columns: string[], filterData: GetClientsFilterDto): Promise<string> {
+    const data = [];
 
-  async generateExcelForClients(limit: number, columns: string[], filterData: any = {}): Promise<string> {
+    const defaultColumns = [
+      { header: 'Email', key: 'email', width: 50 },
+      { header: 'Company Name', key: 'companyName', width: 30 },
+      { header: 'User Name', key: 'userName', width: 20 },
+      { header: 'Phone', key: 'phone', width: 15 },
+      { header: 'Is Active', key: 'isActive', width: 10 },
+      { header: 'Plan Name', key: 'planName', width: 20 },
+      { header: 'Plan Start Date', key: 'planStartDate', width: 20 },
+      { header: 'Plan Expiry', key: 'planExpiry', width: 20 },
+      { header: 'Contacts Limit', key: 'contactsLimit', width: 15 },
+      { header: 'Total Employees', key: 'totalEmployees', width: 15 },
+      { header: 'Employee Sales Count', key: 'employeeSalesCount', width: 15 },
+      {
+        header: 'Employee Reminder Count',
+        key: 'employeeReminderCount',
+        width: 15,
+      },
+      { header: "Toggle Limit", key: "toggleLimit", width: 15 },
+    ];
+
+    // const filterData = {
+    //   email: 'user@example.com',
+    //   companyName: 'Acme Corp',
+    //   userName: 'JohnDoe',
+    //   phone: '1234567890',
+    //   isActive: true,
+    //   planName: 'Premium Plan',
+    //   planStartDate: {
+    //     $gte: new Date('2023-01-01'), // Greater than or equal to January 1st, 2023
+    //     $lte: new Date('2023-12-31'), // Less than or equal to December 31st, 2023
+    //   },
+    //   planExpiry: {
+    //     $gte: new Date('2024-01-01'), // Greater than or equal to January 1st, 2024
+    //     $lte: new Date('2024-12-31'), // Less than or equal to December 31st, 2024
+    //   },
+    //   contactsLimit: {
+    //     $gte: 100, // Greater than or equal to 100
+    //     $lte: 500, // Less than or equal to 500
+    //   },
+    //   totalEmployees: {
+    //     $gte: 50, // Greater than or equal to 50
+    //     $lte: 200, // Less than or equal to 200
+    //   },
+    //   employeeSalesCount: {
+    //     $gte: 10, // Greater than or equal to 10
+    //     $lte: 50, // Less than or equal to 50
+    //   },
+    //   employeeReminderCount: {
+    //     $gte: 1, // Greater than or equal to 1
+    //     $lte: 5, // Less than or equal to 5
+    //   },
+    //   contactsCount: {
+    //     $gte: 200, // Greater than or equal to 200
+    //     $lte: 1000, // Less than or equal to 1000
+    //   },
+    // };
+
+    const selectedColumns = columns.length
+      ? defaultColumns.filter((col) => columns.includes(col.key))
+      : defaultColumns;
+
+    const pipeline = this.usersService.createClientPipeline(filterData);
+
+    
+
+
+    const cursor = this.userModel.aggregate([
+      ...pipeline,
+      { $limit: limit }
+    ]).cursor();
+
+    for await (const doc of cursor) {
+      data.push(doc);
+    }
+
+    const workerPath = path.resolve(
+      __dirname,
+      '../workers/generate-excel.worker.js',
+    );
+
+    return new Promise((resolve, reject) => {
+      const worker = new Worker(workerPath, {
+        workerData: { data, columns: selectedColumns },
+      });
+
+      worker.on('message', (message) => {
+        if (message.success) {
+          resolve(message.filePath);
+        } else {
+          console.error('Worker Error:', message.error);
+          reject(new Error(message.error));
+        }
+      });
+
+      worker.on('error', (err) => {
+        console.error('Worker Thread Error:', err);
+        reject(err);
+      });
+
+      worker.on('exit', (code) => {
+        if (code !== 0) {
+          console.error(`Worker stopped with exit code ${code}`);
+          reject(new Error(`Worker stopped with exit code ${code}`));
+        }
+      });
+    });
+  }
+
+  async generateExcelForClientsOld(limit: number, columns: string[], filterData: GetClientsFilterDto): Promise<string> {
     const data = [];
 
     const defaultColumns = [
@@ -34,6 +148,7 @@ export class ExportExcelService {
         width: 15,
       },
       { header: 'Contacts Count', key: 'contactsCount', width: 15 },
+      { header: "Toggle Limit", key: "toggleLimit", width: 15 },
     ];
 
     // const filterData = {
