@@ -74,7 +74,7 @@ export class AuthService {
       userData: result,
       access_token: await this.jwtService.signAsync(payload, {
         secret: this.configService.get('ACCESS_TOKEN_SECRET'),
-        expiresIn: '60s',
+        expiresIn: '1h',
       }),
     };
   }
@@ -96,7 +96,7 @@ export class AuthService {
     console.log('access token --> ', this.configService.get('ACCESS_TOKEN_SECRET'))
     const access_token = await this.jwtService.signAsync(payload, {
       secret: this.configService.get('ACCESS_TOKEN_SECRET'),
-      expiresIn: '15s',
+      expiresIn: '1h',
     });
     return { access_token, user };
   }

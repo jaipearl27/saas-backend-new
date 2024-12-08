@@ -15,6 +15,7 @@ import { UpdateUserInfoDto } from './dto/update-user.dto';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { GetClientsFilterDto } from './dto/filters.dto';
 
 
 @Controller('users') // @route => /users
@@ -53,16 +54,23 @@ export class UsersController {
 
 
 
-  @Get('/clients')
-  async getClients(@Query() query: { page: string; limit: string }): Promise<any> {
+  @Post('/clients')
+  async getClients(
+    @Query() query: { page: string; limit: string },
+    @Body() filters: GetClientsFilterDto,
+  ): Promise<any> {
     let page = Number(query.page);
     let limit = Number(query.limit);
     if (page <= 0) page = 1;
     if (limit <= 0) limit = 25;
 
     const skip: number = (page - 1) * Number(query.limit);
-    const clients = await this.usersService.getClients(skip, Number(query.limit));
-    clients.page = page
+    const clients = await this.usersService.getClients(
+      skip,
+      Number(query.limit),
+      filters,
+    );
+    clients.page = page;
     return clients;
   }
 
