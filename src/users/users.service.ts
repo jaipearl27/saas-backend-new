@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   Logger,
   NotAcceptableException,
@@ -38,6 +40,7 @@ export class UsersService {
     private subscriptionModel: Model<Subscription>,
     private configService: ConfigService,
     private readonly billingHistoryService: BillingHistoryService,
+    @Inject(forwardRef(() => SubscriptionService))
     private readonly subscriptionService: SubscriptionService,
     private readonly jwtService: JwtService,
   ) {}

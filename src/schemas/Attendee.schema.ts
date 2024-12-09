@@ -3,7 +3,6 @@ import { Document, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Attendee extends Document {
-  
   @Prop({
     type: String,
     maxlength: 100,
@@ -49,16 +48,15 @@ export class Attendee extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: "webinars",
-    required: true
+    ref: 'webinars',
+    required: true,
   })
   webinar: Types.ObjectId; // Webinar Name
-
 
   @Prop({
     type: Boolean,
     required: [true, 'Is Attended is required'],
-    default: false
+    default: false,
   })
   isAttended: boolean; //Is attended
 

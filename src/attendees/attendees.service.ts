@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Attendee } from 'src/schemas/Attendee.schema';
@@ -43,28 +47,17 @@ export class AttendeesService {
     return { totalPages, page, result };
   }
 
-  // async getAttendeesCount(
-  //   webinarId: string,
-  //   AdminId: string,
-  // ): Promise<any> {
-  //   const preWebinarPipeline = {
-  //     adminId: new Types.ObjectId(`${AdminId}`),
-  //     webinar: new Types.ObjectId(`${webinarId}`),
-  //     isAttended: false
-  //   };
+  async getAttendeesCount(webinarId: string, AdminId: string): Promise<any> {
+    const webinarPipeline = {
+      adminId: new Types.ObjectId(`${AdminId}`),
+      webinar: new Types.ObjectId(`${webinarId}`),
+    };
 
-  //   const totalRegisterations = await this.attendeeModel.countDocuments(preWebinarPipeline);
+    const totalContacts =
+      await this.attendeeModel.countDocuments(webinarPipeline);
 
-  //   const postWebinarPipeline = {
-  //     adminId: new Types.ObjectId(`${AdminId}`),
-  //     webinar: new Types.ObjectId(`${webinarId}`),
-  //     isAttended: true
-  //   };
-
-  //   const totalAttendees = await this.attendeeModel.countDocuments(postWebinarPipeline);
-
-  //   return {totalAttendees, totalRegisterations};
-  // }
+    return totalContacts;
+  }
 
   async getPostWebinarAttendee(webinarId: string, adminId: string) {
     const result = await this.attendeeModel.findOne({
@@ -89,7 +82,7 @@ export class AttendeesService {
       updateAttendeeDto,
       { new: true },
     );
-    if(!result) throw new NotFoundException('No record found to be updated.')
+    if (!result) throw new NotFoundException('No record found to be updated.');
     return result;
   }
 
@@ -98,7 +91,7 @@ export class AttendeesService {
       adminId: new Types.ObjectId(`${AdminId}`),
       webinar: new Types.ObjectId(`${webinarId}`),
     };
-    console.log(pipeline)
+    console.log(pipeline);
     const result = await this.attendeeModel.deleteMany(pipeline);
 
     return { message: 'Deleted data successfully!', result: result };

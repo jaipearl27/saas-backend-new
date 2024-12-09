@@ -7,10 +7,12 @@ import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
 import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
 import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
 import { UsersModule } from 'src/users/users.module';
+import { SubscriptionModule } from 'src/subscription/subscription.module';
 
 @Module({
   imports: [
     UsersModule,
+    SubscriptionModule,
     MongooseModule.forFeature([
       {
         name: Attendee.name,
