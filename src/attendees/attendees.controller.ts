@@ -81,9 +81,10 @@ export class AttendeesController {
       adminId,
     );
 
-    const subscription = await this.subscriptionService.getSubscription(adminId);
-    console.log(subscription?.contactsLimit)
-    const contactsLimit = 10
+    const subscription =
+      await this.subscriptionService.getSubscription(adminId);
+
+    const contactsLimit = subscription?.contactsLimit || 1;
 
     if (contactsUploaded + dataLen > contactsLimit)
       throw new NotAcceptableException(
