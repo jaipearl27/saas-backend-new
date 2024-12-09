@@ -48,6 +48,25 @@ export class AttendeesController {
     return result;
   }
 
+  @Get()
+  async getAllAttendees(
+    @Query() query: { page?: string; limit?: string },
+    @AdminId() adminId: string,
+  ) {
+    let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
+    let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
+
+    const result = await this.attendeesService.getAttendees(
+      '',
+      adminId,
+      false,
+      page,
+      limit,
+    );
+
+    return result;
+  }
+
   @Post()
   async addAttendees(
     @Id() adminId: string,
@@ -81,9 +100,10 @@ export class AttendeesController {
       adminId,
     );
 
-    const subscription = await this.subscriptionService.getSubscription(adminId);
-    console.log(subscription?.contactsLimit)
-    const contactsLimit = 10
+    const subscription =
+      await this.subscriptionService.getSubscription(adminId);
+    console.log(subscription?.contactsLimit);
+    const contactsLimit = 10;
 
     if (contactsUploaded + dataLen > contactsLimit)
       throw new NotAcceptableException(
