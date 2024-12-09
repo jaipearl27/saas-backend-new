@@ -626,13 +626,18 @@ export class UsersService {
           isActive: true,
         },
         {
-          $set: { isActive: false, plan: null },
+          $set: { isActive: false },
         },
       );
       //TODO: send email to super admin
+
+      
+      
       this.logger.log(
         `Deactivated ${result.modifiedCount} users with expired plans.`,
       );
+
+      if(re)
     } catch (error) {
       this.logger.error('Error during plan deactivation:', error.message);
     }
