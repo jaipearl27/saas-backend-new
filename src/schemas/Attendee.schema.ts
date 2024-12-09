@@ -63,7 +63,7 @@ export class Attendee extends Document {
   @Prop({
     type: String,
     maxlength: 10,
-    enum: ['male', 'female', 'others'],
+    enum: ['male', 'female', 'others', 'Male', 'Female', 'Others'],
   })
   gender: string;
 

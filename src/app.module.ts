@@ -23,6 +23,7 @@ import { WebinarModule } from './webinar/webinar.module';
 import { ExportExcelModule } from './export-excel/export-excel.module';
 import { CronModule } from './cron/cron.module';
 import { RolesModule } from './roles/roles.module';
+import { FilterPresetModule } from './filter-preset/filter-preset.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { RolesModule } from './roles/roles.module';
     ExportExcelModule,
     CronModule,
     RolesModule,
+    FilterPresetModule,
   ],
   controllers: [AppController],
   providers: [AppService],
