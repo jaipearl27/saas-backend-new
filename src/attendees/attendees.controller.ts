@@ -12,10 +12,14 @@ import { AdminId, Id } from 'src/decorators/custom.decorator';
 import { AttendeesService } from './attendees.service';
 import { CreateAttendeeDto, UpdateAttendeeDto } from './dto/attendees.dto';
 import { Types } from 'mongoose';
+import { SubscriptionService } from 'src/subscription/subscription.service';
 
 @Controller('attendees')
 export class AttendeesController {
-  constructor(private readonly attendeesService: AttendeesService) {}
+  constructor(
+    private readonly attendeesService: AttendeesService,
+    private readonly subscriptionService: SubscriptionService,
+  ) {}
 
   @Get(':id')
   async getAttendees(
@@ -70,6 +74,22 @@ export class AttendeesController {
     //Inserting data here:
     const dataLen = data.length;
 
+    //CHECK IF CONTACT LIMIT ALLOWS DATA TO BE ADDED:-
+
+    const contactsUploaded = await this.attendeesService.getAttendeesCount(
+      body.webinarId,
+      adminId,
+    );
+
+    const subscription = await this.subscriptionService.getSubscription(adminId);
+    console.log(subscription?.contactsLimit)
+    const contactsLimit = 10
+
+    if (contactsUploaded + dataLen > contactsLimit)
+      throw new NotAcceptableException(
+        `${dataLen} contacts being uploaded exceed the contact limit of ${contactsLimit}, Please upgrade your plan or upload within the limit.`,
+      );
+
     for (let i = 0; i < dataLen; i++) {
       data[i].webinar = new Types.ObjectId(`${body.webinarId}`);
       data[i].isAttended = body.isAttended;
@@ -83,10 +103,14 @@ export class AttendeesController {
   @Patch(':id')
   async updateAttendee(
     @Param('id') id: string,
-    @Body() updateAttendeeDto: UpdateAttendeeDto ,
+    @Body() updateAttendeeDto: UpdateAttendeeDto,
     @AdminId() adminId: string,
   ): Promise<any> {
-      const result = await this.attendeesService.updateAttendee(id, adminId, updateAttendeeDto)
-      return result
+    const result = await this.attendeesService.updateAttendee(
+      id,
+      adminId,
+      updateAttendeeDto,
+    );
+    return result;
   }
 }

@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+import { forwardRef, MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -15,7 +15,7 @@ import { Subscription, SubscriptionSchema } from 'src/schemas/Subscription.schem
 @Module({
   imports: [
     BillingHistoryModule,
-    SubscriptionModule,
+    forwardRef(() => SubscriptionModule),
     MongooseModule.forFeature([
       {
         name: User.name,

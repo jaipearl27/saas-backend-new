@@ -9,7 +9,6 @@ import { SubscriptionDto, UpdateSubscriptionDto } from './dto/subscription.dto';
 export class SubscriptionService {
     constructor(
         @InjectModel(Subscription.name) private SubscriptionModel: Model<Subscription>,
-        private readonly configService: ConfigService
     ){}
 
     async addSubscription(subscriptionDto: SubscriptionDto): Promise<any> {
@@ -24,7 +23,6 @@ export class SubscriptionService {
     }
 
     async getSubscription(adminId: string): Promise<any> {
-        console.log('reqest here' , adminId  )
         const result = await this.SubscriptionModel.findOne({admin: new Types.ObjectId(adminId)});
         console.log(result)
         return result
