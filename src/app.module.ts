@@ -25,6 +25,7 @@ import { CronModule } from './cron/cron.module';
 import { RolesModule } from './roles/roles.module';
 import { FilterPresetModule } from './filter-preset/filter-preset.module';
 import { NoticeBoardModule } from './notice-board/notice-board.module';
+import { AssignmentModule } from './assignment/assignment.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { NoticeBoardModule } from './notice-board/notice-board.module';
     RolesModule,
     FilterPresetModule,
     NoticeBoardModule,
+    AssignmentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

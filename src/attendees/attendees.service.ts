@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Attendee } from 'src/schemas/Attendee.schema';
@@ -26,7 +22,7 @@ export class AttendeesService {
     page: number,
     limit: number,
   ): Promise<any> {
-    console.log('adminid ----> ', AdminId)
+    console.log('adminid ----> ', AdminId);
     let pipeline = {
       adminId: new Types.ObjectId(`${AdminId}`),
     };
@@ -36,7 +32,6 @@ export class AttendeesService {
       pipeline['webinar'] = new Types.ObjectId(`${webinarId}`);
     }
 
-    
     const totalAttendees = await this.attendeeModel.countDocuments(pipeline);
 
     const totalPages = Math.ceil(totalAttendees / limit);

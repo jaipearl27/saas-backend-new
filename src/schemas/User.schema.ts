@@ -96,7 +96,7 @@ export class User extends Document {
     required: false,
     min: 0,
   })
-  dailyContactLimit: number;
+  contactLimit: number;
   
 
 }
