@@ -24,6 +24,7 @@ import { ExportExcelModule } from './export-excel/export-excel.module';
 import { CronModule } from './cron/cron.module';
 import { RolesModule } from './roles/roles.module';
 import { FilterPresetModule } from './filter-preset/filter-preset.module';
+import { NoticeBoardModule } from './notice-board/notice-board.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { FilterPresetModule } from './filter-preset/filter-preset.module';
     CronModule,
     RolesModule,
     FilterPresetModule,
+    NoticeBoardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -35,6 +35,7 @@ export class AttendeesModule {
       .apply(AuthTokenMiddleware, GetAdminIdMiddleware)
       .forRoutes(
         { path: 'attendees/:id', method: RequestMethod.GET },
+        { path: 'attendees', method: RequestMethod.GET },
         { path: 'attendees/:id', method: RequestMethod.PATCH },
       );
   }
