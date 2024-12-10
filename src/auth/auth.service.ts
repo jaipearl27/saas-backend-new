@@ -37,19 +37,19 @@ export class AuthService {
       throw new NotFoundException('Incorrect Username');
     }
 
-    if (!user?.isActive) {
-      throw new UnauthorizedException(
-        'Access denied: User account is inactive. Please contact your administrator.',
-      );
-    }
+    // if (!user?.isActive) {
+    //   throw new UnauthorizedException(
+    //     'Access denied: User account is inactive. Please contact your administrator.',
+    //   );
+    // }
 
-    const admin = await this.usersService.getUserById(user._id);
+    // const admin = await this.usersService.getUserById(user._id);
 
-    if (!admin.isActive) {
-      throw new UnauthorizedException(
-        'Access denied: Admin account is inactive. Please contact your administrator.',
-      );
-    }
+    // if (!admin.isActive) {
+    //   throw new UnauthorizedException(
+    //     'Access denied: Admin account is inactive. Please contact your administrator.',
+    //   );
+    // }
 
     const matchPassword = await bcrypt.compare(
       signInDto.password,

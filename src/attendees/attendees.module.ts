@@ -37,6 +37,7 @@ export class AttendeesModule {
         { path: 'attendees/:id', method: RequestMethod.GET },
         { path: 'attendees', method: RequestMethod.GET },
         { path: 'attendees/:id', method: RequestMethod.PATCH },
+        { path: 'attendees/all', method: RequestMethod.POST },
       );
   }
 }

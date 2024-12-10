@@ -236,7 +236,7 @@ export class UsersService {
     limit: number,
     filterData: GetClientsFilterDto,
   ): Promise<any> {
-    const pipeline = await this.createClientPipeline(filterData);
+    const pipeline = this.createClientPipeline(filterData);
 
     const totalUsersPipeline = [...pipeline, { $count: 'totalUsers' }];
 

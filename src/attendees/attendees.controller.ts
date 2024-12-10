@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
 import { AttendeesService } from './attendees.service';
-import { CreateAttendeeDto, UpdateAttendeeDto } from './dto/attendees.dto';
+import { AttendeesFilterDto, CreateAttendeeDto, UpdateAttendeeDto } from './dto/attendees.dto';
 import { Types } from 'mongoose';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 
@@ -59,9 +59,31 @@ export class AttendeesController {
     const result = await this.attendeesService.getAttendees(
       '',
       adminId,
-      false,
+      true,
       page,
       limit,
+    );
+
+    return result;
+  }
+
+
+  @Post('all')
+  async getAllAttendeesForFilters(
+    @Query() query: { page?: string; limit?: string },
+    @AdminId() adminId: string,
+    @Body() filters: AttendeesFilterDto
+  ) {
+    let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
+    let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
+
+    const result = await this.attendeesService.getAttendees(
+      '',
+      adminId,
+      true,
+      page,
+      limit,
+      filters
     );
 
     return result;

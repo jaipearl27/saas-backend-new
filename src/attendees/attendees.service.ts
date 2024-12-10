@@ -6,7 +6,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Attendee } from 'src/schemas/Attendee.schema';
-import { CreateAttendeeDto, UpdateAttendeeDto } from './dto/attendees.dto';
+import { AttendeesFilterDto, CreateAttendeeDto, UpdateAttendeeDto } from './dto/attendees.dto';
 
 @Injectable()
 export class AttendeesService {
@@ -25,18 +25,44 @@ export class AttendeesService {
     isAttended: boolean,
     page: number,
     limit: number,
+    filters: AttendeesFilterDto = {},
   ): Promise<any> {
-    console.log('adminid ----> ', AdminId)
     let pipeline = {
       adminId: new Types.ObjectId(`${AdminId}`),
+      isAttended: isAttended,
     };
 
     if (webinarId !== '') {
-      pipeline['isAttended'] = isAttended;
       pipeline['webinar'] = new Types.ObjectId(`${webinarId}`);
     }
+    if( 'email' in filters) {
+      pipeline['email'] = filters.email;
+    }
 
-    
+    if( 'firstName' in filters) {
+      pipeline['firstName'] = filters.firstName;
+    }
+
+    if( 'lastName' in filters) {
+      pipeline['lastName'] = filters.lastName;
+    }
+
+    if( 'timeInSession' in filters) {
+      pipeline['timeInSession'] = filters.timeInSession;
+    }
+
+    if( 'gender' in filters) {
+      pipeline['gender'] = filters.gender;
+    }
+
+    if( 'phone' in filters){
+      pipeline['phone'] = filters.phone;
+    }
+
+    if( 'location' in filters){
+      pipeline['location'] = filters.location;
+    }
+
     const totalAttendees = await this.attendeeModel.countDocuments(pipeline);
 
     const totalPages = Math.ceil(totalAttendees / limit);
