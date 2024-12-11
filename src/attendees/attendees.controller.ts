@@ -26,7 +26,7 @@ export class AttendeesController {
     @Param('id') webinarId: string,
     @Query() query: { page?: string; limit?: string; isAttended: string },
     @AdminId() adminId: string,
-    @Body() filters: AttendeesFilterDto
+    @Body() body: { filters: AttendeesFilterDto },
   ) {
     if (!query?.isAttended)
       throw new NotAcceptableException('isAttended search query is required');
@@ -44,7 +44,7 @@ export class AttendeesController {
       isAttended,
       page,
       limit,
-      filters
+      body.filters,
     );
 
     return result;
