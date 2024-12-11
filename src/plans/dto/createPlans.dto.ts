@@ -1,4 +1,4 @@
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString } from "class-validator";
 
 export class CreatePlansDto {
     @IsString()
@@ -24,5 +24,9 @@ export class CreatePlansDto {
     @IsNumber()
     @IsNotEmpty()
     planDuration: number
+
+    @IsObject()
+    @IsNotEmpty()
+    attendeeTableConfig: Map<string, any>;
 
 }

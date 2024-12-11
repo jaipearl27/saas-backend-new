@@ -21,11 +21,12 @@ export class AttendeesController {
     private readonly subscriptionService: SubscriptionService,
   ) {}
 
-  @Get(':id')
+  @Post(':id')
   async getAttendees(
     @Param('id') webinarId: string,
     @Query() query: { page?: string; limit?: string; isAttended: string },
     @AdminId() adminId: string,
+    @Body() filters: AttendeesFilterDto
   ) {
     if (!query?.isAttended)
       throw new NotAcceptableException('isAttended search query is required');
@@ -43,6 +44,7 @@ export class AttendeesController {
       isAttended,
       page,
       limit,
+      filters
     );
 
     return result;
@@ -124,7 +126,6 @@ export class AttendeesController {
 
     const subscription =
       await this.subscriptionService.getSubscription(adminId);
-    console.log(subscription?.contactsLimit);
     const contactsLimit = 10;
 
     if (contactsUploaded + dataLen > contactsLimit)

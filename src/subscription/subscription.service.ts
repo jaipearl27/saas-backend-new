@@ -23,8 +23,8 @@ export class SubscriptionService {
     }
 
     async getSubscription(adminId: string): Promise<any> {
-        const result = await this.SubscriptionModel.findOne({admin: new Types.ObjectId(adminId)});
-        console.log(result)
+        const result = await this.SubscriptionModel.findOne({admin: new Types.ObjectId(adminId)})
+        .populate('plan');
         return result
     }
 
