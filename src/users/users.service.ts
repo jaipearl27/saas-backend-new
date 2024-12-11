@@ -55,14 +55,16 @@ export class UsersService {
     return newUser.save();
   }
 
-   createClientPipeline(filterData: GetClientsFilterDto) {
+  createClientPipeline(filterData: GetClientsFilterDto) {
     const matchFilters = {};
     if (filterData.email) matchFilters['email'] = filterData.email;
-    if (filterData.companyName) matchFilters['companyName'] = filterData.companyName;
+    if (filterData.companyName)
+      matchFilters['companyName'] = filterData.companyName;
     if (filterData.userName) matchFilters['userName'] = filterData.userName;
     if (filterData.phone) matchFilters['phone'] = filterData.phone;
-    if (filterData.isActive) matchFilters['isActive'] = filterData.isActive === 'active';
-  
+    if (filterData.isActive)
+      matchFilters['isActive'] = filterData.isActive === 'active';
+
     const subscriptionFilter = {};
     if (filterData.planStartDate) {
       subscriptionFilter['startDate'] = {};
@@ -96,10 +98,10 @@ export class UsersService {
     if (filterData.toggleLimit) {
       subscriptionFilter['toggleLimit'] = filterData.toggleLimit;
     }
-  
+
     const planFilter = {};
     if (filterData.planName) planFilter['name'] = filterData.planName;
-  
+
     const employeeCountFilter = {};
     if (filterData.totalEmployees) {
       employeeCountFilter['totalEmployees'] = filterData.totalEmployees;
@@ -108,9 +110,10 @@ export class UsersService {
       employeeCountFilter['employeeSalesCount'] = filterData.employeeSalesCount;
     }
     if (filterData.employeeReminderCount) {
-      employeeCountFilter['employeeReminderCount'] = filterData.employeeReminderCount;
+      employeeCountFilter['employeeReminderCount'] =
+        filterData.employeeReminderCount;
     }
-  
+
     const clientRoleId = this.configService.get('appRoles').ADMIN;
     const empSalesId = this.configService.get('appRoles').EMPLOYEE_SALES;
     const empReminderId = this.configService.get('appRoles').EMPLOYEE_REMINDER;
@@ -227,28 +230,28 @@ export class UsersService {
       },
     ];
   }
-  
-  async getClients(skip: number, limit: number, filterData: GetClientsFilterDto): Promise<any> {
-    const pipeline = await this.createClientPipeline(filterData);
-  
-    const totalUsersPipeline = [
-      ...pipeline,
-      { $count: 'totalUsers' },
-    ];
-  
+
+  async getClients(
+    skip: number,
+    limit: number,
+    filterData: GetClientsFilterDto,
+  ): Promise<any> {
+    const pipeline = this.createClientPipeline(filterData);
+
+    const totalUsersPipeline = [...pipeline, { $count: 'totalUsers' }];
+
     const totalUsersResult = await this.userModel.aggregate(totalUsersPipeline);
     const totalUsers = totalUsersResult[0]?.totalUsers || 0;
     const totalPages = Math.ceil(totalUsers / limit);
-  
+
     const result = await this.userModel.aggregate([
       ...pipeline,
       { $skip: skip || 0 },
       { $limit: limit || 25 },
     ]);
-  
+
     return { result, totalPages };
   }
-  
 
   async getClient(id: string): Promise<any> {
     const pipeline: mongoose.PipelineStage[] = [
@@ -621,21 +624,52 @@ export class UsersService {
   // Method to check expired plans and deactivate users
   async deactivateExpiredPlans(): Promise<void> {
     const now = new Date();
-
+    const adminRole = this.configService.get('appRoles').ADMIN;
     try {
       const result = await this.userModel.updateMany(
         {
           currentPlanExpiry: { $lt: now },
           isActive: true,
+          role: new Types.ObjectId(`${adminRole}`),
         },
         {
-          $set: { isActive: false, plan: null },
+          $set: { isActive: false },
         },
       );
       //TODO: send email to super admin
+
       this.logger.log(
         `Deactivated ${result.modifiedCount} users with expired plans.`,
       );
+
+      if (result.modifiedCount > 0) {
+        const deactivatedAdminIds = await this.userModel
+          .find(
+            {
+              currentPlanExpiry: { $lt: now },
+              role: new Types.ObjectId(`${adminRole}`),
+            },
+            { _id: 1 },
+          )
+          .exec();
+
+        const adminIds = deactivatedAdminIds.map((admin) => admin._id);
+        console.log('adminIds', adminIds)
+
+        const employeeResult = await this.userModel.updateMany(
+          {
+            adminId: { $in: adminIds },
+            isActive: true,
+          },
+          {
+            $set: { isActive: false },
+          },
+        );
+
+        this.logger.log(
+          `Deactivated ${employeeResult.modifiedCount} employees of ${result.modifiedCount} admins with expired plans.`,
+        );
+      }
     } catch (error) {
       this.logger.error('Error during plan deactivation:', error.message);
     }

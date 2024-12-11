@@ -1,21 +1,27 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Types } from "mongoose";
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document, Types } from 'mongoose';
 
-@Schema({timestamps: true})
+@Schema({ timestamps: true })
 export class StatusDropdown extends Document {
-    @Prop({
-        type: String,
-        required: [true, 'Status Name is required']
-    })
-    name: string // Status name
+  @Prop({
+    type: String,
+    required: [true, 'Status Name is required'],
+  })
+  label: string; // Status name
 
-    @Prop({
-        type: Types.ObjectId,
-        ref: 'users',
-        required: [true, 'createdBy/UserId is required']
-    })
-    createdBy: Types.ObjectId
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'User',
+    required: [true, 'createdBy/UserId is required'],
+  })
+  createdBy: Types.ObjectId;
 
+  @Prop({
+    type: Boolean,
+    default: false,
+  })
+  isDefault: boolean;
 }
 
-export const StatusDropdownSchema =  SchemaFactory.createForClass(StatusDropdown)
+export const StatusDropdownSchema =
+  SchemaFactory.createForClass(StatusDropdown);

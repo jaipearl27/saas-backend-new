@@ -16,4 +16,11 @@ export class RolesService {
     addRole(name: string) {
         return this.rolesModel.create(name)
     }
+    async getRoleNameById(id:string){
+        const role = await this.rolesModel.findById(id).exec();
+        if(!role){
+            return "Unknown Role";
+        }
+        return role.name;
+    }
 }

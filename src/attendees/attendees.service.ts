@@ -4,9 +4,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model, PipelineStage, Types } from 'mongoose';
 import { Attendee } from 'src/schemas/Attendee.schema';
-import { CreateAttendeeDto, UpdateAttendeeDto } from './dto/attendees.dto';
+import {
+  AttendeesFilterDto,
+  CreateAttendeeDto,
+  UpdateAttendeeDto,
+} from './dto/attendees.dto';
 
 @Injectable()
 export class AttendeesService {
@@ -25,26 +29,98 @@ export class AttendeesService {
     isAttended: boolean,
     page: number,
     limit: number,
+    filters: AttendeesFilterDto = {},
   ): Promise<any> {
-    const pipeline = {
-      adminId: new Types.ObjectId(`${AdminId}`),
-      webinar: new Types.ObjectId(`${webinarId}`),
-      isAttended: isAttended,
-    };
-
-    const totalAttendees = await this.attendeeModel.countDocuments(pipeline);
-
-    const totalPages = Math.ceil(totalAttendees / limit);
-
     const skip = (page - 1) * limit;
 
-    const result = await this.attendeeModel
-      .find(pipeline)
-      .sort({ email: 1 })
-      .skip(skip)
-      .limit(limit);
+    const pipeline: PipelineStage[] = [
+      // Step 1: Match key fields to reduce dataset size
+      {
+        $match: {
+          adminId: new Types.ObjectId(AdminId),
+          isAttended: isAttended,
+          ...(webinarId &&
+            webinarId !== '' && { webinar: new Types.ObjectId(webinarId) }),
+        },
+      },
+      // Step 2: Conditionally include a lookup for webinarName if webinarId is empty
+      ...(webinarId === ''
+        ? [
+            {
+              $lookup: {
+                from: 'webinars', // Replace with the actual webinar collection name
+                localField: 'webinar',
+                foreignField: '_id',
+                as: 'webinarDetails',
+              },
+            },
+            {
+              $addFields: {
+                webinarName: {
+                  $arrayElemAt: ['$webinarDetails.webinarName', 0],
+                }, // Extract webinarName
+              },
+            },
+            {
+              $project: { webinarDetails: 0 }, // Remove the webinarDetails array if it's no longer needed
+            },
+          ]
+        : []),
+      // Step 3: Apply optional filters
+      {
+        $match: {
+          ...(filters.email && {
+            email: { $regex: filters.email, $options: 'i' },
+          }),
+          ...(filters.firstName && {
+            firstName: { $regex: filters.firstName, $options: 'i' },
+          }),
+          ...(filters.lastName && {
+            lastName: { $regex: filters.lastName, $options: 'i' },
+          }),
+          ...(filters.gender && {
+            gender: { $regex: filters.gender, $options: 'i' },
+          }),
+          ...(filters.phone && {
+            phone: { $regex: filters.phone, $options: 'i' },
+          }),
+          ...(filters.location && {
+            location: { $regex: filters.location, $options: 'i' },
+          }),
+          ...(filters.timeInSession && {
+            timeInSession: filters.timeInSession,
+          }),
+        },
+      },
+      // Step 4: Faceted query for pagination and total count
+      {
+        $facet: {
+          metadata: [{ $count: 'total' }],
+          data: [{ $sort: { email: 1 } }, { $skip: skip }, { $limit: limit }],
+        },
+      },
+      // Step 5: Unwind metadata to extract total count and calculate total pages
+      { $unwind: '$metadata' },
+      {
+        $project: {
+          totalPages: { $ceil: { $divide: ['$metadata.total', limit] } },
+          page: page,
+          result: '$data',
+        },
+      },
+    ];
 
-    return { totalPages, page, result };
+    const aggregationResult = await this.attendeeModel
+      .aggregate(pipeline)
+      .exec();
+
+    if (aggregationResult.length === 0) {
+      return { totalPages: 0, page: page, result: [] };
+    }
+
+    const { totalPages, page: currentPage, result } = aggregationResult[0];
+
+    return { totalPages, page: currentPage, result };
   }
 
   async getAttendeesCount(webinarId: string, AdminId: string): Promise<any> {
@@ -91,7 +167,6 @@ export class AttendeesService {
       adminId: new Types.ObjectId(`${AdminId}`),
       webinar: new Types.ObjectId(`${webinarId}`),
     };
-    console.log(pipeline);
     const result = await this.attendeeModel.deleteMany(pipeline);
 
     return { message: 'Deleted data successfully!', result: result };
