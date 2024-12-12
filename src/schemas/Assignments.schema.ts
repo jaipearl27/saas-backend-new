@@ -1,24 +1,32 @@
-import { Prop, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Mongoose, Types } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document, Types } from 'mongoose';
 
+@Schema({timestamps: true})
 export class Assignments extends Document {
   @Prop({
     type: Types.ObjectId,
-    ref: 'users',
+    ref: 'User',
     required: [true, 'Admin id is required'],
   })
   adminId: Types.ObjectId;
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'users',
+    ref: 'User',
     required: [true, 'employee id is required'],
   })
   user: Types.ObjectId;
 
   @Prop({
+    type: Types.ObjectId,
+    ref: 'Webinar',
+    required: [true, 'webinar id is required'],
+  })
+  webinar: Types.ObjectId;
+
+
+  @Prop({
     type: String,
-    unique: true,
     required: [true, 'Attendee E-Mail is required'],
   })
   email: string;
@@ -29,6 +37,8 @@ export class Assignments extends Document {
     enums: ['preWebinar', 'postWebinar'],
   })
   recordType: string;
+
+
 }
 
 export const AssignmentsSchema = SchemaFactory.createForClass(Assignments);
@@ -41,5 +51,8 @@ AssignmentsSchema.pre('save', function (next) {
     this.user = new Types.ObjectId(`${this.user}`);
   }
 
+  if (typeof this.webinar === 'string') {
+    this.webinar = new Types.ObjectId(`${this.webinar}`);
+  }
   next();
 });

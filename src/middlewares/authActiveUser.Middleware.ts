@@ -18,13 +18,14 @@ export class AuthActiveUserMiddleware implements NestMiddleware {
     try {
       const user = await this.usersService.getUserById(req?.id);
       if (user.isActive) {
-        req.contactLimit = user.contactLimit
+       
         next();
       } else {
-        throw new UnauthorizedException('Unauthorized, Invalid access token.');
+        throw new UnauthorizedException('User is Inactive, kindly recharge or contact the administrator.');
       }
     } catch (error) {
+      console.log(error)
       throw new UnauthorizedException('Invalid or expired access token.');
     }
-  }y
+  }
 }

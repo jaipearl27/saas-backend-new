@@ -17,9 +17,11 @@ export class GetAdminIdMiddleware implements NestMiddleware {
     private readonly jwtService: JwtService,
   ) {}
 
-  async use(req  /*:  Request */, res: Response, next: NextFunction) {
+  async use(req /*:  Request */, res: Response, next: NextFunction) {
     const access_token =
       req.cookies[this.configService.get('ACCESS_TOKEN_NAME')];
+
+    console.log('id')
 
     if (!access_token) {
       throw new UnauthorizedException('Access token not found.');
@@ -33,14 +35,13 @@ export class GetAdminIdMiddleware implements NestMiddleware {
       const decodedToken = this.jwtService.verify(access_token, decodeOptions);
 
       if (decodedToken.role === this.configService.get('appRoles').ADMIN) {
-        req.adminId = new Types.ObjectId(`${decodedToken.id}`) ; // request type is commented out otherwise typescript won't allow setting this
+        req.adminId = new Types.ObjectId(`${decodedToken.id}`); // request type is commented out otherwise typescript won't allow setting this
         next();
       } else {
         const user = await this.usersService.getUserById(decodedToken.id);
         req.adminId = user.adminId;
         next();
       }
-
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired access token.');
     }
