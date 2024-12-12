@@ -27,23 +27,6 @@ export class AttendeesService {
     limit: number,
     filters: AttendeesFilterDto = {},
   ): Promise<any> {
-<<<<<<< HEAD
-    console.log('adminid ----> ', AdminId);
-    let pipeline = {
-      adminId: new Types.ObjectId(`${AdminId}`),
-    };
-
-    if (webinarId !== '') {
-      pipeline['isAttended'] = isAttended;
-      pipeline['webinar'] = new Types.ObjectId(`${webinarId}`);
-    }
-
-    const totalAttendees = await this.attendeeModel.countDocuments(pipeline);
-
-    const totalPages = Math.ceil(totalAttendees / limit);
-
-=======
->>>>>>> 3e87047697a2d4ba6cd731e5591985664410f539
     const skip = (page - 1) * limit;
 
     const pipeline: PipelineStage[] = [
