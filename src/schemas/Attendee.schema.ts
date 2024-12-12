@@ -48,7 +48,7 @@ export class Attendee extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'webinars',
+    ref: 'Webinar',
     required: true,
   })
   webinar: Types.ObjectId; // Webinar Name

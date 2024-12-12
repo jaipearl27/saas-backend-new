@@ -8,8 +8,10 @@ import {
     IsString,
     IsNumber,
     MaxLength,
+    IsObject,
   } from 'class-validator';
   import { Types } from 'mongoose';
+import { RangeNumberDto } from 'src/users/dto/filters.dto';
   
   export class CreateAttendeeDto {
     @IsEmail({}, { message: 'Invalid email format' })
@@ -111,3 +113,34 @@ import {
     // @IsMongoId({ each: true, message: 'Each product ID must be a valid MongoId' })
     // products?: string[];
   }
+
+
+
+export class AttendeesFilterDto {
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @IsOptional()
+
+  lastName?: any;
+
+  @IsOptional()
+  @IsObject()
+  timeInSession?: RangeNumberDto;
+
+  @IsOptional() 
+  gender?: any;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  location?: string;
+}

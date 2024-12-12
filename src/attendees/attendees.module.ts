@@ -9,6 +9,7 @@ import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
 import { UsersModule } from 'src/users/users.module';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { AuthActiveUserMiddleware } from 'src/middlewares/authActiveUser.Middleware';
+import { ValidateBodyFilters } from 'src/middlewares/validate-body-filters.Middleware';
 
 @Module({
   imports: [
@@ -35,9 +36,13 @@ export class AttendeesModule {
     consumer
       .apply(AuthTokenMiddleware, GetAdminIdMiddleware)
       .forRoutes(
-        { path: 'attendees/:id', method: RequestMethod.GET },
         { path: 'attendees', method: RequestMethod.GET },
         { path: 'attendees/:id', method: RequestMethod.PATCH },
+        { path: 'attendees/all', method: RequestMethod.POST },
       );
+
+    consumer
+      .apply(AuthTokenMiddleware, GetAdminIdMiddleware, ValidateBodyFilters)
+      .forRoutes({ path: 'attendees/:id', method: RequestMethod.POST });
   }
 }

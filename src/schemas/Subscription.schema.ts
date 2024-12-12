@@ -8,7 +8,7 @@ export class Subscription extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'Plan',
+    ref: 'Plans',
     required: true,
   })
   plan: Types.ObjectId; // Linked plan

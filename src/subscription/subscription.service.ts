@@ -23,18 +23,8 @@ export class SubscriptionService {
     }
 
     async getSubscription(adminId: string): Promise<any> {
-        const result = await this.SubscriptionModel.aggregate([
-            {
-                $match: {admin: new Types.ObjectId(adminId)}
-            },
-            {$lookup: {
-                from: 'plans',
-                localField: 'plan',
-                foreignField: '_id',
-                as: 'plan'
-            }}
-        ]);
-        
+        const result = await this.SubscriptionModel.findOne({admin: new Types.ObjectId(adminId)})
+        .populate('plan');
         return result
     }
 

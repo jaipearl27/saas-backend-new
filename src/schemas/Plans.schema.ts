@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document, Types, Schema as MongooseSchema } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Plans extends Document {
@@ -53,6 +53,9 @@ export class Plans extends Document {
     required: [true, 'Toggle Limit is required'],
   })
   toggleLimit: number; //Plan duration
+
+  @Prop({ type: Map, of: MongooseSchema.Types.Mixed, required: true })
+  attendeeTableConfig: Map<string, any>;
 }
 
 export const PlansSchema = SchemaFactory.createForClass(Plans);
