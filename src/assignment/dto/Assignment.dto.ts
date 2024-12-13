@@ -16,9 +16,10 @@ export class AssignmentDto {
   @IsOptional()
   webinar: string;
 
-  @IsEmail()
+  @IsString()
   @IsNotEmpty()
-  email: string;
+  @IsOptional()
+  attendee: string;
 
   @IsString()
   @IsNotEmpty()

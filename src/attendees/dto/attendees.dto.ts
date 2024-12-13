@@ -60,6 +60,12 @@ import { RangeNumberDto } from 'src/users/dto/filters.dto';
     @IsMongoId({ message: 'Admin ID must be a valid MongoId' })
     @IsNotEmpty({ message: 'Admin ID is required' })
     adminId: Types.ObjectId;
+
+
+    @IsOptional()
+    @IsMongoId({ message: 'assignedTo must be a valid MongoId' })
+    @IsNotEmpty({ message: 'assignedTo is required' })
+    assignedTo: Types.ObjectId;
   
     // @IsOptional()
     // @IsArray({ message: 'Products must be an array' })

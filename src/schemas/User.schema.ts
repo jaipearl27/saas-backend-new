@@ -96,7 +96,14 @@ export class User extends Document {
     required: false,
     min: 0,
   })
-  contactLimit: number;
+  dailyContactLimit: number;
+
+  @Prop({
+    type: Number,
+    required: false,
+    min: 0,
+  })
+  dailtContactCount: number;
   
 
 }

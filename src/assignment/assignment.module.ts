@@ -10,18 +10,32 @@ import { Assignments, AssignmentsSchema } from 'src/schemas/Assignments.schema';
 import { UsersService } from 'src/users/users.service';
 import { UsersModule } from 'src/users/users.module';
 import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
+import { AttendeesModule } from 'src/attendees/attendees.module';
+import { WebinarModule } from 'src/webinar/webinar.module';
+import { WebinarService } from 'src/webinar/webinar.service';
+import { Webinar, WebinarSchema } from 'src/schemas/Webinar.schema';
 
 @Module({
   imports: [
     UsersModule,
+    AttendeesModule,
+    WebinarModule,
     MongooseModule.forFeature([
       {
         name: Assignments.name,
         schema: AssignmentsSchema,
       },
+      {
+        name: Attendee.name,
+        schema: AttendeeSchema,
+      },
+      {
+        name: Webinar.name,
+        schema: WebinarSchema
+      }
     ]),
   ],
-  providers: [AssignmentService],
+  providers: [AssignmentService, WebinarService],
   controllers: [AssignmentController],
 })
 export class AssignmentModule {

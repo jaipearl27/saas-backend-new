@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-@Schema({timestamps: true})
+@Schema({ timestamps: true })
 export class Assignments extends Document {
   @Prop({
     type: Types.ObjectId,
@@ -26,10 +26,11 @@ export class Assignments extends Document {
 
 
   @Prop({
-    type: String,
-    required: [true, 'Attendee E-Mail is required'],
+    type: Types.ObjectId,
+    ref: 'Attendee',
+    required: [true, 'Attendee id is required'],
   })
-  email: string;
+  attendee: Types.ObjectId;
 
   @Prop({
     type: String,
@@ -37,8 +38,6 @@ export class Assignments extends Document {
     enums: ['preWebinar', 'postWebinar'],
   })
   recordType: string;
-
-
 }
 
 export const AssignmentsSchema = SchemaFactory.createForClass(Assignments);
@@ -54,5 +53,10 @@ AssignmentsSchema.pre('save', function (next) {
   if (typeof this.webinar === 'string') {
     this.webinar = new Types.ObjectId(`${this.webinar}`);
   }
+
+  if (typeof this.attendee === 'string') {
+    this.attendee = new Types.ObjectId(`${this.attendee}`);
+  }
+
   next();
 });
