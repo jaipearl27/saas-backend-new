@@ -493,7 +493,7 @@ export class UsersService {
         email: updateEmployeeDto.email,
         phone: updateEmployeeDto.phone,
         validCallTime: updateEmployeeDto.validCallTime,
-        dailyContactLimit: updateEmployeeDto.dailyContactLimit,
+        contactLimit: updateEmployeeDto.contactLimit,
         role: role._id,
       },
       { new: true },

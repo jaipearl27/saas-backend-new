@@ -8,6 +8,7 @@ import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
 import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
 import { UsersModule } from 'src/users/users.module';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
+import { AuthActiveUserMiddleware } from 'src/middlewares/authActiveUser.Middleware';
 import { ValidateBodyFilters } from 'src/middlewares/validate-body-filters.Middleware';
 
 @Module({
