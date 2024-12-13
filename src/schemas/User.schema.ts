@@ -62,17 +62,6 @@ export class User extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'plan',
-  })
-  plan: Types.ObjectId; //plan
-
-  @Prop({
-    type: Date,
-  })
-  currentPlanExpiry: Date; //current plan expiry date
-
-  @Prop({
-    type: Types.ObjectId,
     ref: 'roles',
     required: [true, 'role is required'],
   })
@@ -107,9 +96,6 @@ const UserSchema = SchemaFactory.createForClass(User);
 UserSchema.pre('save', function (next) {
   if (typeof this.adminId === 'string') {
     this.adminId = new Types.ObjectId(`${this.adminId}`);
-  }
-  if (typeof this.plan === 'string') {
-    this.plan = new Types.ObjectId(`${this.plan}`);
   }
   if (typeof this.role === 'string') {
     this.role = new Types.ObjectId(`${this.role}`);

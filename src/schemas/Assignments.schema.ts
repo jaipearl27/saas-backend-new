@@ -26,10 +26,11 @@ export class Assignments extends Document {
 
 
   @Prop({
-    type: String,
-    required: [true, 'Attendee E-Mail is required'],
+    type: Types.ObjectId,
+    ref: 'Attendee',
+    required: [true, 'Attendee ID is required'],
   })
-  email: string;
+  attendee: Types.ObjectId;
 
   @Prop({
     type: String,

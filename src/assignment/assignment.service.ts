@@ -64,7 +64,7 @@ export class AssignmentService {
     webinar,
   ): Promise<any> {
     //check if assignment type and employee type match
-
+    console.log(assignmentDto)
     const assignments = [];
     const failedAssignments = [];
     const assignmentDtoLength = assignmentDto.length;
@@ -74,14 +74,10 @@ export class AssignmentService {
       assignmentDto[i].webinar = webinar;
 
       const assignmentExists = await this.assignmentsModel.findOne({
-        email: assignmentDto[i].email,
+        attendee: new Types.ObjectId(`${assignmentDto[i].attendee}`),
         webinar: new Types.ObjectId(`${webinar}`),
       });
 
-      console.log({
-        email: assignmentDto[i].email,
-        webinar: new Types.ObjectId(`${webinar}`),
-      });
 
       if (assignmentExists) {
         failedAssignments.push({
