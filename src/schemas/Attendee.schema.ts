@@ -75,10 +75,18 @@ export class Attendee extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'users',
+    ref: 'User',
     required: [true, 'adminId is required'],
   })
   adminId: Types.ObjectId;
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'User',
+    default: null,
+  })
+  assignedTo: Types.ObjectId | null;
+
 
   // @Prop({
   //   type: [

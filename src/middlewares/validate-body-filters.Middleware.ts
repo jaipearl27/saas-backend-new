@@ -23,7 +23,8 @@ export class ValidateBodyFilters implements NestMiddleware {
     const allowedFilters = Object.keys(filters).reduce(
       (acc, key) => {
         if (tableConfig.has(key)) {
-          acc[key] = filters[key];
+          const columnConfig = tableConfig.get(key);
+          if (columnConfig?.filterable) acc[key] = filters[key];
         }
         return acc;
       },
