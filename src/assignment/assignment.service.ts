@@ -13,13 +13,58 @@ export class AssignmentService {
     private readonly configService: ConfigService,
   ) {}
 
+  async getAssignments(
+    adminId: string,
+    id: string,
+    page: number,
+    limit: number,
+  ): Promise<any> {
+    const skip = (page - 1) * limit;
+
+    const pipeline = {
+      adminId: new Types.ObjectId(`${adminId}`),
+      user: new Types.ObjectId(`${id}`),
+    };
+
+    const totalDocuments = await this.assignmentsModel.countDocuments(pipeline);
+
+    const totalPages = Math.ceil(totalDocuments / limit) || 1;
+
+    const result = await this.assignmentsModel.aggregate([
+      { $match: pipeline },
+      {
+        $lookup: {
+          from: 'attendees',
+          let: { webinarId: '$webinar', email: '$email' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$webinar', '$$webinarId'] },
+                    { $eq: ['$email', '$$email'] },
+                  ],
+                }, // Match webinar in attendees
+              },
+            },
+          ],
+          as: 'attendee',
+        },
+      },
+      { $sort: { updatedAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+    ]);
+    return { totalPages, page, result };
+  }
+
   async addAssignment(
     assignmentDto: AssignmentDto[],
     employee,
     webinar,
   ): Promise<any> {
     //check if assignment type and employee type match
-    
+
     const assignments = [];
     const failedAssignments = [];
     const assignmentDtoLength = assignmentDto.length;
@@ -27,8 +72,7 @@ export class AssignmentService {
       assignmentDto[i].adminId = employee.adminId;
       assignmentDto[i].user = employee._id;
       assignmentDto[i].webinar = webinar;
-        
-      
+
       const assignmentExists = await this.assignmentsModel.findOne({
         email: assignmentDto[i].email,
         webinar: new Types.ObjectId(`${webinar}`),
@@ -37,7 +81,7 @@ export class AssignmentService {
       console.log({
         email: assignmentDto[i].email,
         webinar: new Types.ObjectId(`${webinar}`),
-      })
+      });
 
       if (assignmentExists) {
         failedAssignments.push({
