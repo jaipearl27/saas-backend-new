@@ -58,8 +58,6 @@ async create(
   return await newStatus.save();
 }
 
-  
-
   // Get all statuses
   async findAll(
     role: string,

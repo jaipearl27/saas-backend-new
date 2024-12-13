@@ -169,4 +169,13 @@ export class AuthService {
 
     return token;
   }
+
+  async getCurrentUser(id:string) : Promise<User>{
+    const user = await this.userModel.findById(id).select('-password');
+    if(!user){
+      throw new NotFoundException('No user found with the given ID.');
+    }
+
+    return user;
+  }
 }
