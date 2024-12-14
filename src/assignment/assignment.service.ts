@@ -1,4 +1,4 @@
-import { Injectable, NotAcceptableException } from '@nestjs/common';
+import { Injectable, NotAcceptableException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Assignments } from 'src/schemas/Assignments.schema';
@@ -15,6 +15,7 @@ export class AssignmentService {
     @InjectModel(Assignments.name) private assignmentsModel: Model<Assignments>,
     @InjectModel(Attendee.name) private attendeeModel: Model<Attendee>,
     private readonly configService: ConfigService,
+    private readonly webinarService: WebinarService,
   ) {}
 
   async getAssignments(
@@ -148,13 +149,18 @@ export class AssignmentService {
     const webinar = await this.webinarService.getWebinar(webinarId, adminId);
 
     if (!webinar) {
-      return;
+      throw new NotFoundException('Webinar not found.')
     }
 
     const availableEmployee = webinar.assignedEmployees
-    .filter((employee: any) => employee.role === this.configService.get('appRoles')['EMPLOYEE_REMINDER'] && employee.dailyContactLimit <= employee.dailyContactLimit)
-    .sort((a: any, b: any) => a.dailyAssignmentCount - b.dailyAssignmentCount)
-    .shift();
+      .filter(
+        (employee: any) =>
+          employee.role ===
+            this.configService.get('appRoles')['EMPLOYEE_REMINDER'] &&
+          employee.dailyContactCount < employee.dailyContactLimit,
+      )
+      .sort((a: any, b: any) => a.dailyAssignmentCount - b.dailyAssignmentCount)
+      .shift();
 
     const existingAttendee = await this.attendeeModel.findOne({
       email: attendee.email,
@@ -162,16 +168,18 @@ export class AssignmentService {
     });
 
     if (existingAttendee) {
-      const existingAssignment = await this.assignmentsModel.findOne({
+      //last assigned
+      const existingAssignment = await this.assignmentsModel.find({
         attendee: new Types.ObjectId(`${existingAttendee._id}`),
-        webinar: new Types.ObjectId(`${webinarId}`),
-      });
+      }).sort({updatedAt: -1}).limit(1);
 
-      if (existingAssignment) {
-        return;
+      if (!existingAssignment) {
+        //check if there is a previous owner
+      
       }
+    } else {
+      const newAttendee = await this.attendeeModel.create(attendee);
     }
 
-    const newAttendee = await this.attendeeModel.create(attendee);
   }
 }
