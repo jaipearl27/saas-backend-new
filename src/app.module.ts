@@ -28,6 +28,7 @@ import { NoticeBoardModule } from './notice-board/notice-board.module';
 import { AssignmentModule } from './assignment/assignment.module';
 import { StatusDropdownModule } from './status-dropdown/status-dropdown.module';
 import { DocumentsModule } from './documents/documents.module';
+import { AlarmModule } from './alarm/alarm.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { DocumentsModule } from './documents/documents.module';
     AssignmentModule,
     StatusDropdownModule,
     DocumentsModule,
+    AlarmModule,
   ],
   controllers: [AppController],
   providers: [AppService],
