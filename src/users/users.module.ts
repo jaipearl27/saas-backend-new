@@ -1,4 +1,9 @@
-import { forwardRef, MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+import {
+  forwardRef,
+  MiddlewareConsumer,
+  Module,
+  RequestMethod,
+} from '@nestjs/common';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -10,11 +15,24 @@ import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middlew
 import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
 import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
 import { Roles, RolesSchema } from 'src/schemas/Roles.schema';
-import { Subscription, SubscriptionSchema } from 'src/schemas/Subscription.schema';
+import {
+  Subscription,
+  SubscriptionSchema,
+} from 'src/schemas/Subscription.schema';
+import { diskStorage } from 'multer';
+import { MulterModule } from '@nestjs/platform-express';
 
 @Module({
   imports: [
-    BillingHistoryModule,
+    MulterModule.register({
+      storage: diskStorage({
+        destination: './documents',
+        filename: (req, file, cb) => {
+          const filename = `${Date.now()}-${file.originalname}`;
+          cb(null, filename);
+        },
+      }),
+    }),
     forwardRef(() => SubscriptionModule),
     MongooseModule.forFeature([
       {
@@ -32,8 +50,9 @@ import { Subscription, SubscriptionSchema } from 'src/schemas/Subscription.schem
       {
         name: Subscription.name,
         schema: SubscriptionSchema,
-      }
+      },
     ]),
+    BillingHistoryModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],
@@ -50,7 +69,10 @@ export class UsersModule {
 
     consumer
       .apply(AuthAdminTokenMiddleware)
-      .forRoutes({ path: 'users/employee*', method: RequestMethod.ALL });
+      .forRoutes(
+        { path: 'users/employee*', method: RequestMethod.ALL },
+        { path: 'users/document*', method: RequestMethod.DELETE },
+      );
 
     consumer
       .apply(AuthSuperAdminMiddleware)

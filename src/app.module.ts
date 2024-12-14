@@ -27,6 +27,7 @@ import { FilterPresetModule } from './filter-preset/filter-preset.module';
 import { NoticeBoardModule } from './notice-board/notice-board.module';
 import { AssignmentModule } from './assignment/assignment.module';
 import { StatusDropdownModule } from './status-dropdown/status-dropdown.module';
+import { DocumentsModule } from './documents/documents.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { StatusDropdownModule } from './status-dropdown/status-dropdown.module';
     NoticeBoardModule,
     AssignmentModule,
     StatusDropdownModule,
+    DocumentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
@@ -76,6 +78,7 @@ export class AppModule {
       .forRoutes(
         { path: 'users', method: RequestMethod.GET },
         { path: 'users/clients', method: RequestMethod.GET },
+        '/documents*',
       );
   }
 }

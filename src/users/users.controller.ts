@@ -1,26 +1,36 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
   Post,
   Query,
-
+  UploadedFile,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserInfoDto } from './dto/update-user.dto';
-import { AdminId, Id } from 'src/decorators/custom.decorator';
+import { AdminId, Id, Role } from 'src/decorators/custom.decorator';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { GetClientsFilterDto } from './dto/filters.dto';
-
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('users') // @route => /users
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Get()
   getUsers() {
@@ -29,30 +39,48 @@ export class UsersController {
   }
 
   @Post()
-  // @UsePipes(new ValidationPipe()) // or you can use validation pipe for a specific endpoint like this
   createUser(@Body() createUserDto: CreateUserDto) {
     return this.usersService.createUser(createUserDto);
   }
 
   @Patch()
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'document' }]))
   async updateUser(
+    @UploadedFiles() files: { document: Express.Multer.File[] },
     @Id() id: string,
-    @Body() updateUserInfoDto: UpdateUserInfoDto 
+    @Role() role: string,
+    @Body() updateUserInfoDto: UpdateUserInfoDto,
   ): Promise<any> {
-    const client = await this.usersService.updateUser(id, updateUserInfoDto)
-    return client
+    // console.log(files, '================== files ======================');
+    if (files?.document && role === this.configService.get('appRoles').ADMIN) {
+      console.log(files.document)
+      updateUserInfoDto.documents = files.document;
+    }
+    const client = await this.usersService.updateUser(id, updateUserInfoDto);
+    return client;
+  }
+
+
+  @Delete('document/:filename')
+  async deleteDocument(
+    @Param("filename") filename: string,
+    @Id() id: string,
+  ): Promise<any> {
+    const result = await this.usersService.deleteDocument(id, filename);
+    return result;
   }
 
   @Patch('password')
   async updatePassword(
     @Id() id: string,
-    @Body() updatePasswordDto: UpdatePasswordDto  
+    @Body() updatePasswordDto: UpdatePasswordDto,
   ): Promise<any> {
-    const client = await this.usersService.updatePassword(id, updatePasswordDto)
-    return client
+    const client = await this.usersService.updatePassword(
+      id,
+      updatePasswordDto,
+    );
+    return client;
   }
-
-
 
   @Post('/clients')
   async getClients(
@@ -76,26 +104,29 @@ export class UsersController {
 
   @Get('/clients/:id')
   async getClient(@Param('id') id: string): Promise<any> {
-    const client = await this.usersService.getClient(id)
-    return client
+    const client = await this.usersService.getClient(id);
+    return client;
   }
 
-  
   @Patch('/clients/:id')
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'document' }]))
   async updateClient(
+    @UploadedFiles() documents: { document: Express.Multer.File[] },
     @Param('id') id: string,
-    @Body() updateUserInfoDto: UpdateUserInfoDto 
+    @Body() updateUserInfoDto: UpdateUserInfoDto,
   ): Promise<any> {
-    const client = await this.usersService.updateClient(id, updateUserInfoDto)
-    return client
+    console.log(
+      documents,
+      '==================== documents ============================',
+    );
+
+    const client = await this.usersService.updateClient(id, updateUserInfoDto);
+    return client;
   }
 
-  
   @Get('/employee')
-  getEmployees(
-    @Id() id: string,
-  ) {
-    console.log('id ------> ', id)
+  getEmployees(@Id() id: string) {
+    console.log('id ------> ', id);
     return this.usersService.getEmployees(id);
   }
 
@@ -115,15 +146,15 @@ export class UsersController {
   async updateEmployeeStatus(
     @Param('id') userId: string,
     @Id() id: string,
-    @Body() body: {isActive: boolean},
+    @Body() body: { isActive: boolean },
   ): Promise<any> {
-    console.log(userId, id, body?.isActive)
-    return this.usersService.changeEmployeeStatus(userId,id,body?.isActive)
+    console.log(userId, id, body?.isActive);
+    return this.usersService.changeEmployeeStatus(userId, id, body?.isActive);
   }
 
   @Get('/employee/:id')
   async getEmployee(@Param('id') id: string): Promise<any> {
-    const client = await this.usersService.getEmployee(id)
-    return client
+    const client = await this.usersService.getEmployee(id);
+    return client;
   }
 }

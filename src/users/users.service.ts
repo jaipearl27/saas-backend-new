@@ -6,7 +6,6 @@ import {
   Logger,
   NotAcceptableException,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -381,6 +380,7 @@ export class UsersService {
     id: string,
     updateUserInfoDto: UpdateUserInfoDto,
   ): Promise<any> {
+    console.log(updateUserInfoDto);
     if (updateUserInfoDto.userName || updateUserInfoDto.email) {
       const isExisting = await this.userModel.findOne({
         $or: [
@@ -399,12 +399,44 @@ export class UsersService {
     delete updateUserInfoDto.password;
     delete updateUserInfoDto.isActive;
     delete updateUserInfoDto.statusChangeNote;
+    // Append documents if provided
+    if (updateUserInfoDto.documents?.length > 0) {
+      const user = await this.userModel.findById(id);
 
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Combine existing documents with new ones
+      const updatedDocuments = [
+        ...(user.documents || []),
+        ...updateUserInfoDto.documents,
+      ];
+
+      updateUserInfoDto.documents = updatedDocuments;
+    }
     const result = await this.userModel.findByIdAndUpdate(
       id,
       updateUserInfoDto,
       { new: true },
     );
+    return result;
+  }
+
+  async deleteDocument(id: string, filename: string): Promise<any> {
+    const user = await this.userModel.findById(id);
+
+    if (!user) throw new NotFoundException('No user found.');
+
+    const documents = user.documents;
+
+    const filteredDocuments = documents.filter(
+      doc => doc.filename !== filename,
+    );
+
+    user.documents = filteredDocuments;
+    const result = user.save();
+
     return result;
   }
 
@@ -654,7 +686,7 @@ export class UsersService {
           .exec();
 
         const adminIds = deactivatedAdminIds.map((admin) => admin._id);
-        console.log('adminIds', adminIds)
+        console.log('adminIds', adminIds);
 
         const employeeResult = await this.userModel.updateMany(
           {
