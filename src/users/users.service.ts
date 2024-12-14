@@ -362,7 +362,7 @@ export class UsersService {
     });
   }
 
-  getEmployee(id: string) {
+  getEmployee(id: string): Promise<User | null> {
     const employee = this.userModel.findById(id);
 
     return employee;
@@ -673,5 +673,15 @@ export class UsersService {
     } catch (error) {
       this.logger.error('Error during plan deactivation:', error.message);
     }
+  }
+
+  async decrementCount(id: string): Promise<boolean> {
+    const user = await this.userModel.findById(id).exec();
+    if (user) {
+      user.dailtContactCount -= 1;
+      await user.save();
+      return true;
+    }
+    return false;
   }
 }

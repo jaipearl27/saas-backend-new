@@ -22,7 +22,7 @@ export class SubscriptionService {
         return result
     }
 
-    async getSubscription(adminId: string): Promise<any> {
+    async getSubscription(adminId: string): Promise<Subscription> {
         const result = await this.SubscriptionModel.findOne({admin: new Types.ObjectId(adminId)})
         .populate('plan');
         return result

@@ -1,4 +1,10 @@
-import { Injectable, NotAcceptableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  NotAcceptableException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Assignments } from 'src/schemas/Assignments.schema';
@@ -8,6 +14,9 @@ import { assign } from 'nodemailer/lib/shared';
 import { CreateAttendeeDto } from 'src/attendees/dto/attendees.dto';
 import { Attendee } from 'src/schemas/Attendee.schema';
 import { WebinarService } from 'src/webinar/webinar.service';
+import { SubscriptionService } from 'src/subscription/subscription.service';
+import { AttendeesService } from 'src/attendees/attendees.service';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class AssignmentService {
@@ -16,6 +25,9 @@ export class AssignmentService {
     @InjectModel(Attendee.name) private attendeeModel: Model<Attendee>,
     private readonly configService: ConfigService,
     private readonly webinarService: WebinarService,
+    private readonly subscriptionService: SubscriptionService,
+    private readonly attendeeService: AttendeesService,
+    private readonly userService: UsersService,
   ) {}
 
   async addAssignment(
@@ -107,27 +119,80 @@ export class AssignmentService {
       return;
     }
 
-    const availableEmployee = webinar.assignedEmployees
-    .filter((employee: any) => employee.role === this.configService.get('appRoles')['EMPLOYEE_REMINDER'] && employee.dailyContactLimit <= employee.dailyContactLimit)
-    .sort((a: any, b: any) => a.dailyAssignmentCount - b.dailyAssignmentCount)
-    .shift();
-
     const existingAttendee = await this.attendeeModel.findOne({
       email: attendee.email,
       webinar: webinarId,
     });
 
     if (existingAttendee) {
-      const existingAssignment = await this.assignmentsModel.findOne({
-        attendee: new Types.ObjectId(`${existingAttendee._id}`),
-        webinar: new Types.ObjectId(`${webinarId}`),
-      });
-
-      if (existingAssignment) {
-        return;
-      }
+      throw new BadRequestException('Attendee already exists.');
     }
 
-    const newAttendee = await this.attendeeModel.create(attendee);
+    const attendeesCount = await this.attendeeService.getAttendeesCount(
+      '',
+      adminId,
+    );
+
+    const subscription =
+      await this.subscriptionService.getSubscription(adminId);
+
+    if (
+      !subscription ||
+      subscription.expiryDate < new Date() ||
+      subscription.contactLimit <= attendeesCount
+    ) {
+      throw new ForbiddenException('You have reached your contact limit.');
+    }
+
+    const newAttendee = await this.attendeeService.addAttendees([attendee]);
+
+    if (!newAttendee) {
+      throw new InternalServerErrorException('Failed to add attendee.');
+    }
+
+    const lastAssigned = await this.attendeeService.checkPreviousAssignment(
+      newAttendee.email,
+    );
+
+    if (lastAssigned && lastAssigned.assignedTo) {
+      const isEmployeeAssignedToWebinar = webinar.assignedEmployees.includes(
+        lastAssigned.assignedTo,
+      );
+
+      if (isEmployeeAssignedToWebinar) {
+        const employee = await this.userService.getEmployee(
+          lastAssigned.assignedTo.toString(),
+        );
+
+        if (
+          employee &&
+          employee.dailyContactLimit < employee.dailtContactCount
+        ) {
+          const newAssignment = await this.assignmentsModel.create({
+            adminId: adminId,
+            webinar: webinar._id,
+            attendee: newAttendee._id,
+            user: employee._id,
+            recordType: recordType,
+          });
+
+          if (!newAssignment) {
+            throw new InternalServerErrorException('Failed to add assignment.');
+          }
+
+          const isDecremented = await this.userService.decrementCount(
+            employee._id.toString(),
+          );
+
+          if (!isDecremented) {
+            throw new InternalServerErrorException(
+              'Failed to decrement count.',
+            );
+          }
+
+          return { newAssignment, newAttendee };
+        }
+      }
+    }
   }
 }

@@ -14,12 +14,15 @@ import { AttendeesModule } from 'src/attendees/attendees.module';
 import { WebinarModule } from 'src/webinar/webinar.module';
 import { WebinarService } from 'src/webinar/webinar.service';
 import { Webinar, WebinarSchema } from 'src/schemas/Webinar.schema';
+import { SubscriptionModule } from 'src/subscription/subscription.module';
 
 @Module({
   imports: [
     UsersModule,
     AttendeesModule,
     WebinarModule,
+    SubscriptionModule,
+    UsersModule,
     MongooseModule.forFeature([
       {
         name: Assignments.name,

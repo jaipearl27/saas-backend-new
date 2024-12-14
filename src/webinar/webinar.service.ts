@@ -84,10 +84,9 @@ export class WebinarService {
     return { result, page, totalPages };
   }
 
-  async getWebinar(id: string, adminId: string): Promise<any> {
-    //get all webinars as per user id
+  async getWebinar(id: string, adminId: string): Promise<Webinar | null> {
 
-    const result = await this.webinarModel.find({
+    const result = await this.webinarModel.findOne({
       _id: new Types.ObjectId(`${id}`),
       adminId: new Types.ObjectId(`${adminId}`),
     });

@@ -120,13 +120,18 @@ export class AttendeesService {
   }
 
   async getAttendeesCount(webinarId: string, AdminId: string): Promise<any> {
+
+
     const webinarPipeline = {
       adminId: new Types.ObjectId(`${AdminId}`),
-      webinar: new Types.ObjectId(`${webinarId}`),
     };
 
+    if(webinarId){
+      webinarPipeline['webinar'] = new Types.ObjectId(`${webinarId}`);
+    }
+
     const totalContacts =
-      await this.attendeeModel.countDocuments(webinarPipeline);
+      await this.attendeeModel.countDocuments(webinarPipeline) || 0;
 
     return totalContacts;
   }
@@ -166,5 +171,16 @@ export class AttendeesService {
     const result = await this.attendeeModel.deleteMany(pipeline);
 
     return { message: 'Deleted data successfully!', result: result };
+  }
+
+  async checkPreviousAssignment(email: string) : Promise<Attendee|null>{
+
+    const lastAssigned = await this.attendeeModel
+    .findOne({ email })
+    .sort({ createdAt: -1 }) 
+    .exec();
+
+  return lastAssigned;
+    
   }
 }
