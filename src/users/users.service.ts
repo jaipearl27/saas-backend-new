@@ -678,7 +678,7 @@ export class UsersService {
   async decrementCount(id: string): Promise<boolean> {
     const user = await this.userModel.findById(id).exec();
     if (user) {
-      user.dailtContactCount -= 1;
+      user.dailyContactCount -= 1;
       await user.save();
       return true;
     }

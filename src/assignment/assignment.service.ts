@@ -166,7 +166,7 @@ export class AssignmentService {
 
         if (
           employee &&
-          employee.dailyContactLimit < employee.dailtContactCount
+          employee.dailyContactLimit < employee.dailyContactCount
         ) {
           const newAssignment = await this.assignmentsModel.create({
             adminId: adminId,

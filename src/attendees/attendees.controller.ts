@@ -87,7 +87,7 @@ export class AttendeesController {
       limit,
       filters
     );
-
+    
     return result;
   }
 

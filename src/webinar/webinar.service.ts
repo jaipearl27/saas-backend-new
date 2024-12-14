@@ -11,7 +11,7 @@ export class WebinarService {
   constructor(
     @InjectModel(Webinar.name) private webinarModel: Model<Webinar>,
     private readonly configService: ConfigService,
-    private readonly attendeesService: AttendeesService
+    private readonly attendeesService: AttendeesService,
   ) {}
 
   async createWebiar(createWebinarDto: CreateWebinarDto): Promise<any> {
@@ -86,10 +86,12 @@ export class WebinarService {
 
   async getWebinar(id: string, adminId: string): Promise<Webinar | null> {
 
-    const result = await this.webinarModel.findOne({
-      _id: new Types.ObjectId(`${id}`),
-      adminId: new Types.ObjectId(`${adminId}`),
-    });
+    const result = await this.webinarModel
+      .findOne({
+        _id: new Types.ObjectId(`${id}`),
+        adminId: new Types.ObjectId(`${adminId}`),
+      })
+      .populate('assignedEmployees');
     return result;
   }
 
@@ -121,6 +123,10 @@ export class WebinarService {
       id,
       adminId,
     );
-    return { message: 'Webinar Deleted successfully', deletedWebinar, deletedAttendees };
+    return {
+      message: 'Webinar Deleted successfully',
+      deletedWebinar,
+      deletedAttendees,
+    };
   }
 }

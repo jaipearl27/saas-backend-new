@@ -98,12 +98,13 @@ export class User extends Document {
   })
   dailyContactLimit: number;
 
+
   @Prop({
     type: Number,
     required: false,
     min: 0,
   })
-  dailtContactCount: number;
+  dailyContactCount: number;
   
 
 }

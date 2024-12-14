@@ -28,7 +28,7 @@ export class Assignments extends Document {
   @Prop({
     type: Types.ObjectId,
     ref: 'Attendee',
-    required: [true, 'Attendee id is required'],
+    required: [true, 'Attendee ID is required'],
   })
   attendee: Types.ObjectId;
 
