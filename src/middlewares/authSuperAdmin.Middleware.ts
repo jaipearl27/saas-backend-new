@@ -15,6 +15,7 @@ export class AuthSuperAdminMiddleware implements NestMiddleware {
   ) {}
 
   async use(req /*:  Request */, res: Response, next: NextFunction) {
+ 
     const access_token =
       req.cookies[this.configService.get('ACCESS_TOKEN_NAME')];
     const pabbly_access_token = this.extractTokenFromHeader(req)
@@ -26,6 +27,7 @@ export class AuthSuperAdminMiddleware implements NestMiddleware {
     try {
 
       if (access_token) {
+        console.log('super admin access token')
         const decodeOptions = {
           secret: this.configService.get('ACCESS_TOKEN_SECRET'),
         };
@@ -49,7 +51,7 @@ export class AuthSuperAdminMiddleware implements NestMiddleware {
           );
         }
       } else if (pabbly_access_token) {
-        
+        console.log('super admin pabbly access token')
         const decodeOptions = {
           secret: this.configService.get('PABBLY_ACCESS_TOKEN_SECRET'),
         };
