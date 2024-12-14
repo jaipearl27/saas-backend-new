@@ -114,6 +114,10 @@ import { RangeNumberDto } from 'src/users/dto/filters.dto';
     @MaxLength(100, { message: 'Location can be up to 100 characters long' })
     location?: string;
 
+    @IsOptional()
+    @IsMongoId({ message: 'assignedTo must be a valid MongoId' })
+    assignedTo: Types.ObjectId;
+
     // @IsOptional()
     // @IsArray({ message: 'Products must be an array' })
     // @IsMongoId({ each: true, message: 'Each product ID must be a valid MongoId' })

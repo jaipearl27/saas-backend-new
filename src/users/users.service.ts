@@ -493,7 +493,7 @@ export class UsersService {
         email: updateEmployeeDto.email,
         phone: updateEmployeeDto.phone,
         validCallTime: updateEmployeeDto.validCallTime,
-        contactLimit: updateEmployeeDto.contactLimit,
+        dailyContactLimit: updateEmployeeDto.dailyContactLimit,
         role: role._id,
       },
       { new: true },
@@ -675,10 +675,13 @@ export class UsersService {
     }
   }
 
-  async decrementCount(id: string): Promise<boolean> {
+  async incrementCount(id: string): Promise<boolean> {
     const user = await this.userModel.findById(id).exec();
     if (user) {
+      if(user.dailyContactCount)
       user.dailyContactCount -= 1;
+      else
+      user.dailyContactCount = 1;
       await user.save();
       return true;
     }

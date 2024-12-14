@@ -51,6 +51,7 @@ export class WebinarService {
           _id: 1,
           webinarName: 1,
           webinarDate: 1,
+          assignedEmployees: 1,
           adminId: 1,
           createdAt: 1,
           updatedAt: 1,
@@ -84,14 +85,13 @@ export class WebinarService {
     return { result, page, totalPages };
   }
 
-  async getWebinar(id: string, adminId: string): Promise<Webinar | null> {
+  async getWebinar(id: string, adminId: string): Promise<any> {
 
     const result = await this.webinarModel
-      .findOne({
-        _id: new Types.ObjectId(`${id}`),
-        adminId: new Types.ObjectId(`${adminId}`),
-      })
-      .populate('assignedEmployees');
+      .findById(id)
+      .populate('assignedEmployees')
+      .lean()
+      ;
     return result;
   }
 

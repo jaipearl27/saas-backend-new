@@ -120,18 +120,16 @@ export class AttendeesService {
   }
 
   async getAttendeesCount(webinarId: string, AdminId: string): Promise<any> {
-
-
     const webinarPipeline = {
       adminId: new Types.ObjectId(`${AdminId}`),
     };
 
-    if(webinarId){
+    if (webinarId) {
       webinarPipeline['webinar'] = new Types.ObjectId(`${webinarId}`);
     }
 
     const totalContacts =
-      await this.attendeeModel.countDocuments(webinarPipeline) || 0;
+      (await this.attendeeModel.countDocuments(webinarPipeline)) || 0;
 
     return totalContacts;
   }
@@ -163,6 +161,14 @@ export class AttendeesService {
     return result;
   }
 
+  async updateAttendeeAssign(id: string, assignedTo: string): Promise<Attendee | null> {
+    return await this.attendeeModel.findByIdAndUpdate(id, {
+      $set: {
+        assignedTo: new Types.ObjectId(assignedTo),
+      },
+    }, { new: true });
+  }
+
   async deleteAttendees(webinarId: string, AdminId: string): Promise<any> {
     const pipeline = {
       adminId: new Types.ObjectId(`${AdminId}`),
@@ -173,14 +179,12 @@ export class AttendeesService {
     return { message: 'Deleted data successfully!', result: result };
   }
 
-  async checkPreviousAssignment(email: string) : Promise<Attendee|null>{
-
+  async checkPreviousAssignment(email: string): Promise<Attendee | null> {
     const lastAssigned = await this.attendeeModel
-    .findOne({ email })
-    .sort({ createdAt: -1 }) 
-    .exec();
+      .findOne({ email })
+      .sort({ createdAt: -1 })
+      .exec();
 
-  return lastAssigned;
-    
+    return lastAssigned;
   }
 }

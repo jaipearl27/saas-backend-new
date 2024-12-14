@@ -9,10 +9,11 @@ import {
   Query,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AssignmentDto } from './dto/Assignment.dto';
+import { AssignmentDto, preWebinarAssignmentDto } from './dto/Assignment.dto';
 import { UsersService } from 'src/users/users.service';
 import { AssignmentService } from './assignment.service';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
+import { CreateAttendeeDto } from 'src/attendees/dto/attendees.dto';
 
 @Controller('assignment')
 export class AssignmentController {
@@ -39,31 +40,41 @@ export class AssignmentController {
     return result;
   }
 
-  @Post(':id')
-  async addAssignment(
-    @Body() body: { webinar: string; assignments: AssignmentDto[] },
-    @Param('id') id: string,
+  // @Post(':id')
+  // async addAssignment(
+  //   @Body() body: { webinar: string; assignments: AssignmentDto[] },
+  //   @Param('id') id: string,
+  //   @Id() adminId: string,
+  // ): Promise<any> {
+  //   // check if employee is of this admin
+  //   const employee = await this.usersService.getUserById(id);
+
+  //   if (!employee)
+  //     throw new NotFoundException('No Employee found with this ID');
+
+  //   if (String(employee.adminId) !== String(adminId)) {
+  //     throw new UnauthorizedException(
+  //       'Admin can only assign to their employees.',
+  //     );
+  //   }
+
+  //   //continue assignment
+  //   const result = await this.assignmentService.addAssignment(
+  //     body.assignments,
+  //     employee,
+  //     body.webinar,
+  //   );
+
+  //   return result;
+  // }
+
+  @Post('/prewebinar')
+  async addPreWebinarAssignment(
+    @Body() body:preWebinarAssignmentDto,
     @Id() adminId: string,
-  ): Promise<any> {
-    // check if employee is of this admin
-    const employee = await this.usersService.getUserById(id);
+  ): Promise<any> { 
+      console.log('---> prewebinar', adminId  );
 
-    if (!employee)
-      throw new NotFoundException('No Employee found with this ID');
-
-    if (String(employee.adminId) !== String(adminId)) {
-      throw new UnauthorizedException(
-        'Admin can only assign to their employees.',
-      );
-    }
-
-    //continue assignment
-    const result = await this.assignmentService.addAssignment(
-      body.assignments,
-      employee,
-      body.webinar,
-    );
-
-    return result;
+    return await this.assignmentService.addPreWebinarAssignments(adminId, body.webinar, body.attendee);
   }
 }
