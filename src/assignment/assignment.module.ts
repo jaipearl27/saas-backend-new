@@ -15,6 +15,8 @@ import { WebinarModule } from 'src/webinar/webinar.module';
 import { WebinarService } from 'src/webinar/webinar.service';
 import { Webinar, WebinarSchema } from 'src/schemas/Webinar.schema';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
+import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
+import { GetAdminIdForUserActivityMiddleware } from 'src/middlewares/getAdminIdForUserActivity.Middleware';
 
 @Module({
   imports: [
@@ -44,7 +46,11 @@ import { SubscriptionModule } from 'src/subscription/subscription.module';
 export class AssignmentModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
+    .apply(GetAdminIdForUserActivityMiddleware)
+    .forRoutes({ path: 'assignment', method: RequestMethod.GET });
+
+    consumer
       .apply(AuthAdminTokenMiddleware, AuthActiveUserMiddleware)
-      .forRoutes({ path: 'assignment*', method: RequestMethod.ALL });
+      .forRoutes({ path: 'assignment/*', method: RequestMethod.ALL });
   }
 }
