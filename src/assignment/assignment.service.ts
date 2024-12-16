@@ -82,75 +82,72 @@ export class AssignmentService {
     employee,
     webinar,
   ): Promise<any> {
-    //   //check if assignment type and employee type match
-    //   const assignments = [];
-    //   const failedAssignments = [];
-    //   const assignmentDtoLength = assignmentDto.length;
-    //   for (let i = 0; i < assignmentDtoLength; i++) {
-    //     assignmentDto[i].adminId = employee.adminId;
-    //     assignmentDto[i].user = employee._id;
-    //     assignmentDto[i].webinar = webinar;
-    //     const assignmentExists = await this.assignmentsModel.findOne({
-    //       email: assignmentDto[i].email,
-    //       webinar: new Types.ObjectId(`${webinar}`),
-    //     });
-    //       email: assignmentDto[i].email,
-    //       webinar: new Types.ObjectId(`${webinar}`),
-    //     })
-    //     if (assignmentExists) {
-    //       failedAssignments.push({
-    //         attendee: assignmentDto[i],
-    //         message: 'Attendee already assigned to another employee',
-    //       });
-    //       continue;
-    //     }
-    //     try {
-    //       if (assignmentDto[i].recordType === 'preWebinar') {
-    //         // assignment to reminder employees
-    //         if (
-    //           String(employee.role) ===
-    //           this.configService.get('appRoles')['EMPLOYEE_REMINDER']
-    //         ) {
-    //           // reminder employee assignment logic
-    //           const result = await this.assignmentsModel.create(assignmentDto[i]);
-    //           assignments.push(result);
-    //         } else {
-    //           failedAssignments.push({
-    //             attendee: assignmentDto[i],
-    //             message:
-    //               'Pre-Webinar records can only be assigned to Reminder Employee',
-    //           });
-    //         }
-    //       } else if (assignmentDto[i].recordType === 'postWebinar') {
-    //         // assignment to reminder employees
-    //         if (
-    //           String(employee.role) ===
-    //           this.configService.get('appRoles')['EMPLOYEE_SALES']
-    //         ) {
-    //           // sales employee assignment logic
-    //           const result = await this.assignmentsModel.create(assignmentDto[i]);
-    //           assignments.push(result);
-    //         } else {
-    //           failedAssignments.push({
-    //             attendee: assignmentDto[i],
-    //             message:
-    //               'Post-Webinar records can only be assigned to Sales Employee',
-    //           });
-    //         }
-    //       } else {
-    //         failedAssignments.push({
-    //           attendee: assignmentDto[i],
-    //           message: 'Record type must be Pre or Post Webinar.',
-    //         });
-    //       }
-    //     } catch (error) {
-    //       failedAssignments.push({
-    //         attendee: assignmentDto[i],
-    //         message: error,
-    //       });
-    //     }
-    //   }
-    //   return { assignments, failedAssignments };
+      //check if assignment type and employee type match
+      const assignments = [];
+      const failedAssignments = [];
+      const assignmentDtoLength = assignmentDto.length;
+      for (let i = 0; i < assignmentDtoLength; i++) {
+        assignmentDto[i].adminId = employee.adminId;
+        assignmentDto[i].user = employee._id;
+        assignmentDto[i].webinar = webinar;
+        const assignmentExists = await this.assignmentsModel.findOne({
+          attendee: new Types.ObjectId(`${assignmentDto[i].attendee}`),
+          webinar: new Types.ObjectId(`${webinar}`),
+        });
+        if (assignmentExists) {
+          failedAssignments.push({
+            attendee: assignmentDto[i],
+            message: 'Attendee already assigned to another employee',
+          });
+          continue;
+        }
+        try {
+          if (assignmentDto[i].recordType === 'preWebinar') {
+            // assignment to reminder employees
+            if (
+              String(employee.role) ===
+              this.configService.get('appRoles')['EMPLOYEE_REMINDER']
+            ) {
+              // reminder employee assignment logic
+              const result = await this.assignmentsModel.create(assignmentDto[i]);
+              assignments.push(result);
+            } else {
+              failedAssignments.push({
+                attendee: assignmentDto[i],
+                message:
+                  'Pre-Webinar records can only be assigned to Reminder Employee',
+              });
+            }
+          } else if (assignmentDto[i].recordType === 'postWebinar') {
+            // assignment to reminder employees
+            if (
+              String(employee.role) ===
+              this.configService.get('appRoles')['EMPLOYEE_SALES']
+            ) {
+              // sales employee assignment logic
+              const result = await this.assignmentsModel.create(assignmentDto[i]);
+              assignments.push(result);
+            } else {
+              failedAssignments.push({
+                attendee: assignmentDto[i],
+                message:
+                  'Post-Webinar records can only be assigned to Sales Employee',
+              });
+            }
+          } else {
+            failedAssignments.push({
+              attendee: assignmentDto[i],
+              message: 'Record type must be Pre or Post Webinar.',
+            });
+          }
+        } catch (error) {
+          failedAssignments.push({
+            attendee: assignmentDto[i],
+            message: error,
+          });
+        }
+      }
+      return { assignments, failedAssignments };
   }
 
   async addPreWebinarAssignments(

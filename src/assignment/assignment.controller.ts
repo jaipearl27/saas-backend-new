@@ -22,6 +22,18 @@ export class AssignmentController {
     private readonly assignmentService: AssignmentService,
   ) {}
 
+  @Get()
+  async getEmployeeAssignments(
+    @AdminId() adminId: string,
+    @Id() employeeId: string,
+    @Query() query: { page?: string; limit?: string },
+  ){
+    let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
+    let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
+    const result = await this.assignmentService.getAssignments(adminId,employeeId, page, limit);
+    return result;
+  }
+
   // @Get(':id')
   // async getAssignments(
   //   @Id() adminId: string,
