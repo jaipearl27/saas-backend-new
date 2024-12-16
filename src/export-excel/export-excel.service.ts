@@ -8,6 +8,8 @@ import { GetClientsFilterDto } from 'src/users/dto/filters.dto';
 import { UsersService } from 'src/users/users.service';
 import { AttendeesFilterDto } from 'src/attendees/dto/attendees.dto';
 import { AttendeesService } from 'src/attendees/attendees.service';
+import { WebinarFilterDTO } from 'src/webinar/dto/webinar-filter.dto';
+import { WebinarService } from 'src/webinar/webinar.service';
 
 @Injectable()
 export class ExportExcelService {
@@ -15,15 +17,45 @@ export class ExportExcelService {
     @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly usersService: UsersService,
     private readonly attendeeService: AttendeesService,
+    private readonly webinarService: WebinarService
   ) {}
 
+  async generateExcel(
+    workerData: any,
+    workerPath: string,
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const worker = new Worker(workerPath, { workerData });
+  
+      worker.on('message', (message) => {
+        if (message.success) {
+          resolve(message.filePath);
+        } else {
+          console.error('Worker Error:', message.error);
+          reject(new Error(message.error));
+        }
+      });
+  
+      worker.on('error', (err) => {
+        console.error('Worker Thread Error:', err);
+        reject(err);
+      });
+  
+      worker.on('exit', (code) => {
+        if (code !== 0) {
+          console.error(`Worker stopped with exit code ${code}`);
+          reject(new Error(`Worker stopped with exit code ${code}`));
+        }
+      });
+    });
+  }
+  
   async generateExcelForClients(
     limit: number,
     columns: string[],
     filterData: GetClientsFilterDto,
   ): Promise<string> {
     const data = [];
-
     const defaultColumns = [
       { header: 'Email', key: 'email', width: 50 },
       { header: 'Company Name', key: 'companyName', width: 30 },
@@ -36,61 +68,27 @@ export class ExportExcelService {
       { header: 'Contacts Limit', key: 'contactsLimit', width: 15 },
       { header: 'Total Employees', key: 'totalEmployees', width: 15 },
       { header: 'Employee Sales Count', key: 'employeeSalesCount', width: 15 },
-      {
-        header: 'Employee Reminder Count',
-        key: 'employeeReminderCount',
-        width: 15,
-      },
+      { header: 'Employee Reminder Count', key: 'employeeReminderCount', width: 15 },
       { header: 'Toggle Limit', key: 'toggleLimit', width: 15 },
     ];
-
+  
     const selectedColumns = columns.length
       ? defaultColumns.filter((col) => columns.includes(col.key))
       : defaultColumns;
-
+  
     const pipeline = this.usersService.createClientPipeline(filterData);
-
     const cursor = this.userModel
       .aggregate([...pipeline, { $limit: limit }])
       .cursor();
-
+  
     for await (const doc of cursor) {
       data.push(doc);
     }
-
-    const workerPath = path.resolve(
-      __dirname,
-      '../workers/generate-excel.worker.js',
-    );
-
-    return new Promise((resolve, reject) => {
-      const worker = new Worker(workerPath, {
-        workerData: { data, columns: selectedColumns },
-      });
-
-      worker.on('message', (message) => {
-        if (message.success) {
-          resolve(message.filePath);
-        } else {
-          console.error('Worker Error:', message.error);
-          reject(new Error(message.error));
-        }
-      });
-
-      worker.on('error', (err) => {
-        console.error('Worker Thread Error:', err);
-        reject(err);
-      });
-
-      worker.on('exit', (code) => {
-        if (code !== 0) {
-          console.error(`Worker stopped with exit code ${code}`);
-          reject(new Error(`Worker stopped with exit code ${code}`));
-        }
-      });
-    });
+  
+    const workerPath = path.resolve(__dirname, '../workers/generate-excel.worker.js');
+    return this.generateExcel({ data, columns: selectedColumns }, workerPath);
   }
-
+  
   async generateExcelForWebinarAttendees(
     limit: number,
     columns: string[],
@@ -107,45 +105,41 @@ export class ExportExcelService {
       limit,
       filterData,
     );
-
+  
     const payload = {
       data: aggregationResult.result || [],
-      columns: columns.map((col) => {
-        return { header: col, key: col, width: 20 };
-      }),
+      columns: columns.map((col) => ({
+        header: col,
+        key: col,
+        width: 20,
+      })),
     };
-    const workerPath = path.resolve(
-      __dirname,
-      '../workers/generate-excel.worker.js',
-    );
-
-    return new Promise((resolve, reject) => {
-      const worker = new Worker(workerPath, {
-        workerData: payload,
-      });
-
-      worker.on('message', (message) => {
-        if (message.success) {
-          resolve(message.filePath);
-        } else {
-          console.error('Worker Error:', message.error);
-          reject(new Error(message.error));
-        }
-      });
-
-      worker.on('error', (err) => {
-        console.error('Worker Thread Error:', err);
-        reject(err);
-      });
-
-      worker.on('exit', (code) => {
-        if (code !== 0) {
-          console.error(`Worker stopped with exit code ${code}`);
-          reject(new Error(`Worker stopped with exit code ${code}`));
-        }
-      });
-    });
+  
+    const workerPath = path.resolve(__dirname, '../workers/generate-excel.worker.js');
+    return this.generateExcel(payload, workerPath);
   }
+
+  async generateExcelForWebinar(
+    limit: number,
+    columns: string[],
+    filterData: WebinarFilterDTO,
+    adminId: string,
+  ): Promise<string> {
+    const aggregationResult = await this.webinarService.getWebinars(adminId,1, limit,filterData,false)
+  
+    const payload = {
+      data: aggregationResult.result || [],
+      columns: columns.map((col) => ({
+        header: col,
+        key: col,
+        width: 20,
+      })),
+    };
+  
+    const workerPath = path.resolve(__dirname, '../workers/generate-excel.worker.js');
+    return this.generateExcel(payload, workerPath);
+  }
+  
 
   // async generateExcelForClientsOld(limit: number, columns: string[], filterData: GetClientsFilterDto): Promise<string> {
   //   const data = [];
