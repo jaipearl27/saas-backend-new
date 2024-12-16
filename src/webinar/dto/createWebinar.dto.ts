@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Types } from 'mongoose';
 
 export class CreateWebinarDto {
   @IsString()
@@ -14,6 +15,10 @@ export class CreateWebinarDto {
   @IsOptional()
   @IsNotEmpty()
   adminId?: string;
+
+  @IsArray()
+  @IsOptional()
+  assignedEmployees?: Types.ObjectId[];
 }
 
 export class UpdateWebinarDto {
@@ -24,4 +29,8 @@ export class UpdateWebinarDto {
   @IsString()
   @IsOptional()
   webinarDate?: string;
+
+  @IsArray()
+  @IsOptional()
+  assignedEmployees?: Types.ObjectId[];
 }

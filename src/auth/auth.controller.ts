@@ -91,6 +91,21 @@ export class AuthController {
     return this.authService.createClient(createClientDto, creatorDetailsDto);
   }
 
+  @Get('/current-user')
+  async getCurrentUser(
+    @Id() id: string,
+  ): Promise<any> {
+
+    const user = await this.authService.getCurrentUser(id);
+
+    return {
+      status: true,
+      message: 'User found',
+      data: user
+    }
+
+  }
+
   // @Get('/token/:id')
   // async pabblyToken(
   //   @Param() param

@@ -3,7 +3,6 @@ import { Document, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class User extends Document {
-  
   @Prop({
     type: String,
     required: [true, 'E-mail is required'],
@@ -16,7 +15,6 @@ export class User extends Document {
     trim: true,
   })
   companyName: string; //company name
-
 
   @Prop({
     type: String,
@@ -42,7 +40,7 @@ export class User extends Document {
     required: false,
     minlength: 1,
     maxlength: 1000,
-    trim: true
+    trim: true,
   })
   statusChangeNote: string; //isActive
 
@@ -89,20 +87,55 @@ export class User extends Document {
     required: false,
     min: 0,
   })
-  validCallTime: number; 
-  
+  validCallTime: number;
+
   @Prop({
     type: Number,
     required: false,
     min: 0,
   })
   dailyContactLimit: number;
-  
 
+  @Prop({
+    type: Number,
+    required: false,
+    min: 0,
+  })
+  dailyContactCount: number;
+
+  @Prop({
+    type: [{
+      fieldname: String,
+      originalname: String,
+      encoding: String,
+      mimetype: String,
+      destination: String,
+      filename: String,
+      path: String,
+      size: Number
+    }],
+    requried: false,
+  })
+  documents:
+    {
+      fieldname: string,
+      originalname: string,
+      encoding: string,
+      mimetype: string,
+      destination: string,
+      filename: string,
+      path: string,
+      size: number,
+    }[]
+
+  @Prop({
+    type: String,
+    required: false,
+  })
+  gst: string;
 }
 
 const UserSchema = SchemaFactory.createForClass(User);
-
 
 UserSchema.pre('save', function (next) {
   if (typeof this.adminId === 'string') {
@@ -120,5 +153,4 @@ UserSchema.pre('save', function (next) {
 const rolesEnv = process.env.ROLES ? JSON.parse(process.env.ROLES) : {};
 UserSchema.path('adminId').default(() => rolesEnv.SUPER_ADMIN);
 
-
-export {UserSchema}
+export { UserSchema };

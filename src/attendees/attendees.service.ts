@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, PipelineStage, Types } from 'mongoose';
 import { Attendee } from 'src/schemas/Attendee.schema';
@@ -126,11 +122,14 @@ export class AttendeesService {
   async getAttendeesCount(webinarId: string, AdminId: string): Promise<any> {
     const webinarPipeline = {
       adminId: new Types.ObjectId(`${AdminId}`),
-      webinar: new Types.ObjectId(`${webinarId}`),
     };
 
+    if (webinarId) {
+      webinarPipeline['webinar'] = new Types.ObjectId(`${webinarId}`);
+    }
+
     const totalContacts =
-      await this.attendeeModel.countDocuments(webinarPipeline);
+      (await this.attendeeModel.countDocuments(webinarPipeline)) || 0;
 
     return totalContacts;
   }
@@ -162,6 +161,14 @@ export class AttendeesService {
     return result;
   }
 
+  async updateAttendeeAssign(id: string, assignedTo: string): Promise<Attendee | null> {
+    return await this.attendeeModel.findByIdAndUpdate(id, {
+      $set: {
+        assignedTo: new Types.ObjectId(assignedTo),
+      },
+    }, { new: true });
+  }
+
   async deleteAttendees(webinarId: string, AdminId: string): Promise<any> {
     const pipeline = {
       adminId: new Types.ObjectId(`${AdminId}`),
@@ -170,5 +177,14 @@ export class AttendeesService {
     const result = await this.attendeeModel.deleteMany(pipeline);
 
     return { message: 'Deleted data successfully!', result: result };
+  }
+
+  async checkPreviousAssignment(email: string): Promise<Attendee | null> {
+    const lastAssigned = await this.attendeeModel
+      .findOne({ email })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    return lastAssigned;
   }
 }

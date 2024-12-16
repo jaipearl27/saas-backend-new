@@ -1,4 +1,4 @@
-import {IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, ValidateIf } from "class-validator";
+import {IsArray, IsBoolean, IsEmail, IsNotEmpty, IsNotEmptyObject, IsObject, IsOptional, IsString, ValidateIf } from "class-validator";
 
 export class UpdateUserInfoDto {
     @IsString()
@@ -31,7 +31,15 @@ export class UpdateUserInfoDto {
     @IsString()
     @IsNotEmpty({message: "Status change note is required when isActive is provided."})
     statusChangeNote?: string
-    
+      
+    @IsOptional()
+    @IsArray()
+    documents?: any;
+
+    @IsOptional()
+    @IsString()
+    gst?: string
+  
 }
 
 

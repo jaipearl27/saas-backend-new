@@ -43,6 +43,6 @@ export class CreateEmployeeDto {
 
   @IsOptional()
   @IsNumber({ allowNaN: false, allowInfinity: false })
-  @Min(0, { message: 'Daily contact limit must be at least 0.' })
-  dailyContactLimit?: number;
+  @Min(1, { message: 'Daily contact limit must be at least 1.' })
+  contactLimit?: number;
 }

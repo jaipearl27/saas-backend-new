@@ -25,7 +25,10 @@ import { CronModule } from './cron/cron.module';
 import { RolesModule } from './roles/roles.module';
 import { FilterPresetModule } from './filter-preset/filter-preset.module';
 import { NoticeBoardModule } from './notice-board/notice-board.module';
+import { AssignmentModule } from './assignment/assignment.module';
 import { StatusDropdownModule } from './status-dropdown/status-dropdown.module';
+import { DocumentsModule } from './documents/documents.module';
+import { AlarmModule } from './alarm/alarm.module';
 
 @Module({
   imports: [
@@ -54,7 +57,10 @@ import { StatusDropdownModule } from './status-dropdown/status-dropdown.module';
     RolesModule,
     FilterPresetModule,
     NoticeBoardModule,
+    AssignmentModule,
     StatusDropdownModule,
+    DocumentsModule,
+    AlarmModule,
   ],
   controllers: [AppController],
   providers: [AppService],
@@ -74,6 +80,7 @@ export class AppModule {
       .forRoutes(
         { path: 'users', method: RequestMethod.GET },
         { path: 'users/clients', method: RequestMethod.GET },
+        '/documents*',
       );
   }
 }

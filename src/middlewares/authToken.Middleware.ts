@@ -30,6 +30,7 @@ export class AuthTokenMiddleware implements NestMiddleware {
       const decodedToken = this.jwtService.verify(access_token, decodeOptions);
 
       if (decodedToken) {
+
         req.id = decodedToken.id;
         req.role = decodedToken.role;
         req.plan = decodedToken.plan;
