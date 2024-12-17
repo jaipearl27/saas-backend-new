@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import mongoose, { Model, Types } from 'mongoose';
+import mongoose, { Model, PipelineStage, Types } from 'mongoose';
 import { User } from 'src/schemas/User.schema';
 import { ConfigService } from '@nestjs/config';
 import { CreateEmployeeDto } from 'src/auth/dto/createEmployee.dto';
@@ -28,6 +28,7 @@ import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { Subscription } from 'src/schemas/Subscription.schema';
 import { JwtService } from '@nestjs/jwt';
 import { GetClientsFilterDto } from './dto/filters.dto';
+import { EmployeeFilterDTO } from './dto/employee-filter.dto';
 
 @Injectable()
 export class UsersService {
@@ -355,10 +356,82 @@ export class UsersService {
     return result;
   }
 
-  getEmployees(adminId: string) {
-    return this.userModel.find({
-      adminId: new mongoose.Types.ObjectId(`${adminId}`),
-    });
+  async getEmployees(
+    adminId: string,
+    page: number = 1,
+    limit: number = 10,
+    filters: EmployeeFilterDTO = {},
+  ) {
+    const skip = (page - 1) * limit;
+
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          adminId: new mongoose.Types.ObjectId(adminId),
+        },
+      },
+      {
+        $match: {
+          ...(filters.email && {
+            email: { $regex: filters.email, $options: 'i' },
+          }),
+          ...(filters.userName && {
+            userName: { $regex: filters.userName, $options: 'i' },
+          }),
+          ...(filters.phone && {
+            phone: { $regex: filters.phone, $options: 'i' },
+          }),
+          ...(filters.isActive && {
+            isActive: filters.isActive === 'active',
+          }),
+          ...(filters.validCallTime && {
+            validCallTime: filters.validCallTime,
+          }),
+          ...(filters.dailyContactLimit && {
+            dailyContactLimit: filters.dailyContactLimit,
+          }),
+          ...(filters.role && { role: new Types.ObjectId(filters.role) }),
+        },
+      },
+      {
+        $lookup: {
+          from: 'roles', // Collection name where roles are stored
+          localField: 'role', // The field in the current collection
+          foreignField: '_id', // The field in the roles collection
+          as: 'roleInfo', // The resulting array field
+        },
+      },
+      {
+        $set: {
+          role: { $arrayElemAt: ['$roleInfo.name', 0] }, // Replace `role` with the first matching `roleInfo.name`
+        },
+      },
+      {
+        $unset: 'roleInfo', // Remove the temporary `roleInfo` array
+      },
+      {
+        $facet: {
+          metadata: [{ $count: 'total' }],
+          data: [{ $skip: skip }, { $limit: limit }],
+        },
+      },
+      {
+        $unwind: '$metadata', // Unwind to convert metadata array to object
+      },
+      {
+        $project: {
+          result: '$data',
+          totalPages: {
+            $ceil: { $divide: ['$metadata.total', limit] }, // Calculate total pages
+          },
+          page: { $literal: page }, // Add current page info
+        },
+      },
+    ];
+
+    const result = await this.userModel.aggregate(pipeline).exec();
+
+    return result[0] || { result: [], totalPages: 0, page: page };
   }
 
   getEmployee(id: string): Promise<User | null> {
@@ -431,7 +504,7 @@ export class UsersService {
     const documents = user.documents;
 
     const filteredDocuments = documents.filter(
-      doc => doc.filename !== filename,
+      (doc) => doc.filename !== filename,
     );
 
     user.documents = filteredDocuments;
@@ -711,7 +784,7 @@ export class UsersService {
     const user = await this.userModel.findById(id).exec();
     if (user) {
       if(user.dailyContactCount)
-      user.dailyContactCount -= 1;
+      user.dailyContactCount += 1;
       else
       user.dailyContactCount = 1;
       await user.save();

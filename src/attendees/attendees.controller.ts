@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   NotAcceptableException,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -10,23 +11,29 @@ import {
 } from '@nestjs/common';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
 import { AttendeesService } from './attendees.service';
-import { AttendeesFilterDto, CreateAttendeeDto, UpdateAttendeeDto } from './dto/attendees.dto';
+import {
+  AttendeesFilterDto,
+  CreateAttendeeDto,
+  UpdateAttendeeDto,
+} from './dto/attendees.dto';
 import { Types } from 'mongoose';
 import { SubscriptionService } from 'src/subscription/subscription.service';
+
+import { WebinarService } from 'src/webinar/webinar.service';
 
 @Controller('attendees')
 export class AttendeesController {
   constructor(
     private readonly attendeesService: AttendeesService,
     private readonly subscriptionService: SubscriptionService,
+    private readonly webinarService: WebinarService,
   ) {}
 
-  @Post(':id')
+  @Post('webinar')
   async getAttendees(
-    @Param('id') webinarId: string,
     @Query() query: { page?: string; limit?: string; isAttended: string },
     @AdminId() adminId: string,
-    @Body() body: { filters: AttendeesFilterDto },
+    @Body() body: { filters: AttendeesFilterDto, webinarId: string },
   ) {
     if (!query?.isAttended)
       throw new NotAcceptableException('isAttended search query is required');
@@ -39,7 +46,7 @@ export class AttendeesController {
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
 
     const result = await this.attendeesService.getAttendees(
-      webinarId,
+      body.webinarId || "",
       adminId,
       isAttended,
       page,
@@ -50,31 +57,12 @@ export class AttendeesController {
     return result;
   }
 
-  @Get()
-  async getAllAttendees(
-    @Query() query: { page?: string; limit?: string },
-    @AdminId() adminId: string,
-  ) {
-    let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
-    let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
-
-    const result = await this.attendeesService.getAttendees(
-      '',
-      adminId,
-      true,
-      page,
-      limit,
-    );
-
-    return result;
-  }
-
 
   @Post('all')
   async getAllAttendeesForFilters(
     @Query() query: { page?: string; limit?: string },
     @AdminId() adminId: string,
-    @Body() filters: AttendeesFilterDto
+    @Body() filters: AttendeesFilterDto,
   ) {
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
@@ -85,20 +73,28 @@ export class AttendeesController {
       true,
       page,
       limit,
-      filters
+      filters,
     );
-    
+
     return result;
   }
 
   @Post()
-  async addAttendees(
+  async addPostAttendees(
     @Id() adminId: string,
     @Body()
     body: { data: [CreateAttendeeDto]; webinarId: string; isAttended: boolean },
   ): Promise<any> {
-    const data = body.data;
+    const webinar = await this.webinarService.getWebinar(
+      body.webinarId,
+      adminId,
+    );
 
+    if (!webinar) {
+      throw new NotFoundException('Webinar not found.');
+    }
+
+    const data = body.data;
     //add reminder type attendees
     if (!body.isAttended) {
       // !!!! test if any data exists in postWebinar here !!!!
@@ -140,7 +136,7 @@ export class AttendeesController {
       data[i].adminId = new Types.ObjectId(`${adminId}`);
     }
 
-    const result = await this.attendeesService.addAttendees(data);
+    const result = await this.attendeesService.addPostAttendees(data, webinar);
     return result;
   }
 

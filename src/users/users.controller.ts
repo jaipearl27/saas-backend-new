@@ -24,6 +24,7 @@ import {
   FileInterceptor,
 } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
+import { EmployeeFilterDTO } from './dto/employee-filter.dto';
 
 @Controller('users') // @route => /users
 export class UsersController {
@@ -53,17 +54,16 @@ export class UsersController {
   ): Promise<any> {
     // console.log(files, '================== files ======================');
     if (files?.document && role === this.configService.get('appRoles').ADMIN) {
-      console.log(files.document)
+      console.log(files.document);
       updateUserInfoDto.documents = files.document;
     }
     const client = await this.usersService.updateUser(id, updateUserInfoDto);
     return client;
   }
 
-
   @Delete('document/:filename')
   async deleteDocument(
-    @Param("filename") filename: string,
+    @Param('filename') filename: string,
     @Id() id: string,
   ): Promise<any> {
     const result = await this.usersService.deleteDocument(id, filename);
@@ -124,10 +124,15 @@ export class UsersController {
     return client;
   }
 
-  @Get('/employee')
-  getEmployees(@Id() id: string) {
-    console.log('id ------> ', id);
-    return this.usersService.getEmployees(id);
+  @Post('/employee')
+  getEmployees(
+    @Id() id: string,
+    @Query() query: { page: string; limit: string },
+    @Body() body: { filters: EmployeeFilterDTO },
+  ) {
+    let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
+    let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
+    return this.usersService.getEmployees(id, page, limit, body.filters);
   }
 
   @Patch('/employee/:id')

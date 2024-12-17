@@ -11,21 +11,23 @@ import {
 import { Id } from 'src/decorators/custom.decorator';
 import { WebinarService } from './webinar.service';
 import { CreateWebinarDto, UpdateWebinarDto } from './dto/createWebinar.dto';
+import { WebinarFilterDTO } from './dto/webinar-filter.dto';
 @Controller('webinar')
 export class WebinarController {
   constructor(
     private readonly webinarService: WebinarService,
   ) {}
 
-  @Get()
+  @Post('data')
   async getWebinars(
     @Id() adminId: string,
     @Query() query: { page: string; limit: string },
+    @Body() body: { filters: WebinarFilterDTO },
   ): Promise<any> {
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
 
-    const result = await this.webinarService.getWebinars(adminId, page, limit);
+    const result = await this.webinarService.getWebinars(adminId, page, limit, body.filters);
     return result;
   }
 
