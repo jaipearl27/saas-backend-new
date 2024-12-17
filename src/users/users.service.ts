@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import mongoose, { Model, Types } from 'mongoose';
+import mongoose, { Model, PipelineStage, Types } from 'mongoose';
 import { User } from 'src/schemas/User.schema';
 import { ConfigService } from '@nestjs/config';
 import { CreateEmployeeDto } from 'src/auth/dto/createEmployee.dto';
@@ -28,6 +28,7 @@ import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { Subscription } from 'src/schemas/Subscription.schema';
 import { JwtService } from '@nestjs/jwt';
 import { GetClientsFilterDto } from './dto/filters.dto';
+import { EmployeeFilterDTO } from './dto/employee-filter.dto';
 
 @Injectable()
 export class UsersService {
@@ -355,11 +356,49 @@ export class UsersService {
     return result;
   }
 
-  getEmployees(adminId: string) {
-    return this.userModel.find({
-      adminId: new mongoose.Types.ObjectId(`${adminId}`),
-    });
+  async getEmployees(
+    adminId: string, 
+    page: number = 1, 
+    limit: number = 10, 
+    filters: EmployeeFilterDTO = {}
+  ) {
+    const skip = (page - 1) * limit;
+  
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          adminId: new mongoose.Types.ObjectId(adminId), // Match employees by adminId
+          ...filters, // Spread filter conditions if any
+        },
+      },
+      {
+        $facet: {
+          metadata: [{ $count: "total" }], // Get the total count of matching documents
+          data: [
+            { $skip: skip }, // Skip the required number of documents for pagination
+            { $limit: limit }, // Limit the number of results per page
+          ],
+        },
+      },
+      {
+        $unwind: "$metadata", // Unwind to convert metadata array to object
+      },
+      {
+        $project: {
+          data: 1,
+          totalPages: {
+            $ceil: { $divide: ["$metadata.total", limit] }, // Calculate total pages
+          },
+          page: { $literal: page }, // Add current page info
+        },
+      },
+    ];
+  
+    const result = await this.userModel.aggregate(pipeline).exec();
+  
+    return result[0] || { data: [], totalPages: 0, page: page };
   }
+  
 
   getEmployee(id: string): Promise<User | null> {
     const employee = this.userModel.findById(id);
