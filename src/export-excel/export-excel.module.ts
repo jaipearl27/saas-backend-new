@@ -24,7 +24,11 @@ export class ExportExcelModule {
 
     consumer
     .apply(AuthTokenMiddleware, GetAdminIdMiddleware, ValidateBodyFilters)
-    .forRoutes({ path: 'export-excel/webinar-attendees/:id', method: RequestMethod.POST });
+    .forRoutes({ path: 'export-excel/webinar-attendees/', method: RequestMethod.POST });
+
+    consumer
+    .apply(AuthAdminTokenMiddleware)
+    .forRoutes({ path: 'export-excel/employees', method: RequestMethod.POST });
 
     consumer
     .apply(AuthAdminTokenMiddleware)

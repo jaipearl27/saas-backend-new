@@ -21,8 +21,8 @@ export class UserActivityService {
     }
 
     return this.userActivityModel.create({
-      user,
-      adminId,
+      user : new Types.ObjectId(user),
+      adminId : new Types.ObjectId(adminId),
       action: dto.action,
       details: dto.details || '',
     });

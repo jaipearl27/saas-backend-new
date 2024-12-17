@@ -357,48 +357,82 @@ export class UsersService {
   }
 
   async getEmployees(
-    adminId: string, 
-    page: number = 1, 
-    limit: number = 10, 
-    filters: EmployeeFilterDTO = {}
+    adminId: string,
+    page: number = 1,
+    limit: number = 10,
+    filters: EmployeeFilterDTO = {},
   ) {
     const skip = (page - 1) * limit;
-  
+
     const pipeline: PipelineStage[] = [
       {
         $match: {
-          adminId: new mongoose.Types.ObjectId(adminId), // Match employees by adminId
-          ...filters, // Spread filter conditions if any
+          adminId: new mongoose.Types.ObjectId(adminId),
         },
+      },
+      {
+        $match: {
+          ...(filters.email && {
+            email: { $regex: filters.email, $options: 'i' },
+          }),
+          ...(filters.userName && {
+            userName: { $regex: filters.userName, $options: 'i' },
+          }),
+          ...(filters.phone && {
+            phone: { $regex: filters.phone, $options: 'i' },
+          }),
+          ...(filters.isActive && {
+            isActive: filters.isActive === 'active',
+          }),
+          ...(filters.validCallTime && {
+            validCallTime: filters.validCallTime,
+          }),
+          ...(filters.dailyContactLimit && {
+            dailyContactLimit: filters.dailyContactLimit,
+          }),
+          ...(filters.role && { role: new Types.ObjectId(filters.role) }),
+        },
+      },
+      {
+        $lookup: {
+          from: 'roles', // Collection name where roles are stored
+          localField: 'role', // The field in the current collection
+          foreignField: '_id', // The field in the roles collection
+          as: 'roleInfo', // The resulting array field
+        },
+      },
+      {
+        $set: {
+          role: { $arrayElemAt: ['$roleInfo.name', 0] }, // Replace `role` with the first matching `roleInfo.name`
+        },
+      },
+      {
+        $unset: 'roleInfo', // Remove the temporary `roleInfo` array
       },
       {
         $facet: {
-          metadata: [{ $count: "total" }], // Get the total count of matching documents
-          data: [
-            { $skip: skip }, // Skip the required number of documents for pagination
-            { $limit: limit }, // Limit the number of results per page
-          ],
+          metadata: [{ $count: 'total' }],
+          data: [{ $skip: skip }, { $limit: limit }],
         },
       },
       {
-        $unwind: "$metadata", // Unwind to convert metadata array to object
+        $unwind: '$metadata', // Unwind to convert metadata array to object
       },
       {
         $project: {
-          data: 1,
+          result: '$data',
           totalPages: {
-            $ceil: { $divide: ["$metadata.total", limit] }, // Calculate total pages
+            $ceil: { $divide: ['$metadata.total', limit] }, // Calculate total pages
           },
           page: { $literal: page }, // Add current page info
         },
       },
     ];
-  
+
     const result = await this.userModel.aggregate(pipeline).exec();
-  
-    return result[0] || { data: [], totalPages: 0, page: page };
+
+    return result[0] || { result: [], totalPages: 0, page: page };
   }
-  
 
   getEmployee(id: string): Promise<User | null> {
     const employee = this.userModel.findById(id);
@@ -470,7 +504,7 @@ export class UsersService {
     const documents = user.documents;
 
     const filteredDocuments = documents.filter(
-      doc => doc.filename !== filename,
+      (doc) => doc.filename !== filename,
     );
 
     user.documents = filteredDocuments;
@@ -749,10 +783,8 @@ export class UsersService {
   async incrementCount(id: string): Promise<boolean> {
     const user = await this.userModel.findById(id).exec();
     if (user) {
-      if(user.dailyContactCount)
-      user.dailyContactCount -= 1;
-      else
-      user.dailyContactCount = 1;
+      if (user.dailyContactCount) user.dailyContactCount -= 1;
+      else user.dailyContactCount = 1;
       await user.save();
       return true;
     }

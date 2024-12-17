@@ -10,6 +10,7 @@ import { AttendeesFilterDto } from 'src/attendees/dto/attendees.dto';
 import { AttendeesService } from 'src/attendees/attendees.service';
 import { WebinarFilterDTO } from 'src/webinar/dto/webinar-filter.dto';
 import { WebinarService } from 'src/webinar/webinar.service';
+import { EmployeeFilterDTO } from 'src/users/dto/employee-filter.dto';
 
 @Injectable()
 export class ExportExcelService {
@@ -126,6 +127,27 @@ export class ExportExcelService {
     adminId: string,
   ): Promise<string> {
     const aggregationResult = await this.webinarService.getWebinars(adminId,1, limit,filterData,false)
+  
+    const payload = {
+      data: aggregationResult.result || [],
+      columns: columns.map((col) => ({
+        header: col,
+        key: col,
+        width: 20,
+      })),
+    };
+  
+    const workerPath = path.resolve(__dirname, '../workers/generate-excel.worker.js');
+    return this.generateExcel(payload, workerPath);
+  }
+
+  async generateExcelForEmployees(
+    limit: number,
+    columns: string[],
+    filterData: EmployeeFilterDTO,
+    adminId: string,
+  ): Promise<string> {
+    const aggregationResult = await this.usersService.getEmployees(adminId,1, limit,filterData)
   
     const payload = {
       data: aggregationResult.result || [],
