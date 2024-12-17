@@ -711,7 +711,7 @@ export class UsersService {
     const user = await this.userModel.findById(id).exec();
     if (user) {
       if(user.dailyContactCount)
-      user.dailyContactCount -= 1;
+      user.dailyContactCount += 1;
       else
       user.dailyContactCount = 1;
       await user.save();

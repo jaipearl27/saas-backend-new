@@ -63,7 +63,8 @@ export class Attendee extends Document {
   @Prop({
     type: String,
     maxlength: 10,
-    enum: ['male', 'female', 'others', 'Male', 'Female', 'Others'],
+    lowercase: true,
+    enum: ['male', 'female', 'others'],
   })
   gender: string;
 
@@ -87,17 +88,6 @@ export class Attendee extends Document {
   })
   assignedTo: Types.ObjectId | null;
 
-
-  // @Prop({
-  //   type: [
-  //     {
-  //       type: Types.ObjectId,
-  //       ref: 'products'
-  //     }
-  //   ],
-  //   required: false
-  // })
-  // products: string
 }
 
 export const AttendeeSchema = SchemaFactory.createForClass(Attendee);

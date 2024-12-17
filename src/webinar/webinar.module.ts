@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+import { forwardRef, MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { WebinarService } from './webinar.service';
 import { WebinarController } from './webinar.controller';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -8,16 +8,18 @@ import { AttendeesModule } from 'src/attendees/attendees.module';
 
 @Module({
   imports: [
-    AttendeesModule,
     MongooseModule.forFeature([
       {
         name: Webinar.name,
         schema: WebinarSchema
       }
-    ])
+    ]),
+    forwardRef(() => AttendeesModule),
+
   ],
   providers: [WebinarService],
-  controllers: [WebinarController]
+  controllers: [WebinarController],
+  exports: [WebinarService]
 })
 export class WebinarModule {
   configure(consumer: MiddlewareConsumer) {
