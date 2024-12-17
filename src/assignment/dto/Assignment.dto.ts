@@ -11,14 +11,12 @@ import { Types } from 'mongoose';
 import { CreateAttendeeDto } from 'src/attendees/dto/attendees.dto';
 
 export class AssignmentDto {
-  @IsString()
-  @IsNotEmpty()
   @IsOptional()
+  @IsString()
   adminId: string;
-
-  @IsString()
-  @IsNotEmpty()
+  
   @IsOptional()
+  @IsString()
   user: string;
 
   @IsString()
@@ -28,7 +26,6 @@ export class AssignmentDto {
 
   @IsString()
   @IsNotEmpty()
-  @IsOptional()
   attendee: string;
 
   @IsString()

@@ -24,7 +24,6 @@ export class Assignments extends Document {
   })
   webinar: Types.ObjectId;
 
-
   @Prop({
     type: Types.ObjectId,
     ref: 'Attendee',
@@ -38,6 +37,14 @@ export class Assignments extends Document {
     enums: ['preWebinar', 'postWebinar'],
   })
   recordType: string;
+
+  @Prop({
+    type: String,
+    lowercase: true,
+    enums: ['active', 'inactive', 'completed'],
+    defualt: 'active',
+  })
+  status: string;
 }
 
 export const AssignmentsSchema = SchemaFactory.createForClass(Assignments);
