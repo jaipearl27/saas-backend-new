@@ -51,6 +51,7 @@ export class AssignmentModule {
 
     consumer
       .apply(AuthAdminTokenMiddleware, AuthActiveUserMiddleware)
-      .forRoutes({ path: 'assignment/*', method: RequestMethod.ALL });
+      .exclude({path: 'assignment', method: RequestMethod.GET})
+      .forRoutes({ path: 'assignment*', method: RequestMethod.ALL });
   }
 }

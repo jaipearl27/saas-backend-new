@@ -21,7 +21,7 @@ export class GetAdminIdMiddleware implements NestMiddleware {
     const access_token =
       req.cookies[this.configService.get('ACCESS_TOKEN_NAME')];
 
-    console.log('id')
+    console.log('id');
 
     if (!access_token) {
       throw new UnauthorizedException('Access token not found.');
@@ -36,10 +36,12 @@ export class GetAdminIdMiddleware implements NestMiddleware {
 
       if (decodedToken.role === this.configService.get('appRoles').ADMIN) {
         req.adminId = new Types.ObjectId(`${decodedToken.id}`); // request type is commented out otherwise typescript won't allow setting this
+        req.id = decodedToken.id;
         next();
       } else {
         const user = await this.usersService.getUserById(decodedToken.id);
         req.adminId = user.adminId;
+        req.id = decodedToken.id;
         next();
       }
     } catch (error) {
