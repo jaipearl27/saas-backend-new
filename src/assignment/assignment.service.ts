@@ -12,7 +12,10 @@ import { Assignments } from 'src/schemas/Assignments.schema';
 import { AssignmentDto } from './dto/Assignment.dto';
 import { ConfigService } from '@nestjs/config';
 import { assign } from 'nodemailer/lib/shared';
-import { CreateAttendeeDto } from 'src/attendees/dto/attendees.dto';
+import {
+  AttendeesFilterDto,
+  CreateAttendeeDto,
+} from 'src/attendees/dto/attendees.dto';
 import { Attendee } from 'src/schemas/Attendee.schema';
 import { WebinarService } from 'src/webinar/webinar.service';
 import { SubscriptionService } from 'src/subscription/subscription.service';
@@ -37,16 +40,17 @@ export class AssignmentService {
     id: string,
     page: number,
     limit: number,
+    filters: AttendeesFilterDto = {},
+    usePagination: boolean = true, // Flag to enable/disable pagination
   ): Promise<any> {
     const skip = (page - 1) * limit;
 
-    const pipeline: PipelineStage[] = [
+    const basePipeline: PipelineStage[] = [
       {
         $match: {
           adminId: new Types.ObjectId(adminId),
           user: new Types.ObjectId(id),
-          recordType: 'preWebinar', // Assuming recordType is part of the filter
-          // webinar: new Types.ObjectId('675c0ef0e4aced8db727a032'), // Replace with dynamic webinar ID if needed
+          recordType: 'preWebinar',
         },
       },
       {
@@ -63,20 +67,91 @@ export class AssignmentService {
           preserveNullAndEmptyArrays: true,
         },
       },
-      { $skip: skip },
-      { $limit: limit },
-      { $sort: { updatedAt: -1 } }, // Sort by updatedAt
+      {
+        $project: {
+          email: '$attendee.email',
+          firstName: '$attendee.firstName',
+          lastName: '$attendee.lastName',
+          isAttended: '$attendee.isAttended',
+          gender: '$attendee.gender',
+          leadType: '$attendee.leadType',
+          location: '$attendee.location',
+          phone: '$attendee.phone',
+          timeInSession: '$attendee.timeInSession',
+          webinar: '$attendee.webinar',
+          createdAt: '$createdAt',
+        },
+      },
+      {
+        $match: {
+          ...(filters.email && {
+            email: { $regex: filters.email, $options: 'i' },
+          }),
+          ...(filters.firstName && {
+            firstName: { $regex: filters.firstName, $options: 'i' },
+          }),
+          ...(filters.lastName && {
+            lastName: { $regex: filters.lastName, $options: 'i' },
+          }),
+          ...(filters.gender && {
+            gender: { $regex: filters.gender, $options: 'i' },
+          }),
+          ...(filters.phone && {
+            phone: { $regex: filters.phone, $options: 'i' },
+          }),
+          ...(filters.location && {
+            location: { $regex: filters.location, $options: 'i' },
+          }),
+          ...(filters.timeInSession && {
+            timeInSession: filters.timeInSession,
+          }),
+        },
+      },
     ];
 
-    const totalDocuments = await this.assignmentsModel.countDocuments([
-      pipeline[0],
-    ]);
+    if (usePagination) {
+      // Add $facet stage for pagination
+      basePipeline.push(
+        {
+          $facet: {
+            metadata: [{ $count: 'total' }],
+            data: [{ $skip: skip }, { $limit: limit }],
+          },
+        },
+        {
+          $unwind: {
+            path: '$metadata',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            totalPages: { $ceil: { $divide: ['$metadata.total', limit] } },
+            page: { $literal: page },
+            result: '$data',
+          },
+        },
+      );
 
-    const totalPages = Math.ceil(totalDocuments / limit) || 1;
+      const result = await this.assignmentsModel.aggregate(basePipeline);
+      return result.length > 0
+        ? result[0]
+        : { result: [], page, totalPages: 0 };
+    } else {
+      // Add skip and limit stages directly for non-paginated results
+      basePipeline.push(
+        { $skip: skip },
+        { $limit: limit },
+        { $sort: { createdAt: -1 } },
+      );
 
-    const result = await this.assignmentsModel.aggregate(pipeline).exec();
-
-    return { totalPages, page, result };
+      const result = await this.assignmentsModel.aggregate(basePipeline).exec();
+      return {
+        result,
+        page: 1, // Fixed page for non-paginated
+        totalPages: 1, // No pagination
+      };
+    }
   }
 
   async addAssignment(

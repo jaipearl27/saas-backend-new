@@ -196,7 +196,7 @@ export class AttendeesService {
       },
       {
         $addFields: {
-          assignedToName: {
+          isAssigned: {
             $arrayElemAt: ['$assignedToDetails.userName', 0], 
           },
         },

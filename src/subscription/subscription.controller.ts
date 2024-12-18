@@ -7,7 +7,7 @@ export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
 
   @Get()
-  getSubscription(@AdminId() adminId: string) {
-    return this.subscriptionService.getSubscription(adminId);
+  async getSubscription(@AdminId() adminId: string) {
+    return await this.subscriptionService.getSubscription(adminId);
   }
 }
