@@ -136,15 +136,16 @@ export class AttendeesFilterDto {
   firstName?: string;
 
   @IsOptional()
-
-  lastName?: any;
+  @IsString()
+  lastName?: string;
 
   @IsOptional()
   @IsObject()
   timeInSession?: RangeNumberDto;
 
-  @IsOptional() 
-  gender?: any;
+  @IsOptional()
+  @IsString() 
+  gender?: 'male' | 'female' | 'others';
 
   @IsOptional()
   @IsString()
