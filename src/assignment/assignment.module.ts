@@ -47,11 +47,11 @@ export class AssignmentModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
     .apply(GetAdminIdForUserActivityMiddleware)
-    .forRoutes({ path: 'assignment', method: RequestMethod.GET });
+    .forRoutes({ path: 'assignment/data/:empId', method: RequestMethod.POST });
 
     consumer
       .apply(AuthAdminTokenMiddleware, AuthActiveUserMiddleware)
-      .exclude({path: 'assignment', method: RequestMethod.GET})
+      .exclude({ path: 'assignment/data/:empId', method: RequestMethod.POST })
       .forRoutes({ path: 'assignment*', method: RequestMethod.ALL });
   }
 }

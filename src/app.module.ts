@@ -29,6 +29,7 @@ import { AssignmentModule } from './assignment/assignment.module';
 import { StatusDropdownModule } from './status-dropdown/status-dropdown.module';
 import { DocumentsModule } from './documents/documents.module';
 import { AlarmModule } from './alarm/alarm.module';
+import { ProductsModule } from './products/products.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { AlarmModule } from './alarm/alarm.module';
     StatusDropdownModule,
     DocumentsModule,
     AlarmModule,
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
