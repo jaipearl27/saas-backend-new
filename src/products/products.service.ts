@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Products } from 'src/schemas/Products.schema';
-import { CreateProductsDto } from './dto/products.dto';
+import { CreateProductsDto, UpdateProductsDto } from './dto/products.dto';
 
 @Injectable()
 export class ProductsService {
@@ -34,5 +34,21 @@ export class ProductsService {
       .skip(skip)
       .limit(limit);
     return { page, totalPages, result };
+  }
+
+  async updateProduct(
+    id: string,
+    adminId: string,
+    updateProductsDto: UpdateProductsDto,
+  ): Promise<any> {
+    const result = await this.productsModel.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(`${id}`),
+        adminId: new Types.ObjectId(`${adminId}`),
+      },
+      updateProductsDto,
+      { new: true },
+    );
+    return result;
   }
 }

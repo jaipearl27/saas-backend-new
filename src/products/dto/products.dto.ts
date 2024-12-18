@@ -27,3 +27,30 @@ export class CreateProductsDto {
   @IsNotEmpty()
   level: 1 | 2 | 3;
 }
+
+export class UpdateProductsDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  name?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @IsNotEmpty()
+  price?: number;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  webinar?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  description?: string; //description
+
+  @IsOptional()
+  @IsNumber()
+  @IsNotEmpty()
+  level?: 1 | 2 | 3;
+}
