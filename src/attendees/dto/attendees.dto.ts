@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
     IsBoolean,
     IsEmail,
@@ -9,6 +10,7 @@ import {
     IsNumber,
     MaxLength,
     IsObject,
+    ValidateNested,
   } from 'class-validator';
   import { Types } from 'mongoose';
 import { RangeNumberDto } from 'src/users/dto/filters.dto';
@@ -153,4 +155,18 @@ export class AttendeesFilterDto {
   @IsOptional()
   @IsString()
   location?: string;
+
+  @IsOptional()
+  @IsString()
+  isAssigned?: string;
+}
+
+export class GetAttendeesDTO {
+  @IsString()
+  webinarId: string; // Must be a valid MongoDB ObjectId
+
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => AttendeesFilterDto)
+  filters: AttendeesFilterDto;
 }

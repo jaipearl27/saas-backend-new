@@ -14,6 +14,7 @@ import { AttendeesService } from './attendees.service';
 import {
   AttendeesFilterDto,
   CreateAttendeeDto,
+  GetAttendeesDTO,
   UpdateAttendeeDto,
 } from './dto/attendees.dto';
 import { Types } from 'mongoose';
@@ -33,7 +34,7 @@ export class AttendeesController {
   async getAttendees(
     @Query() query: { page?: string; limit?: string; isAttended: string },
     @AdminId() adminId: string,
-    @Body() body: { filters: AttendeesFilterDto, webinarId: string },
+    @Body() body: GetAttendeesDTO,
   ) {
     if (!query?.isAttended)
       throw new NotAcceptableException('isAttended search query is required');

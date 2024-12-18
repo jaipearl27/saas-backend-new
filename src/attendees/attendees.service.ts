@@ -117,6 +117,7 @@ export class AttendeesService {
     filters: AttendeesFilterDto = {},
   ): Promise<any> {
     const skip = (page - 1) * limit;
+    console.log(filters, typeof filters.isAssigned);
 
     const pipeline: PipelineStage[] = [
       // Step 1: Match key fields to reduce dataset size
@@ -126,14 +127,22 @@ export class AttendeesService {
           isAttended: isAttended,
           ...(webinarId &&
             webinarId !== '' && { webinar: new Types.ObjectId(webinarId) }),
+          ...(filters.isAssigned &&
+            (filters.isAssigned === 'true'
+              ? { assignedTo: { $ne: null } }
+              : {
+                  $or: [
+                    { assignedTo: null },
+                    { assignedTo: { $exists: false } },
+                  ],
+                })),
         },
       },
-      // Step 2: Conditionally include a lookup for webinarName if webinarId is empty
       ...(webinarId === ''
         ? [
             {
               $lookup: {
-                from: 'webinars', // Replace with the actual webinar collection name
+                from: 'webinars',
                 localField: 'webinar',
                 foreignField: '_id',
                 as: 'webinarDetails',
@@ -177,14 +186,31 @@ export class AttendeesService {
           }),
         },
       },
-      // Step 4: Faceted query for pagination and total count
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'assignedTo',
+          foreignField: '_id',
+          as: 'assignedToDetails',
+        },
+      },
+      {
+        $addFields: {
+          assignedToName: {
+            $arrayElemAt: ['$assignedToDetails.userName', 0], 
+          },
+        },
+      },
+      {
+        $project: { assignedToDetails: 0 },
+      },
       {
         $facet: {
           metadata: [{ $count: 'total' }],
           data: [{ $sort: { email: 1 } }, { $skip: skip }, { $limit: limit }],
         },
       },
-      // Step 5: Unwind metadata to extract total count and calculate total pages
+      // Step 7: Unwind metadata to extract total count and calculate total pages
       { $unwind: '$metadata' },
       {
         $project: {
