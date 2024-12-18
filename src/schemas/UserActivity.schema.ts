@@ -17,4 +17,16 @@ export class UserActivity extends Document {
   adminId: Types.ObjectId;
 }
 
+
+
 export const UserActivitySchema = SchemaFactory.createForClass(UserActivity);
+UserActivitySchema.pre('save', function (next) {
+  if (typeof this.adminId === 'string') {
+    this.adminId = new Types.ObjectId(`${this.adminId}`);
+  }
+  if (typeof this.user === 'string') {
+    this.user = new Types.ObjectId(`${this.user}`);
+  }
+
+  next();
+});

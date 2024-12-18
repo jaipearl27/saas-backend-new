@@ -29,12 +29,11 @@ export class AttendeesController {
     private readonly webinarService: WebinarService,
   ) {}
 
-  @Post(':id')
+  @Post('webinar')
   async getAttendees(
-    @Param('id') webinarId: string,
     @Query() query: { page?: string; limit?: string; isAttended: string },
     @AdminId() adminId: string,
-    @Body() body: { filters: AttendeesFilterDto },
+    @Body() body: { filters: AttendeesFilterDto, webinarId: string },
   ) {
     if (!query?.isAttended)
       throw new NotAcceptableException('isAttended search query is required');
@@ -47,7 +46,7 @@ export class AttendeesController {
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
 
     const result = await this.attendeesService.getAttendees(
-      webinarId,
+      body.webinarId || "",
       adminId,
       isAttended,
       page,
@@ -58,24 +57,6 @@ export class AttendeesController {
     return result;
   }
 
-  @Get()
-  async getAllAttendees(
-    @Query() query: { page?: string; limit?: string },
-    @AdminId() adminId: string,
-  ) {
-    let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
-    let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
-
-    const result = await this.attendeesService.getAttendees(
-      '',
-      adminId,
-      true,
-      page,
-      limit,
-    );
-
-    return result;
-  }
 
   @Post('all')
   async getAllAttendeesForFilters(

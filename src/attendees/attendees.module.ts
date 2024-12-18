@@ -50,11 +50,12 @@ export class AttendeesModule {
       .forRoutes(
         { path: 'attendees', method: RequestMethod.GET },
         { path: 'attendees/:id', method: RequestMethod.PATCH },
-        { path: 'attendees/all', method: RequestMethod.POST },
       );
 
     consumer
       .apply(AuthTokenMiddleware, GetAdminIdMiddleware, ValidateBodyFilters)
-      .forRoutes({ path: 'attendees/:id', method: RequestMethod.POST });
+      .forRoutes(
+        { path: 'attendees/webinar', method: RequestMethod.POST },
+      );
   }
 }
