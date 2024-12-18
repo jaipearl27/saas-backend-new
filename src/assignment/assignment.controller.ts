@@ -61,23 +61,23 @@ export class AssignmentController {
     return result;
   }
 
-  // @Get(':id')
-  // async getAssignments(
-  //   @Id() adminId: string,
-  //   @Param('id') id: string,
-  //   @Query() query: { page?: string; limit?: string },
-  // ): Promise<any> {
-  //   let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
-  //   let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
-  //   const result = await this.assignmentService.getAssignments(
-  //     adminId,
-  //     id,
-  //     page,
-  //     limit,
-  //   );
+  @Get(':id')
+  async getAssignments(
+    @Id() adminId: string,
+    @Param('id') id: string,
+    @Query() query: { page?: string; limit?: string },
+  ): Promise<any> {
+    let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
+    let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
+    const result = await this.assignmentService.getAssignments(
+      adminId,
+      id,
+      page,
+      limit,
+    );
 
-  //   return result;
-  // }
+    return result;
+  }
 
   @Post()
   async addAssignment(
@@ -123,9 +123,13 @@ export class AssignmentController {
     );
   }
 
-  @Patch()
-  async pullback():Promise<any> {
-
+  @Patch('pullback')
+  async pullbackAssignment(
+    @Body('id') id: string,
+    @Id() adminId: string
+  ):Promise<any> {
+    const result = await this.assignmentService.pullbackAssignment(id, adminId)
+    return result
   }
 
 }

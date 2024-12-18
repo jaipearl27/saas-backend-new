@@ -176,9 +176,14 @@ export class AssignmentService {
         isAttended: assignmentDto[i].recordType === 'preWebinar' ? false : true,
       });
 
-      console.log(attendeeData);
+      // console.log(attendeeData);
 
-      if (![null, employee.adminId].includes(attendeeData.assignedTo)) {
+      const assignedTo =
+        attendeeData?.assignedTo !== null
+          ? String(attendeeData.assignedTo)
+          : null;
+
+      if (![null, String(employee.adminId)].includes(assignedTo)) {
         failedAssignments.push({
           attendee: assignmentDto[i],
           message:
@@ -496,6 +501,7 @@ export class AssignmentService {
       });
       attendee.assignedTo = new Types.ObjectId(`${adminId}`);
       await attendee.save();
+      return { assignment, attendee };
     } catch (error) {
       console.log(error);
       throw new InternalServerErrorException(
