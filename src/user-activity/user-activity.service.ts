@@ -3,12 +3,14 @@ import { CreateUserActivityDto } from './dto/user-activity.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { UserActivity } from 'src/schemas/UserActivity.schema';
 import { Model, Types } from 'mongoose';
+import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class UserActivityService {
   constructor(
     @InjectModel(UserActivity.name)
     private readonly userActivityModel: Model<UserActivity>,
+    private readonly mailerService: MailerService
   ) {}
 
   async addUserActivity(
@@ -55,5 +57,18 @@ export class UserActivityService {
         pageSize: activities.length,
       },
     };
+  }
+
+  async sendInactivityEmail( email: string) {
+
+    const response = await this.mailerService
+    .sendMail({
+      to: 'copopoco71@gmail.com', // list of receivers
+      from: 'anukulssdfsdyuyiuyiaxena@pearlorganisation.com', // sender address
+      subject: 'Testsing Nest asasdasdMailerModule ✔', // Subject line
+      text: 'welcome bhai tumhara employee mje maar rha hai', // plaintext body
+      html: '<b>welcome welcome bhai tumhara employee mje maar rha hai</b>', // HTML body content
+    })
+    return response
   }
 }

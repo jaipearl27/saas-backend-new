@@ -1,14 +1,17 @@
 // user-activity.controller.ts
-import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Post, Put, Query, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
 import { CreateUserActivityDto } from './dto/user-activity.dto';
 import { UserActivityService } from './user-activity.service';
 import { Types } from 'mongoose';
+import { UsersService } from 'src/users/users.service';
 
 @Controller('user-activities')
 export class UserActivityController {
-  constructor(private readonly userActivityService: UserActivityService) {}
+  constructor(private readonly userActivityService: UserActivityService,
+    private readonly userService: UsersService
+  ) {}
 
   @Post()
   async addUserActivity(
@@ -65,5 +68,16 @@ export class UserActivityController {
     console.log('ID:', id);
 
     return { message: 'User activities retrieved', adminId, id };
+  }
+
+  @Put('inactive')
+  async sendInactiveEmail(  
+    @AdminId() adminId: string
+  ){
+    const admin = await this.userService.getUserById(adminId);
+    if(!admin){
+      throw new NotFoundException('Admin not found');
+    }
+    return await this.userActivityService.sendInactivityEmail(admin.email);
   }
 }

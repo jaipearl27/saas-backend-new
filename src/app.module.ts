@@ -30,6 +30,7 @@ import { StatusDropdownModule } from './status-dropdown/status-dropdown.module';
 import { DocumentsModule } from './documents/documents.module';
 import { AlarmModule } from './alarm/alarm.module';
 import { ProductsModule } from './products/products.module';
+import { MailerModule } from '@nestjs-modules/mailer';
 
 @Module({
   imports: [
@@ -63,6 +64,19 @@ import { ProductsModule } from './products/products.module';
     DocumentsModule,
     AlarmModule,
     ProductsModule,
+    MailerModule.forRoot({
+      transport: {
+        host: 'smtp.gmail.com',
+        port: 465,
+        service: "gmail",
+        ignoreTLS: true,
+        secure: false,
+        auth: {
+          user: process.env.MAILDEV_INCOMING_USER,
+          pass: process.env.MAILDEV_INCOMING_PASS,
+        },
+      },
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],
