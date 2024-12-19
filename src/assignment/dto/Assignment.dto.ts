@@ -3,12 +3,13 @@ import {
   IsEmail,
   IsMongoId,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
 import { Types } from 'mongoose';
-import { CreateAttendeeDto } from 'src/attendees/dto/attendees.dto';
+import { AttendeesFilterDto, CreateAttendeeDto } from 'src/attendees/dto/attendees.dto';
 
 export class AssignmentDto {
   @IsOptional()
@@ -41,4 +42,13 @@ export class preWebinarAssignmentDto {
   @ValidateNested()
   @Type(() => CreateAttendeeDto)
   attendee: CreateAttendeeDto;
+}
+
+export class GetAssignmentDTO {
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => AttendeesFilterDto)
+  filters: AttendeesFilterDto;
 }

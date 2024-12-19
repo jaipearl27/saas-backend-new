@@ -10,7 +10,7 @@ import {
   Query,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AssignmentDto, preWebinarAssignmentDto } from './dto/Assignment.dto';
+import { AssignmentDto, GetAssignmentDTO, preWebinarAssignmentDto } from './dto/Assignment.dto';
 import { UsersService } from 'src/users/users.service';
 import { AssignmentService } from './assignment.service';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
@@ -22,12 +22,33 @@ export class AssignmentController {
     private readonly assignmentService: AssignmentService,
   ) {}
 
-  @Get()
+  @Post('data/:empId')
   async getEmployeeAssignments(
-    @AdminId() adminId: string,
-    @Id() employeeId: string,
+    @Param('empId') employee: string,
+    @AdminId() admin: string,
+    @Body() body: GetAssignmentDTO,
+    @Id() id: string,
     @Query() query: { page?: string; limit?: string },
   ) {
+    let employeeId = "";
+    let adminId = "";
+    if(String(employee) === String(id)){
+      employeeId = employee;
+      adminId = admin;
+    }
+    else{
+      const userEmployee = await this.usersService.getEmployee(employee);
+      if(!userEmployee){
+        throw new NotFoundException('Employee not found');
+      }
+      if(String(userEmployee?.adminId) !== String(id)){
+        throw new UnauthorizedException('You are not authorized to access this employee\'s data');
+      }
+      employeeId = employee;
+      adminId = id;
+    }
+
+
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
     const result = await this.assignmentService.getAssignments(
@@ -35,6 +56,7 @@ export class AssignmentController {
       employeeId,
       page,
       limit,
+      body.filters
     );
     return result;
   }
