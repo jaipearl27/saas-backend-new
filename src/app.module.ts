@@ -30,6 +30,7 @@ import { StatusDropdownModule } from './status-dropdown/status-dropdown.module';
 import { DocumentsModule } from './documents/documents.module';
 import { AlarmModule } from './alarm/alarm.module';
 import { ProductsModule } from './products/products.module';
+import { EnrollmentsModule } from './enrollments/enrollments.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { ProductsModule } from './products/products.module';
     DocumentsModule,
     AlarmModule,
     ProductsModule,
+    EnrollmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
