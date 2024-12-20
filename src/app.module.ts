@@ -31,6 +31,7 @@ import { DocumentsModule } from './documents/documents.module';
 import { AlarmModule } from './alarm/alarm.module';
 import { ProductsModule } from './products/products.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
+import { DeleteDataModule } from './delete-data/delete-data.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { EnrollmentsModule } from './enrollments/enrollments.module';
     AlarmModule,
     ProductsModule,
     EnrollmentsModule,
+    DeleteDataModule,
   ],
   controllers: [AppController],
   providers: [AppService],
