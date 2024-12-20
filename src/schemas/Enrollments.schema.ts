@@ -19,7 +19,7 @@ export class Enrollment extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'Product',
+    ref: 'Products',
     require: [true, 'Product ID is required.'],
     unique: true,
   })
@@ -36,6 +36,9 @@ export class Enrollment extends Document {
 const EnrollmentSchema = SchemaFactory.createForClass(Enrollment);
 
 EnrollmentSchema.pre('save', function (next) {
+  if (typeof this.webinar === 'string') {
+    this.webinar = new Types.ObjectId(`${this.webinar}`);
+  }
   if (typeof this.attendee === 'string') {
     this.attendee = new Types.ObjectId(`${this.attendee}`);
   }

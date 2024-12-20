@@ -53,7 +53,7 @@ export class EnrollmentsController {
   ): Promise<any> {
     const enrollment = await this.enrollmentsService.updateEnrollment(
       id,
-      adminId,
+      String(adminId),
       updateEnrollmentDto,
     );
     return enrollment;

@@ -27,6 +27,6 @@ export class EnrollmentsModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthTokenMiddleware, GetAdminIdMiddleware)
-      .forRoutes({ path: 'enrollments', method: RequestMethod.ALL });
+      .forRoutes({ path: 'enrollments*', method: RequestMethod.ALL });
   }
 }

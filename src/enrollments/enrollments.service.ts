@@ -26,6 +26,7 @@ export class EnrollmentsService {
   ): Promise<any> {
     const skip = (page - 1) * limit;
 
+
     const pipeline = {
       webinar: new Types.ObjectId(`${webinar}`),
       adminId: new Types.ObjectId(`${adminId}`),
@@ -38,7 +39,7 @@ export class EnrollmentsService {
 
     const result = await this.enrollmentModel
       .find(pipeline)
-      .populate('')
+      .populate('webinar attendee product')
       .sort({ updatedAt: -1 })
       .skip(skip)
       .limit(limit);
