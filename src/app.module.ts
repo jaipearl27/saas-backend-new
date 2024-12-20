@@ -31,6 +31,8 @@ import { DocumentsModule } from './documents/documents.module';
 import { AlarmModule } from './alarm/alarm.module';
 import { ProductsModule } from './products/products.module';
 import { MailerModule } from '@nestjs-modules/mailer';
+import { NotesModule } from './notes/notes.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -77,6 +79,8 @@ import { MailerModule } from '@nestjs-modules/mailer';
         },
       },
     }),
+    NotesModule,
+    CloudinaryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -5,7 +5,7 @@ import { Document, Types } from 'mongoose';
 export class Notes extends Document {
   @Prop({
     type: String,
-    required: [true, 'E-Mail is required'],
+    required: [true, 'E-Mail is required'], 
     trim: true,
   })
   email: string;
@@ -60,10 +60,18 @@ export class Notes extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'users',
+    ref: 'User',
     required: [true, 'created by id is required'],
   })
   createdBy: Types.ObjectId;
 }
 
 export const NotesSchema = SchemaFactory.createForClass(Notes);
+
+
+NotesSchema.pre('save', function (next) {
+  if (typeof this.createdBy === 'string') {
+    this.createdBy = new Types.ObjectId(`${this.createdBy}`);
+  }
+  next();
+});
