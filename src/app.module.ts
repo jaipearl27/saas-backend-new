@@ -33,6 +33,7 @@ import { ProductsModule } from './products/products.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { NotesModule } from './notes/notes.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { EnrollmentsModule } from './enrollments/enrollments.module';
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
     }),
     NotesModule,
     CloudinaryModule,
+    EnrollmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
