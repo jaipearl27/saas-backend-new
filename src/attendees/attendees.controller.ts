@@ -28,7 +28,17 @@ export class AttendeesController {
     private readonly attendeesService: AttendeesService,
     private readonly subscriptionService: SubscriptionService,
     private readonly webinarService: WebinarService,
-  ) {}
+  ) { }
+
+  @Get(':email')
+  async getAttendee(
+    @Param("email") email: string,
+    @AdminId() adminId: string
+  ): Promise<any> {
+    const result = await this.attendeesService.getAttendee(adminId, email)
+    return result
+  }
+
 
   @Post('webinar')
   async getAttendees(
@@ -138,10 +148,12 @@ export class AttendeesController {
     @Param('id') id: string,
     @Body() updateAttendeeDto: UpdateAttendeeDto,
     @AdminId() adminId: string,
+    @Id() userId: string,
   ): Promise<any> {
     const result = await this.attendeesService.updateAttendee(
       id,
       adminId,
+      userId,
       updateAttendeeDto,
     );
     return result;

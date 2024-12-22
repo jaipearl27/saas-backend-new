@@ -42,13 +42,13 @@ export class AttendeesModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthAdminTokenMiddleware)
-      .exclude({ path: 'attendees/:id', method: RequestMethod.GET })
-      .forRoutes({ path: 'attendees*', method: RequestMethod.ALL });
+      .forRoutes({ path: 'attendees', method: RequestMethod.POST });
 
     consumer
       .apply(AuthTokenMiddleware, GetAdminIdMiddleware)
       .forRoutes(
         { path: 'attendees', method: RequestMethod.GET },
+        { path: 'attendees/:email', method: RequestMethod.GET },
         { path: 'attendees/:id', method: RequestMethod.PATCH },
       );
 

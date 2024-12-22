@@ -6,7 +6,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { NextFunction, Response } from 'express';
-import { CustomRequest } from 'src/interface/customRequest.interface';
 
 @Injectable()
 export class AuthAdminTokenMiddleware implements NestMiddleware {
