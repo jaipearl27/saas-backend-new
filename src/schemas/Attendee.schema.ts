@@ -33,7 +33,7 @@ export class Attendee extends Document {
     trim: true,
     default: null,
   })
-  phone: string | null; //Phone
+  phone: string | null;
 
   @Prop({ type: Number, default: 0 })
   timeInSession: number; //Time in session
@@ -87,6 +87,14 @@ export class Attendee extends Document {
     default: null,
   })
   assignedTo: Types.ObjectId | null;
+
+  @Prop({
+    type: String,
+    maxlength: 20,
+    trim: true,
+    default: null,
+  })
+  status: string | null;
 
 }
 

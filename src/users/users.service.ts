@@ -445,8 +445,8 @@ export class UsersService {
     return user;
   }
 
-  getUserById(id: string) {
-    return this.userModel.findById(id);
+  async getUserById(id: string) {
+    return await this.userModel.findById(id);
   }
 
   async updateUser(

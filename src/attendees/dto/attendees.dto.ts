@@ -164,7 +164,10 @@ export class AttendeesFilterDto {
 
 export class GetAttendeesDTO {
   @IsString()
-  webinarId: string; // Must be a valid MongoDB ObjectId
+  webinarId: string; 
+
+  @IsBoolean()
+  isAttended: boolean;
 
   @IsNotEmpty()
   @ValidateNested()

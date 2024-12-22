@@ -50,7 +50,7 @@ export class AssignmentService {
         $match: {
           adminId: new Types.ObjectId(adminId),
           user: new Types.ObjectId(id),
-          recordType: 'preWebinar',
+          // recordType: 'preWebinar',
         },
       },
       {
