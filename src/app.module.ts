@@ -34,6 +34,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { NotesModule } from './notes/notes.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
+import { DeleteDataModule } from './delete-data/delete-data.module';
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { EnrollmentsModule } from './enrollments/enrollments.module';
     NotesModule,
     CloudinaryModule,
     EnrollmentsModule,
+    DeleteDataModule,
   ],
   controllers: [AppController],
   providers: [AppService],

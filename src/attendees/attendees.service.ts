@@ -2,6 +2,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, PipelineStage, Types } from 'mongoose';
@@ -23,7 +24,7 @@ export class AttendeesService {
     @InjectModel(Attendee.name) private attendeeModel: Model<Attendee>,
     private readonly configService: ConfigService,
     private readonly userService: UsersService,
-  ) {}
+  ) { }
 
   async addAttendees(attendees: [CreateAttendeeDto]): Promise<any> {
     const result = await this.attendeeModel.create(attendees);
@@ -52,7 +53,7 @@ export class AttendeesService {
             return (
               employee._id.toString() === lastAssigned.assignedTo.toString() &&
               employee.role.toString() ===
-                this.configService.get('appRoles')['EMPLOYEE_SALES']
+              this.configService.get('appRoles')['EMPLOYEE_SALES']
             );
           },
         );
@@ -108,6 +109,76 @@ export class AttendeesService {
     return { result, assignments };
   }
 
+  async getAttendee(
+    adminId: string,
+    email: string,
+  ): Promise<any> {
+
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          email: email,
+          adminId: new Types.ObjectId(adminId),
+        },
+      },
+      {
+        $lookup: {
+          from: 'webinars', // The name of the collection to populate from
+          localField: 'webinar', // The field from the Attendee model
+          foreignField: '_id', // The field in the Webinar collection
+          as: 'webinarDetails', // Alias to store populated webinar details
+        },
+      },
+      {
+        $lookup: {
+          from: 'users', // The collection for admin and assignedTo (User model)
+          localField: 'adminId', // The field from Attendee to match in User
+          foreignField: '_id', // The field in the User collection
+          as: 'adminDetails', // Alias to store populated admin details
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1, // Sort by createdAt in descending order
+        },
+      },
+      {
+        $project: {
+          email: 1,
+          attendeeHistory: {
+            _id: '$_id',
+            webinar: '$webinarDetails', // Webinar details from lookup
+            admin: '$adminDetails', // Admin details from lookup
+            phone: '$phone',
+            gender: '$gender',
+            firstName: '$firstName',
+            lastName: '$lastName',
+            leadType: '$leadType',
+            timeInSession: '$timeInSession',
+            assignedTo: '$assignedTo',
+            isAttended: '$isAttended',
+            createdAt: '$createdAt', // Include createdAt for sorting
+            updatedAt: '$updatedAt', // Include updatedAt for reference
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$email', // Group by email
+          data: {
+            $push: '$attendeeHistory', // Collect all the attendee history data
+          },
+        },
+      }
+    ];
+
+    const aggregationResult = await this.attendeeModel
+      .aggregate(pipeline)
+      .exec();
+
+    return aggregationResult;
+  }
+
   async getAttendees(
     webinarId: string,
     AdminId: string,
@@ -131,34 +202,34 @@ export class AttendeesService {
             (filters.isAssigned === 'true'
               ? { assignedTo: { $ne: null } }
               : {
-                  $or: [
-                    { assignedTo: null },
-                    { assignedTo: { $exists: false } },
-                  ],
-                })),
+                $or: [
+                  { assignedTo: null },
+                  { assignedTo: { $exists: false } },
+                ],
+              })),
         },
       },
       ...(webinarId === ''
         ? [
-            {
-              $lookup: {
-                from: 'webinars',
-                localField: 'webinar',
-                foreignField: '_id',
-                as: 'webinarDetails',
-              },
+          {
+            $lookup: {
+              from: 'webinars',
+              localField: 'webinar',
+              foreignField: '_id',
+              as: 'webinarDetails',
             },
-            {
-              $addFields: {
-                webinarName: {
-                  $arrayElemAt: ['$webinarDetails.webinarName', 0],
-                }, // Extract webinarName
-              },
+          },
+          {
+            $addFields: {
+              webinarName: {
+                $arrayElemAt: ['$webinarDetails.webinarName', 0],
+              }, // Extract webinarName
             },
-            {
-              $project: { webinarDetails: 0 }, // Remove the webinarDetails array if it's no longer needed
-            },
-          ]
+          },
+          {
+            $project: { webinarDetails: 0 }, // Remove the webinarDetails array if it's no longer needed
+          },
+        ]
         : []),
       // Step 3: Apply optional filters
       {
@@ -197,7 +268,7 @@ export class AttendeesService {
       {
         $addFields: {
           isAssigned: {
-            $arrayElemAt: ['$assignedToDetails.userName', 0], 
+            $arrayElemAt: ['$assignedToDetails.userName', 0],
           },
         },
       },
@@ -262,18 +333,25 @@ export class AttendeesService {
   async updateAttendee(
     id: string,
     adminId: string,
+    userId: string,
     updateAttendeeDto: UpdateAttendeeDto,
   ) {
-    const result = await this.attendeeModel.findOneAndUpdate(
-      {
-        _id: new Types.ObjectId(`${id}`),
-        adminId: new Types.ObjectId(`${adminId}`),
-      },
-      updateAttendeeDto,
-      { new: true },
-    );
-    if (!result) throw new NotFoundException('No record found to be updated.');
-    return result;
+
+    const attendee = await this.attendeeModel.findOne({ _id: new Types.ObjectId(`${id}`) })
+
+    if (String(userId) === String(attendee.assignedTo) || String(userId) === String(attendee.adminId)) {
+      const result = await this.attendeeModel.findOneAndUpdate(
+        {
+          _id: new Types.ObjectId(`${id}`),
+          adminId: new Types.ObjectId(`${adminId}`),
+        },
+        updateAttendeeDto,
+        { new: true },
+      );
+      if (!result) throw new NotFoundException('No record found to be updated.');
+      return result;
+    } else throw new UnauthorizedException('Only Admin or assigned attendee is allowed to update attendee data.')
+
   }
 
   async updateAttendeeAssign(
