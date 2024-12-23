@@ -132,4 +132,18 @@ export class AssignmentController {
     return result
   }
 
+  @Post('pullback')
+  async getPullbacks(
+    @Body() body: {webinar: string, filters: any},
+    @Id() id: string,
+    @Query() query: {page?: string, limit?: string}
+  ):Promise<any> {
+    console.log(body)
+    const page = Number(query?.page) ? Number(query?.page) : 1
+    const limit = Number(query?.limit) ? Number(query?.limit) : 25
+    const result = await this.assignmentService.getPullbacks(body.webinar, id, page, limit)
+    return result
+  }
+
+
 }

@@ -18,7 +18,6 @@ export class SubscriptionService {
 
     async updateSubscription(id: string, updateSubscriptionDto: UpdateSubscriptionDto): Promise<any> {
         const result = await this.SubscriptionModel.findByIdAndUpdate(id, updateSubscriptionDto)
-
         return result
     }
 
