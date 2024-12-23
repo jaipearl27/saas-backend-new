@@ -158,4 +158,14 @@ export class AttendeesController {
     );
     return result;
   }
+
+  @Patch('lead-type/:id')
+  async updateLeadType(
+    @Param('id') id: string,
+    @AdminId() adminId: string,
+    @Body() data: { leadType: string },
+    ): Promise<any> {
+      const result = await this.attendeesService.updateLeadType(id, adminId, data.leadType);  
+      return result;
+      }
 }

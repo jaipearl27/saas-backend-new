@@ -8,9 +8,11 @@ import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Notes, NotesSchema } from 'src/schemas/Notes.schema';
 import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
   imports: [
+    UsersModule,
     MongooseModule.forFeature([
       {
         name: Notes.name,

@@ -16,6 +16,9 @@ import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { ValidateBodyFilters } from 'src/middlewares/validate-body-filters.Middleware';
 import { Assignments, AssignmentsSchema } from 'src/schemas/Assignments.schema';
 import { WebinarModule } from 'src/webinar/webinar.module';
+import { CustomLeadTypeModule } from 'src/custom-lead-type/custom-lead-type.module';
+import { CustomLeadTypeService } from 'src/custom-lead-type/custom-lead-type.service';
+import { CustomLeadType, CustomLeadTypeSchema } from 'src/schemas/custom-lead-type.schema';
 
 @Module({
   imports: [
@@ -31,11 +34,15 @@ import { WebinarModule } from 'src/webinar/webinar.module';
         name: Assignments.name,
         schema: AssignmentsSchema,
       },
+      {
+        name: CustomLeadType.name,
+        schema: CustomLeadTypeSchema,
+      }
     ]),
     forwardRef(() => WebinarModule),
   ],
   controllers: [AttendeesController],
-  providers: [AttendeesService],
+  providers: [AttendeesService, CustomLeadTypeService],
   exports: [AttendeesService],
 })
 export class AttendeesModule {
@@ -50,6 +57,7 @@ export class AttendeesModule {
         { path: 'attendees', method: RequestMethod.GET },
         { path: 'attendees/:email', method: RequestMethod.GET },
         { path: 'attendees/:id', method: RequestMethod.PATCH },
+        { path: 'attendees/lead-type/:id', method: RequestMethod.PATCH },
       );
 
     consumer

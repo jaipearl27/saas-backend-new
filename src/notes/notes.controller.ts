@@ -18,14 +18,15 @@ import {
 } from '@nestjs/platform-express';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { unlinkSync } from 'fs';
-import { Id } from 'src/decorators/custom.decorator';
-import { query } from 'express';
+import { Id, Role } from 'src/decorators/custom.decorator';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('notes')
 export class NotesController {
   constructor(
     private readonly notesService: NotesService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Post()
@@ -68,5 +69,22 @@ export class NotesController {
       data: notes,
       message: 'Notes fetched successfully',
     };
+  }
+
+  @Get('/dashboard')
+  async getDashboardNotes(@Id() userId: string, @Role() role: string) {
+    if (!userId) {
+      throw new BadRequestException('UserID is required.');
+    }
+    if (
+      role === this.configService.get('appRoles')['EMPLOYEE_SALES'] ||
+      role === this.configService.get('appRoles')['EMPLOYEE_REMINDER']
+    ) {
+      const notes = await this.notesService.getNotesByEmployeeId(userId);
+      return notes;
+    } else if (role === this.configService.get('appRoles')['ADMIN']) {
+      const notes = await this.notesService.getNotesByAdminId(userId);
+      return notes;
+    }
   }
 }

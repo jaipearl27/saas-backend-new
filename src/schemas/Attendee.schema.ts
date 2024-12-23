@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { CustomLeadType } from './custom-lead-type.schema';
 
 @Schema({ timestamps: true })
 export class Attendee extends Document {
@@ -39,12 +40,11 @@ export class Attendee extends Document {
   timeInSession: number; //Time in session
 
   @Prop({
-    type: String,
-    maxlength: 50,
-    trim: true,
-    default: null,
+    type: Types.ObjectId,
+    ref: CustomLeadType.name,
+    required: true,
   })
-  leadType: string | null; //Lead Type
+  leadType: Types.ObjectId; //Lead Type
 
   @Prop({
     type: Types.ObjectId,

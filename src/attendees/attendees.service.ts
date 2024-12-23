@@ -15,6 +15,7 @@ import {
 import { Assignments } from 'src/schemas/Assignments.schema';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from 'src/users/users.service';
+import { CustomLeadTypeService } from 'src/custom-lead-type/custom-lead-type.service';
 
 @Injectable()
 export class AttendeesService {
@@ -24,7 +25,8 @@ export class AttendeesService {
     @InjectModel(Attendee.name) private attendeeModel: Model<Attendee>,
     private readonly configService: ConfigService,
     private readonly userService: UsersService,
-  ) { }
+    private readonly leadTypeService: CustomLeadTypeService
+  ) {}
 
   async addAttendees(attendees: [CreateAttendeeDto]): Promise<any> {
     const result = await this.attendeeModel.create(attendees);
@@ -53,7 +55,7 @@ export class AttendeesService {
             return (
               employee._id.toString() === lastAssigned.assignedTo.toString() &&
               employee.role.toString() ===
-              this.configService.get('appRoles')['EMPLOYEE_SALES']
+                this.configService.get('appRoles')['EMPLOYEE_SALES']
             );
           },
         );
@@ -109,11 +111,7 @@ export class AttendeesService {
     return { result, assignments };
   }
 
-  async getAttendee(
-    adminId: string,
-    email: string,
-  ): Promise<any> {
-
+  async getAttendee(adminId: string, email: string): Promise<any> {
     const pipeline: PipelineStage[] = [
       {
         $match: {
@@ -169,7 +167,7 @@ export class AttendeesService {
             $push: '$attendeeHistory', // Collect all the attendee history data
           },
         },
-      }
+      },
     ];
 
     const aggregationResult = await this.attendeeModel
@@ -202,34 +200,34 @@ export class AttendeesService {
             (filters.isAssigned === 'true'
               ? { assignedTo: { $ne: null } }
               : {
-                $or: [
-                  { assignedTo: null },
-                  { assignedTo: { $exists: false } },
-                ],
-              })),
+                  $or: [
+                    { assignedTo: null },
+                    { assignedTo: { $exists: false } },
+                  ],
+                })),
         },
       },
       ...(webinarId === ''
         ? [
-          {
-            $lookup: {
-              from: 'webinars',
-              localField: 'webinar',
-              foreignField: '_id',
-              as: 'webinarDetails',
+            {
+              $lookup: {
+                from: 'webinars',
+                localField: 'webinar',
+                foreignField: '_id',
+                as: 'webinarDetails',
+              },
             },
-          },
-          {
-            $addFields: {
-              webinarName: {
-                $arrayElemAt: ['$webinarDetails.webinarName', 0],
-              }, // Extract webinarName
+            {
+              $addFields: {
+                webinarName: {
+                  $arrayElemAt: ['$webinarDetails.webinarName', 0],
+                }, // Extract webinarName
+              },
             },
-          },
-          {
-            $project: { webinarDetails: 0 }, // Remove the webinarDetails array if it's no longer needed
-          },
-        ]
+            {
+              $project: { webinarDetails: 0 }, // Remove the webinarDetails array if it's no longer needed
+            },
+          ]
         : []),
       // Step 3: Apply optional filters
       {
@@ -336,10 +334,14 @@ export class AttendeesService {
     userId: string,
     updateAttendeeDto: UpdateAttendeeDto,
   ) {
+    const attendee = await this.attendeeModel.findOne({
+      _id: new Types.ObjectId(`${id}`),
+    });
 
-    const attendee = await this.attendeeModel.findOne({ _id: new Types.ObjectId(`${id}`) })
-
-    if (String(userId) === String(attendee.assignedTo) || String(userId) === String(attendee.adminId)) {
+    if (
+      String(userId) === String(attendee.assignedTo) ||
+      String(userId) === String(attendee.adminId)
+    ) {
       const result = await this.attendeeModel.findOneAndUpdate(
         {
           _id: new Types.ObjectId(`${id}`),
@@ -348,10 +350,13 @@ export class AttendeesService {
         updateAttendeeDto,
         { new: true },
       );
-      if (!result) throw new NotFoundException('No record found to be updated.');
+      if (!result)
+        throw new NotFoundException('No record found to be updated.');
       return result;
-    } else throw new UnauthorizedException('Only Admin or assigned attendee is allowed to update attendee data.')
-
+    } else
+      throw new UnauthorizedException(
+        'Only Admin or assigned attendee is allowed to update attendee data.',
+      );
   }
 
   async updateAttendeeAssign(
@@ -398,5 +403,34 @@ export class AttendeesService {
       .exec();
 
     return lastAssigned;
+  }
+
+  async updateLeadType(
+    attendeeId: string,
+    adminid: string,
+    leadTypeId: string,
+  ) {
+    const attendee = await this.attendeeModel.findOne({
+      _id: new Types.ObjectId(`${attendeeId}`),
+      adminId: new Types.ObjectId(`${adminid}`),
+    });
+    if(!attendee) {
+      throw new NotFoundException('Attendee not found');
+    }
+
+    const leadType = this.leadTypeService.getLeadType(leadTypeId, adminid);
+    if(!leadType) {
+      throw new NotFoundException('Lead Type not found');
+    }
+
+    const result = await this.attendeeModel.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(`${attendeeId}`),
+        adminId: new Types.ObjectId(`${adminid}`),
+      },
+      { $set: { leadType: new Types.ObjectId(`${leadTypeId}`) } },
+      { new: true },
+    );
+    return result;
   }
 }

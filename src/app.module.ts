@@ -35,6 +35,7 @@ import { NotesModule } from './notes/notes.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { DeleteDataModule } from './delete-data/delete-data.module';
+import { CustomLeadTypeModule } from './custom-lead-type/custom-lead-type.module';
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { DeleteDataModule } from './delete-data/delete-data.module';
     CloudinaryModule,
     EnrollmentsModule,
     DeleteDataModule,
+    CustomLeadTypeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

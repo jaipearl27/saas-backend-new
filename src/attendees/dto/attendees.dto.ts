@@ -97,9 +97,8 @@ import { RangeNumberDto } from 'src/users/dto/filters.dto';
     timeInSession?: number = 0;
   
     @IsOptional()
-    @IsString({ message: 'Lead type must be a string' })
-    @MaxLength(50, { message: 'Lead type can be up to 50 characters long' })
-    leadType?: string | null;
+    @IsMongoId({ message: 'Lead type must be a valid MongoId' })
+    leadType?:  Types.ObjectId | null;
 
     @IsOptional()
     @IsBoolean({ message: 'IsAttended must be a boolean' })
@@ -113,6 +112,7 @@ import { RangeNumberDto } from 'src/users/dto/filters.dto';
     @IsOptional()
     @IsString({ message: 'Location must be a string' })
     
+    @IsOptional()
     @MaxLength(100, { message: 'Location can be up to 100 characters long' })
     location?: string;
 
