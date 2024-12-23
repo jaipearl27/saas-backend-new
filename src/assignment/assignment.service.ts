@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, PipelineStage, Types } from 'mongoose';
+import { Model, NumberSchemaDefinition, PipelineStage, Types } from 'mongoose';
 import { Assignments } from 'src/schemas/Assignments.schema';
 import { AssignmentDto } from './dto/Assignment.dto';
 import { ConfigService } from '@nestjs/config';
@@ -508,5 +508,25 @@ export class AssignmentService {
         'Faced an error pulling back the assignment, Please try again later.',
       );
     }
+  }
+
+  async getPullbacks(
+    webinar: string,
+    adminId: string,
+    page: number,
+    limit: number,
+  ): Promise<any> {
+    const skip = (page - 1) * limit;
+
+    const result = await this.attendeeModel
+      .find({
+        webinar: new Types.ObjectId(`${webinar}`),
+        assignedTo: new Types.ObjectId(`${adminId}`),
+      })
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    return result;
   }
 }

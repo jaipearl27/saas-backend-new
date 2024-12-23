@@ -42,7 +42,9 @@ export class AttendeesModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthAdminTokenMiddleware)
-      .forRoutes({ path: 'attendees', method: RequestMethod.POST });
+      .forRoutes(
+        { path: 'attendees', method: RequestMethod.POST },
+      );
 
     consumer
       .apply(AuthTokenMiddleware, GetAdminIdMiddleware)
