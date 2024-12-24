@@ -3,12 +3,12 @@ import { NotesController } from './notes.controller';
 import { NotesService } from './notes.service';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Notes, NotesSchema } from 'src/schemas/Notes.schema';
 import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
 import { UsersModule } from 'src/users/users.module';
+import { User, UserSchema } from 'src/schemas/User.schema';
 
 @Module({
   imports: [
@@ -17,6 +17,10 @@ import { UsersModule } from 'src/users/users.module';
       {
         name: Notes.name,
         schema: NotesSchema,
+      },
+      {
+        name: User.name,
+        schema: UserSchema,
       },
     ]),
 
