@@ -50,16 +50,17 @@ export class NotesService {
     const adminId = new Types.ObjectId(`${id}`);
 
     // Step 1: Retrieve employees under the given adminId
-    const employees = await this.usersModel.find({ adminId }, '_id name'); // Retrieve _id and name for employees
+    const employees = await this.usersModel.find({ adminId }, '_id email userName'); // Retrieve _id and name for employees
 
     // Step 2: Aggregate notes for each employee
     const results = await Promise.all(
       employees.map(async (employee) => {
+        console.log(employee)
         const notesAggregation = await this.notesModel.aggregate([
           {
             $match: {
               createdBy: employee._id, // Match notes created by this employee
-              isActive: true
+
             },
           },
           {
@@ -71,7 +72,8 @@ export class NotesService {
         ]);
 
         return {
-          employee: employee.email, // Add employee name
+          email: employee.email, // Add employee name
+          userName: employee.userName,
           notes: notesAggregation.map((note) => ({
             status: note._id, // Status
             count: note.count, // Total count for this status

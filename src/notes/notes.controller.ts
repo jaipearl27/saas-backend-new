@@ -14,7 +14,6 @@ import { NotesService } from './notes.service';
 import { CreateNoteDto } from './dto/notes.dto';
 import {
   FileFieldsInterceptor,
-  FileInterceptor,
 } from '@nestjs/platform-express';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { unlinkSync } from 'fs';

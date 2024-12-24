@@ -3,15 +3,13 @@ import {
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
-  NotAcceptableException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, NumberSchemaDefinition, PipelineStage, Types } from 'mongoose';
+import { Model, PipelineStage, Types } from 'mongoose';
 import { Assignments } from 'src/schemas/Assignments.schema';
 import { AssignmentDto } from './dto/Assignment.dto';
 import { ConfigService } from '@nestjs/config';
-import { assign } from 'nodemailer/lib/shared';
 import {
   AttendeesFilterDto,
   CreateAttendeeDto,
