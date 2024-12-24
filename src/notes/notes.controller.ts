@@ -86,5 +86,5 @@ export class NotesController {
       const notes = await this.notesService.getNotesByAdminId(userId);
       return notes;
     }
-  }
+  } 
 }

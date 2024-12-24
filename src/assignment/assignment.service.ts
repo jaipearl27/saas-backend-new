@@ -530,105 +530,109 @@ export class AssignmentService {
     return result;
   }
 
-
-  async getActiveInactiveAssignments(): Promise<any> {
-    const pipeline: PipelineStage[] = 
-    [
+  async getActiveInactiveAssignments(id: string): Promise<any> {
+    console.log(id)
+    const pipeline: PipelineStage[] = [
       {
-      // Step 1: Match active assignments in the given date range (status: 'active')
-      $match: {
-        user: new Types.ObjectId('675aab491ae5848067575d08'),
-        status: 'active'
-      },
-    },
-    {
-      // Step 2: Lookup the Attendee details (by attendee field in assignments)
-      $lookup: {
-        from: 'attendees', // Collection name for Attendees
-        localField: 'attendee', // Field in Assignments collection
-        foreignField: '_id', // Field in Attendees collection
-        as: 'attendeeDetails',
-      },
-    },
-    {
-      // Step 3: Unwind the attendeeDetails array to access attendee fields
-      $unwind: {
-        path: '$attendeeDetails',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      // Step 4: Lookup Notes collection to fetch call duration based on attendee email
-      $lookup: {
-        from: 'notes', // Collection name for Notes
-        localField: 'attendeeDetails.email', // Match the attendee's email with the Notes email
-        foreignField: 'email',
-        as: 'notesDetails',
-      },
-    },
-    {
-      // Step 5: Unwind notesDetails array to access call duration
-      $unwind: {
-        path: '$notesDetails',
-        preserveNullAndEmptyArrays: true, // Keep assignments even if no matching notes found
-      },
-    },
-    {
-      // Step 6: Add field to calculate call duration in seconds
-      $addFields: {
-        callDurationInSeconds: {
-          $add: [
-            { $multiply: [{ $toInt: '$notesDetails.callDuration.hr' }, 3600] },
-            { $multiply: [{ $toInt: '$notesDetails.callDuration.min' }, 60] },
-            { $toInt: '$notesDetails.callDuration.sec' },
-          ],
+        // Step 1: Match active assignments in the given date range (status: 'active')
+        $match: {
+          user: new Types.ObjectId(`${id}`),
+          status: 'active',
         },
       },
-    },
-    {
-      // Step 7: Lookup to fetch minCallTime from the User collection based on the assigned user
-      $lookup: {
-        from: 'users', // Collection name for Users
-        localField: 'user', // The user field in assignments
-        foreignField: '_id',
-        as: 'userDetails',
-      },
-    },
-    {
-      // Step 8: Unwind the userDetails to access the minCallTime
-      $unwind: {
-        path: '$userDetails',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      // Step 9: Add eligibility field to check if the call is eligible based on minCallTime
-      $addFields: {
-        isEligible: {
-          $gte: [
-            '$callDurationInSeconds', 
-            { $ifNull: ['$userDetails.validCallTime', 0] }  // Check against minCallTime from user
-          ],
+      {
+        // Step 2: Lookup the Attendee details (by attendee field in assignments)
+        $lookup: {
+          from: 'attendees', // Collection name for Attendees
+          localField: 'attendee', // Field in Assignments collection
+          foreignField: '_id', // Field in Attendees collection
+          as: 'attendeeDetails',
         },
       },
-    },
-    {
-      // Step 10: Group by assignment ID and determine eligible/ineligible based on notes
-      $group: {
-        _id: '$attendee',
-        email: { $first: '$attendeeDetails.email' },
-        assignmentId: { $first: '$_id' },
-        isEligible: { $max: '$isEligible' }, // If any note is eligible, set isEligible as true
+      {
+        // Step 3: Unwind the attendeeDetails array to access attendee fields
+        $unwind: {
+          path: '$attendeeDetails',
+          preserveNullAndEmptyArrays: true,
+        },
       },
-    },
-    {
-      // Step 11: Project the result with eligible and ineligible assignments
-      $project: {
-        assignmentId: 1,
-        email: 1,
-        isEligible: 1,
+      {
+        // Step 4: Lookup Notes collection to fetch call duration based on attendee email
+        $lookup: {
+          from: 'notes', // Collection name for Notes
+          localField: 'attendeeDetails.email', // Match the attendee's email with the Notes email
+          foreignField: 'email',
+          as: 'notesDetails',
+        },
       },
-    },
-  ]
+      {
+        // Step 5: Unwind notesDetails array to access call duration
+        $unwind: {
+          path: '$notesDetails',
+          preserveNullAndEmptyArrays: true, // Keep assignments even if no matching notes found
+        },
+      },
+      {
+        // Step 6: Add field to calculate call duration in seconds
+        $addFields: {
+          callDurationInSeconds: {
+            $add: [
+              {
+                $multiply: [{ $toInt: '$notesDetails.callDuration.hr' }, 3600],
+              },
+              { $multiply: [{ $toInt: '$notesDetails.callDuration.min' }, 60] },
+              { $toInt: '$notesDetails.callDuration.sec' },
+            ],
+          },
+        },
+      },
+      {
+        // Step 7: Lookup to fetch minCallTime from the User collection based on the assigned user
+        $lookup: {
+          from: 'users', // Collection name for Users
+          localField: 'user', // The user field in assignments
+          foreignField: '_id',
+          as: 'userDetails',
+        },
+      },
+      {
+        // Step 8: Unwind the userDetails to access the minCallTime
+        $unwind: {
+          path: '$userDetails',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        // Step 9: Add eligibility field to check if the call is eligible based on minCallTime
+        $addFields: {
+          isEligible: {
+            $gte: [
+              '$callDurationInSeconds',
+              { $ifNull: ['$userDetails.validCallTime', 0] }, // Check against minCallTime from user
+            ],
+          },
+        },
+      },
+      {
+        // Step 10: Group by assignment ID and determine eligible/ineligible based on notes
+        $group: {
+          _id: '$attendee',
+          email: { $first: '$attendeeDetails.email' },
+          assignmentId: { $first: '$_id' },
+          isEligible: { $max: '$isEligible' }, // If any note is eligible, set isEligible as true
+        },
+      },
+      {
+        // Step 11: Project the result with eligible and ineligible assignments
+        $project: {
+          assignmentId: 1,
+          email: 1,
+          isEligible: 1,
+        },
+      },
+    ];
+
+    const result = await this.assignmentsModel.aggregate(pipeline);
+    return result 
   }
 }

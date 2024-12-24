@@ -36,8 +36,8 @@ import { GetAdminIdForUserActivityMiddleware } from 'src/middlewares/getAdminIdF
       },
       {
         name: Webinar.name,
-        schema: WebinarSchema
-      }
+        schema: WebinarSchema,
+      },
     ]),
   ],
   providers: [AssignmentService, WebinarService],
@@ -45,13 +45,25 @@ import { GetAdminIdForUserActivityMiddleware } from 'src/middlewares/getAdminIdF
 })
 export class AssignmentModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-    .apply(GetAdminIdForUserActivityMiddleware)
-    .forRoutes({ path: 'assignment/data/:empId', method: RequestMethod.POST });
+    consumer.apply(GetAdminIdForUserActivityMiddleware).forRoutes({
+      path: 'assignment/data/:empId',
+      method: RequestMethod.POST,
+    });
 
     consumer
       .apply(AuthAdminTokenMiddleware, AuthActiveUserMiddleware)
-      .exclude({ path: 'assignment/data/:empId', method: RequestMethod.POST })
+      .exclude(
+        { path: 'assignment/data/:empId', method: RequestMethod.POST },
+        {
+          path: 'assignment/activityInactivity',
+          method: RequestMethod.GET,
+        },
+      )
       .forRoutes({ path: 'assignment*', method: RequestMethod.ALL });
+
+    consumer.apply(AuthTokenMiddleware).forRoutes({
+      path: 'assignment/activityInactivity',
+      method: RequestMethod.GET,
+    });
   }
 }

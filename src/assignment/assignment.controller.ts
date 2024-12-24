@@ -22,6 +22,9 @@ export class AssignmentController {
     private readonly assignmentService: AssignmentService,
   ) {}
 
+
+
+
   @Post('data/:empId')
   async getEmployeeAssignments(
     @Param('empId') employee: string,
@@ -61,6 +64,17 @@ export class AssignmentController {
     return result;
   }
 
+  @Get('/activityInactivity')
+  async getActiveInactiveAssignments(
+    @Id() id: string
+  ):Promise<any> {
+    console.log('in')
+    const result = await this.assignmentService.getActiveInactiveAssignments(id)
+    return result
+  }
+
+
+
   @Get(':id')
   async getAssignments(
     @Id() adminId: string,
@@ -78,6 +92,9 @@ export class AssignmentController {
 
     return result;
   }
+
+
+ 
 
   @Post()
   async addAssignment(
@@ -144,6 +161,7 @@ export class AssignmentController {
     const result = await this.assignmentService.getPullbacks(body.webinar, id, page, limit)
     return result
   }
+
 
 
 }
