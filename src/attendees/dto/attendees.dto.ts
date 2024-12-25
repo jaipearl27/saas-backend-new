@@ -160,6 +160,10 @@ export class AttendeesFilterDto {
   @IsOptional()
   @IsString()
   isAssigned?: string;
+
+  @IsOptional()
+  @IsMongoId()
+  leadType?: Types.ObjectId;
 }
 
 export class GetAttendeesDTO {
