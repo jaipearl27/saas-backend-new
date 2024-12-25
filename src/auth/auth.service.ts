@@ -15,7 +15,7 @@ import { ConfigService } from '@nestjs/config';
 import { CreateEmployeeDto } from './dto/createEmployee.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from 'src/schemas/User.schema';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { CreatorDetailsDto } from './dto/creatorDetails.dto';
 import { PlansService } from 'src/plans/plans.service';
 import { CreateClientDto } from './dto/createClient.dto';
@@ -115,8 +115,13 @@ export class AuthService {
       throw new BadRequestException('User already exists');
     }
 
-    const employeeCount = await this.userModel.countDocuments({
+    console.log({
       adminId: creatorDetailsDto.id,
+      isActive: true,
+    })
+
+    const employeeCount = await this.userModel.countDocuments({
+      adminId: new Types.ObjectId(`${creatorDetailsDto.id}`),
       isActive: true,
     });
 
