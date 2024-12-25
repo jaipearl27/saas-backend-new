@@ -628,16 +628,32 @@ console.log(adminId, id, page, limit, filters, webinarId, usePagination)
         $group: {
           _id: '$attendee',
           email: { $first: '$attendeeDetails.email' },
+          webinar: { $first: '$attendeeDetails.webinar' },
           assignmentId: { $first: '$_id' },
           isEligible: { $max: '$isEligible' }, // If any note is eligible, set isEligible as true
         },
       },
+      {
+        $lookup: {
+          from: 'webinars',
+          localField: 'webinar',
+          foreignField: '_id',
+          as: 'webinarDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$webinarDetails',
+          preserveNullAndEmptyArrays: true,
+        },
+        },
       {
         // Step 11: Project the result with eligible and ineligible assignments
         $project: {
           assignmentId: 1,
           email: 1,
           isEligible: 1,
+          webinar: '$webinarDetails.webinarName',
         },
       },
     ];
