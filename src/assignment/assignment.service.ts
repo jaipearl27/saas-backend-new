@@ -535,7 +535,7 @@ export class AssignmentService {
         // Step 1: Match active assignments in the given date range (status: 'active')
         $match: {
           user: new Types.ObjectId(`${id}`),
-          status: 'active',
+          // status: 'active',
         },
       },
       {
