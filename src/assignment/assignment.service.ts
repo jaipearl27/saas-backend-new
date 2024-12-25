@@ -560,7 +560,6 @@ export class AssignmentService {
           from: 'notes', // Collection name for Notes
           let: {
             attendeeEmail: '$attendeeDetails.email', // Pass attendee email
-            userId: id, // Pass the user ID
           },
           pipeline: [
             {
@@ -568,7 +567,7 @@ export class AssignmentService {
                 $expr: {
                   $and: [
                     { $eq: ['$email', '$$attendeeEmail'] }, // Match email with attendee email
-                    { $eq: ['$createdBy', id] },    // Match createdBy with user ID
+                    { $eq: ['$createdBy', new Types.ObjectId(id)] }, // Match createdBy with user ID
                   ],
                 },
               },
@@ -589,11 +588,9 @@ export class AssignmentService {
         $addFields: {
           callDurationInSeconds: {
             $add: [
-              {
-                $multiply: [{ $toInt: '$notesDetails.callDuration.hr' }, 3600],
-              },
-              { $multiply: [{ $toInt: '$notesDetails.callDuration.min' }, 60] },
-              { $toInt: '$notesDetails.callDuration.sec' },
+              { $multiply: [{ $toInt: { $ifNull: ['$notesDetails.callDuration.hr', '0'] } }, 3600] },
+              { $multiply: [{ $toInt: { $ifNull: ['$notesDetails.callDuration.min', '0'] } }, 60] },
+              { $toInt: { $ifNull: ['$notesDetails.callDuration.sec', '0'] } },
             ],
           },
         },
@@ -643,6 +640,7 @@ export class AssignmentService {
         },
       },
     ];
+    
 
     const result = await this.assignmentsModel.aggregate(pipeline);
     return result 

@@ -124,7 +124,7 @@ export class DashboardService {
               $match: {
                 $expr: {
                   $and: [
-                    { $eq: ['$admin', '$$userId'] },
+                    { $eq: ['$adminId', '$$userId'] },
                     {
                       $gte: ['$createdAt', new Date(startDate)],
                     },
