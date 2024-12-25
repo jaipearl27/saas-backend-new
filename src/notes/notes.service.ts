@@ -13,7 +13,7 @@ export class NotesService {
     @InjectModel(User.name) private readonly usersModel: Model<User>,
 
     private readonly usersService: UsersService,
-  ) {}
+  ) { }
 
   async createNote(
     body: CreateNoteDto,
@@ -28,7 +28,7 @@ export class NotesService {
     return notes;
   }
 
-  async getNotesByEmployeeId(employeeId: string, startDate: string, endDate: string):Promise<any> {
+  async getNotesByEmployeeId(employeeId: string, startDate: string, endDate: string): Promise<any> {
     const pipeline: PipelineStage[] = [
       {
         $match: {
@@ -45,12 +45,19 @@ export class NotesService {
           count: { $sum: 1 },
         },
       },
+      {
+        $project: {
+          _id: 0,
+          status: '$_id',
+          count: '$count'
+        }
+      }
     ];
     const notes = await this.notesModel.aggregate(pipeline).exec();
     return notes;
   }
 
-  async getNotesByAdminId(id: string,startDate: string, endDate: string):Promise<any> {
+  async getNotesByAdminId(id: string, startDate: string, endDate: string): Promise<any> {
     const adminId = new Types.ObjectId(`${id}`);
 
     // Step 1: Retrieve employees under the given adminId
