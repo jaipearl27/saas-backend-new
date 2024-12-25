@@ -3,12 +3,13 @@ import {
   Controller,
   Delete,
   Get,
+  NotAcceptableException,
   Param,
   Patch,
   Post,
   Query,
 } from '@nestjs/common';
-import { Id } from 'src/decorators/custom.decorator';
+import { AdminId, Id } from 'src/decorators/custom.decorator';
 import { WebinarService } from './webinar.service';
 import { CreateWebinarDto, UpdateWebinarDto } from './dto/createWebinar.dto';
 import { WebinarFilterDTO } from './dto/webinar-filter.dto';
@@ -29,15 +30,17 @@ export class WebinarController {
 
     const result = await this.webinarService.getWebinars(adminId, page, limit, body.filters);
     return result;
-  }
+  } 
 
-  @Get(':id')
-  async getWebinar(
-    @Id() adminId: string,
-    @Param('id') id: string,
+  @Get()
+  async getEmployeeWebinars(
+    @AdminId() adminId: string,
+    @Id() id: string,
   ): Promise<any> {
-    const result = await this.webinarService.getWebinar(id, adminId);
-    return result;
+    if(!id || !adminId){
+      throw new NotAcceptableException('Invalid request');
+    }
+  return await this.webinarService.getEmployeeWebinars(id, adminId);
   }
 
   @Post()

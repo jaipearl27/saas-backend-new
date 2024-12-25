@@ -3,15 +3,13 @@ import {
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
-  NotAcceptableException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, NumberSchemaDefinition, PipelineStage, Types } from 'mongoose';
+import { Model, PipelineStage, Types } from 'mongoose';
 import { Assignments } from 'src/schemas/Assignments.schema';
 import { AssignmentDto } from './dto/Assignment.dto';
 import { ConfigService } from '@nestjs/config';
-import { assign } from 'nodemailer/lib/shared';
 import {
   AttendeesFilterDto,
   CreateAttendeeDto,
@@ -41,16 +39,17 @@ export class AssignmentService {
     page: number,
     limit: number,
     filters: AttendeesFilterDto = {},
+    webinarId: string = '',
     usePagination: boolean = true, // Flag to enable/disable pagination
   ): Promise<any> {
     const skip = (page - 1) * limit;
-
+console.log(adminId, id, page, limit, filters, webinarId, usePagination)
     const basePipeline: PipelineStage[] = [
       {
         $match: {
           adminId: new Types.ObjectId(adminId),
           user: new Types.ObjectId(id),
-          // recordType: 'preWebinar',
+          ...(webinarId && { webinar: new Types.ObjectId(webinarId) }),
         },
       },
       {
@@ -537,7 +536,7 @@ export class AssignmentService {
         // Step 1: Match active assignments in the given date range (status: 'active')
         $match: {
           user: new Types.ObjectId(`${id}`),
-          status: 'active',
+          // status: 'active',
         },
       },
       {
@@ -560,8 +559,21 @@ export class AssignmentService {
         // Step 4: Lookup Notes collection to fetch call duration based on attendee email
         $lookup: {
           from: 'notes', // Collection name for Notes
-          localField: 'attendeeDetails.email', // Match the attendee's email with the Notes email
-          foreignField: 'email',
+          let: {
+            attendeeEmail: '$attendeeDetails.email', // Pass attendee email
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$email', '$$attendeeEmail'] }, // Match email with attendee email
+                    { $eq: ['$createdBy', new Types.ObjectId(id)] }, // Match createdBy with user ID
+                  ],
+                },
+              },
+            },
+          ],
           as: 'notesDetails',
         },
       },
@@ -577,11 +589,9 @@ export class AssignmentService {
         $addFields: {
           callDurationInSeconds: {
             $add: [
-              {
-                $multiply: [{ $toInt: '$notesDetails.callDuration.hr' }, 3600],
-              },
-              { $multiply: [{ $toInt: '$notesDetails.callDuration.min' }, 60] },
-              { $toInt: '$notesDetails.callDuration.sec' },
+              { $multiply: [{ $toInt: { $ifNull: ['$notesDetails.callDuration.hr', '0'] } }, 3600] },
+              { $multiply: [{ $toInt: { $ifNull: ['$notesDetails.callDuration.min', '0'] } }, 60] },
+              { $toInt: { $ifNull: ['$notesDetails.callDuration.sec', '0'] } },
             ],
           },
         },
@@ -618,19 +628,36 @@ export class AssignmentService {
         $group: {
           _id: '$attendee',
           email: { $first: '$attendeeDetails.email' },
+          webinar: { $first: '$attendeeDetails.webinar' },
           assignmentId: { $first: '$_id' },
           isEligible: { $max: '$isEligible' }, // If any note is eligible, set isEligible as true
         },
       },
+      {
+        $lookup: {
+          from: 'webinars',
+          localField: 'webinar',
+          foreignField: '_id',
+          as: 'webinarDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$webinarDetails',
+          preserveNullAndEmptyArrays: true,
+        },
+        },
       {
         // Step 11: Project the result with eligible and ineligible assignments
         $project: {
           assignmentId: 1,
           email: 1,
           isEligible: 1,
+          webinar: '$webinarDetails.webinarName',
         },
       },
     ];
+    
 
     const result = await this.assignmentsModel.aggregate(pipeline);
     return result 

@@ -1,31 +1,46 @@
-import { forwardRef, MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+import {
+  forwardRef,
+  MiddlewareConsumer,
+  Module,
+  RequestMethod,
+} from '@nestjs/common';
 import { WebinarService } from './webinar.service';
 import { WebinarController } from './webinar.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Webinar, WebinarSchema } from 'src/schemas/Webinar.schema';
 import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
 import { AttendeesModule } from 'src/attendees/attendees.module';
+import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
   imports: [
+    UsersModule,
     MongooseModule.forFeature([
       {
         name: Webinar.name,
-        schema: WebinarSchema
-      }
+        schema: WebinarSchema,
+      },
     ]),
     forwardRef(() => AttendeesModule),
-
   ],
   providers: [WebinarService],
   controllers: [WebinarController],
-  exports: [WebinarService]
+  exports: [WebinarService],
 })
 export class WebinarModule {
   configure(consumer: MiddlewareConsumer) {
+    
     consumer
-    .apply(AuthAdminTokenMiddleware)
-    .forRoutes({path: 'webinar', method: RequestMethod.ALL}, {path: 'webinar/*', method: RequestMethod.ALL})
+      .apply(GetAdminIdMiddleware)
+      .forRoutes({ path: 'webinar', method: RequestMethod.GET });
+    consumer
+      .apply(AuthAdminTokenMiddleware)
+      .exclude({ path: 'webinar', method: RequestMethod.GET })
+      .forRoutes(
+        { path: 'webinar', method: RequestMethod.POST },
+        { path: 'webinar/*', method: RequestMethod.ALL },
+      );
+
   }
 }
-

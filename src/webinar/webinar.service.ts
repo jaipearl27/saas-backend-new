@@ -27,39 +27,36 @@ export class WebinarService {
     page: number,
     limit: number,
     filters: WebinarFilterDTO = {},
-    usePagination: boolean=true, // Flag to enable/disable pagination
+    usePagination: boolean = true, // Flag to enable/disable pagination
   ): Promise<any> {
-    console.log(filters)
+    console.log(filters);
     const skip = (page - 1) * limit;
-  
+
     const query = { adminId: new Types.ObjectId(`${adminId}`) };
 
     const dateFilter: any = {};
     if (filters.webinarDate) {
       dateFilter['webinarDate'] = {};
       if (filters.webinarDate.$gte) {
-        dateFilter['webinarDate']['$gte'] = new Date(
-          filters.webinarDate.$gte,
-        );
+        dateFilter['webinarDate']['$gte'] = new Date(filters.webinarDate.$gte);
       }
       if (filters.webinarDate.$lte) {
-        dateFilter['webinarDate']['$lte'] = new Date(
-          filters.webinarDate.$lte,
-        );
+        dateFilter['webinarDate']['$lte'] = new Date(filters.webinarDate.$lte);
       }
     }
-  
+
     // Base pipeline used for both cases
     const basePipeline: PipelineStage[] = [
       {
         $match: query,
-      },{
+      },
+      {
         $match: {
           ...(filters.webinarName && {
             webinarName: { $regex: filters.webinarName, $options: 'i' },
           }),
           ...dateFilter,
-        }
+        },
       },
       {
         $lookup: {
@@ -101,24 +98,26 @@ export class WebinarService {
       {
         // Avoid redundant calculation by reusing fields directly
         $addFields: {
-          totalParticipants: { $add: ['$totalAttendees', '$totalRegistrations'] },
+          totalParticipants: {
+            $add: ['$totalAttendees', '$totalRegistrations'],
+          },
         },
       },
       {
         $match: {
           ...(filters.totalRegistrations && {
-            totalRegistrations: filters.totalRegistrations
+            totalRegistrations: filters.totalRegistrations,
           }),
           ...(filters.totalAttendees && {
-            totalAttendees: filters.totalAttendees
+            totalAttendees: filters.totalAttendees,
           }),
           ...(filters.totalParticipants && {
-            totalParticipants: filters.totalParticipants
+            totalParticipants: filters.totalParticipants,
           }),
         },
       },
     ];
-  
+
     if (usePagination) {
       // Add $facet stage for pagination
       basePipeline.push(
@@ -140,9 +139,9 @@ export class WebinarService {
             page: { $literal: page },
             result: '$data',
           },
-        }
+        },
       );
-  
+
       const result = await this.webinarModel.aggregate(basePipeline);
       return result.length > 0
         ? result[0]
@@ -150,7 +149,7 @@ export class WebinarService {
     } else {
       // Add skip and limit directly for consistent output without $facet
       basePipeline.push({ $skip: skip }, { $limit: limit });
-  
+
       const result = await this.webinarModel.aggregate(basePipeline);
       return {
         result, // Return all data
@@ -159,15 +158,12 @@ export class WebinarService {
       };
     }
   }
-  
 
   async getWebinar(id: string, adminId: string): Promise<any> {
-
     const result = await this.webinarModel
       .findById(id)
       .populate('assignedEmployees')
-      .lean()
-      ;
+      .lean();
     return result;
   }
 
@@ -204,5 +200,16 @@ export class WebinarService {
       deletedWebinar,
       deletedAttendees,
     };
+  }
+
+  async getEmployeeWebinars(
+    employeeId: string,
+    adminId: string,
+  ): Promise<Webinar[]> {
+    const result = await this.webinarModel.find({
+      assignedEmployees: { $in: [new Types.ObjectId(`${employeeId}`)] },
+      adminId: new Types.ObjectId(`${adminId}`),
+    });
+    return result;
   }
 }

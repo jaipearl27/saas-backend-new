@@ -36,6 +36,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { DeleteDataModule } from './delete-data/delete-data.module';
 import { CustomLeadTypeModule } from './custom-lead-type/custom-lead-type.module';
+import { AttendeeAssociationModule } from './attendee-association/attendee-association.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { CustomLeadTypeModule } from './custom-lead-type/custom-lead-type.module
       rootPath: join(__dirname, '..', 'uploads'),
       serveRoot: '/uploads',
     }),
+    AttendeeAssociationModule,
     UsersModule,
     AttendeesModule,
     AuthModule,

@@ -15,7 +15,6 @@ import {
 import { Assignments } from 'src/schemas/Assignments.schema';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from 'src/users/users.service';
-import { CustomLeadTypeService } from 'src/custom-lead-type/custom-lead-type.service';
 
 @Injectable()
 export class AttendeesService {
@@ -25,7 +24,6 @@ export class AttendeesService {
     @InjectModel(Attendee.name) private attendeeModel: Model<Attendee>,
     private readonly configService: ConfigService,
     private readonly userService: UsersService,
-    private readonly leadTypeService: CustomLeadTypeService
   ) {}
 
   async addAttendees(attendees: [CreateAttendeeDto]): Promise<any> {
@@ -186,7 +184,7 @@ export class AttendeesService {
     filters: AttendeesFilterDto = {},
   ): Promise<any> {
     const skip = (page - 1) * limit;
-    console.log(filters, typeof filters.isAssigned);
+    console.log(webinarId, AdminId, isAttended, page, limit, filters);
 
     const pipeline: PipelineStage[] = [
       // Step 1: Match key fields to reduce dataset size
@@ -264,14 +262,26 @@ export class AttendeesService {
         },
       },
       {
+        $lookup: {
+          from: 'attendeeassociations',
+          localField: 'email',
+          foreignField: 'email',
+          as: 'attendeeAssociations',
+        },
+      },
+
+      {
         $addFields: {
           isAssigned: {
             $arrayElemAt: ['$assignedToDetails.userName', 0],
           },
+          leadType:{
+            $arrayElemAt: ['$attendeeAssociations.leadType', 0],
+          }
         },
       },
       {
-        $project: { assignedToDetails: 0 },
+        $project: { assignedToDetails: 0, attendeeAssociations: 0 },
       },
       {
         $facet: {
@@ -403,34 +413,5 @@ export class AttendeesService {
       .exec();
 
     return lastAssigned;
-  }
-
-  async updateLeadType(
-    attendeeId: string,
-    adminid: string,
-    leadTypeId: string,
-  ) {
-    const attendee = await this.attendeeModel.findOne({
-      _id: new Types.ObjectId(`${attendeeId}`),
-      adminId: new Types.ObjectId(`${adminid}`),
-    });
-    if(!attendee) {
-      throw new NotFoundException('Attendee not found');
-    }
-
-    const leadType = this.leadTypeService.getLeadType(leadTypeId, adminid);
-    if(!leadType) {
-      throw new NotFoundException('Lead Type not found');
-    }
-
-    const result = await this.attendeeModel.findOneAndUpdate(
-      {
-        _id: new Types.ObjectId(`${attendeeId}`),
-        adminId: new Types.ObjectId(`${adminid}`),
-      },
-      { $set: { leadType: new Types.ObjectId(`${leadTypeId}`) } },
-      { new: true },
-    );
-    return result;
   }
 }
