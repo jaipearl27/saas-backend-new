@@ -66,11 +66,13 @@ export class AssignmentController {
 
   @Get('/activityInactivity')
   async getActiveInactiveAssignments(
-    @Id() id: string
+    @Id() id: string,
+    @Query('empId') empId: string
   ):Promise<any> {
-    console.log('in')
-    const result = await this.assignmentService.getActiveInactiveAssignments(id)
-    return result
+    
+      const result = await this.assignmentService.getActiveInactiveAssignments(empId || id)
+      return result
+    
   }
 
 

@@ -12,9 +12,7 @@ import {
 } from '@nestjs/common';
 import { NotesService } from './notes.service';
 import { CreateNoteDto } from './dto/notes.dto';
-import {
-  FileFieldsInterceptor,
-} from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { unlinkSync } from 'fs';
 import { Id, Role } from 'src/decorators/custom.decorator';
@@ -71,7 +69,11 @@ export class NotesController {
   }
 
   @Get('/dashboard')
-  async getDashboardNotes(@Id() userId: string, @Role() role: string) {
+  async getDashboardNotes(
+    @Id() userId: string,
+   @Role() role: string,
+   @Query() query: {startDate: string, endDate: string},
+  ) {
     if (!userId) {
       throw new BadRequestException('UserID is required.');
     }
@@ -79,11 +81,19 @@ export class NotesController {
       role === this.configService.get('appRoles')['EMPLOYEE_SALES'] ||
       role === this.configService.get('appRoles')['EMPLOYEE_REMINDER']
     ) {
-      const notes = await this.notesService.getNotesByEmployeeId(userId);
+      const notes = await this.notesService.getNotesByEmployeeId(
+        userId,
+        query.startDate,
+        query.endDate,
+      );
       return notes;
     } else if (role === this.configService.get('appRoles')['ADMIN']) {
-      const notes = await this.notesService.getNotesByAdminId(userId);
+      const notes = await this.notesService.getNotesByAdminId(
+        userId,
+        query.startDate,
+        query.endDate,
+      );
       return notes;
     }
-  } 
+  }
 }

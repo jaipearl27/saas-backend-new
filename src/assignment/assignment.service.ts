@@ -558,8 +558,22 @@ export class AssignmentService {
         // Step 4: Lookup Notes collection to fetch call duration based on attendee email
         $lookup: {
           from: 'notes', // Collection name for Notes
-          localField: 'attendeeDetails.email', // Match the attendee's email with the Notes email
-          foreignField: 'email',
+          let: {
+            attendeeEmail: '$attendeeDetails.email', // Pass attendee email
+            userId: id, // Pass the user ID
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$email', '$$attendeeEmail'] }, // Match email with attendee email
+                    { $eq: ['$createdBy', id] },    // Match createdBy with user ID
+                  ],
+                },
+              },
+            },
+          ],
           as: 'notesDetails',
         },
       },

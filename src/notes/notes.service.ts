@@ -28,11 +28,15 @@ export class NotesService {
     return notes;
   }
 
-  async getNotesByEmployeeId(employeeId: string) {
+  async getNotesByEmployeeId(employeeId: string, startDate: string, endDate: string):Promise<any> {
     const pipeline: PipelineStage[] = [
       {
         $match: {
           createdBy: new Types.ObjectId(`${employeeId}`),
+          createdAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate),
+          },
         },
       },
       {
@@ -46,7 +50,7 @@ export class NotesService {
     return notes;
   }
 
-  async getNotesByAdminId(id: string) {
+  async getNotesByAdminId(id: string,startDate: string, endDate: string):Promise<any> {
     const adminId = new Types.ObjectId(`${id}`);
 
     // Step 1: Retrieve employees under the given adminId
@@ -60,7 +64,10 @@ export class NotesService {
           {
             $match: {
               createdBy: employee._id, // Match notes created by this employee
-
+              createdAt: {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate),
+              },
             },
           },
           {
