@@ -184,7 +184,7 @@ export class AttendeesService {
     filters: AttendeesFilterDto = {},
   ): Promise<any> {
     const skip = (page - 1) * limit;
-    console.log(filters, typeof filters.isAssigned);
+    console.log(webinarId, AdminId, isAttended, page, limit, filters);
 
     const pipeline: PipelineStage[] = [
       // Step 1: Match key fields to reduce dataset size

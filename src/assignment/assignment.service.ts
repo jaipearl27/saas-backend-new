@@ -39,16 +39,17 @@ export class AssignmentService {
     page: number,
     limit: number,
     filters: AttendeesFilterDto = {},
+    webinarId: string = '',
     usePagination: boolean = true, // Flag to enable/disable pagination
   ): Promise<any> {
     const skip = (page - 1) * limit;
-
+console.log(adminId, id, page, limit, filters, webinarId, usePagination)
     const basePipeline: PipelineStage[] = [
       {
         $match: {
           adminId: new Types.ObjectId(adminId),
           user: new Types.ObjectId(id),
-          // recordType: 'preWebinar',
+          ...(webinarId && { webinar: new Types.ObjectId(webinarId) }),
         },
       },
       {

@@ -10,7 +10,11 @@ import {
   Query,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AssignmentDto, GetAssignmentDTO, preWebinarAssignmentDto } from './dto/Assignment.dto';
+import {
+  AssignmentDto,
+  GetAssignmentDTO,
+  preWebinarAssignmentDto,
+} from './dto/Assignment.dto';
 import { UsersService } from 'src/users/users.service';
 import { AssignmentService } from './assignment.service';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
@@ -22,35 +26,35 @@ export class AssignmentController {
     private readonly assignmentService: AssignmentService,
   ) {}
 
-
-
-
   @Post('data/:empId')
   async getEmployeeAssignments(
     @Param('empId') employee: string,
     @AdminId() admin: string,
     @Body() body: GetAssignmentDTO,
     @Id() id: string,
-    @Query() query: { page?: string; limit?: string },
+    @Query() query: { page?: string; limit?: string; webinarId?: string },
   ) {
-    let employeeId = "";
-    let adminId = "";
-    if(String(employee) === String(id)){
+    let employeeId = '';
+    let adminId = '';
+
+    if (String(employee) === String(id)) {
       employeeId = employee;
       adminId = admin;
-    }
-    else{
+      if (!query.webinarId || query.webinarId.trim() === '')
+        throw new NotAcceptableException('Webinar ID is required');
+    } else {
       const userEmployee = await this.usersService.getEmployee(employee);
-      if(!userEmployee){
+      if (!userEmployee) {
         throw new NotFoundException('Employee not found');
       }
-      if(String(userEmployee?.adminId) !== String(id)){
-        throw new UnauthorizedException('You are not authorized to access this employee\'s data');
+      if (String(userEmployee?.adminId) !== String(id)) {
+        throw new UnauthorizedException(
+          "You are not authorized to access this employee's data",
+        );
       }
       employeeId = employee;
       adminId = id;
     }
-
 
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
@@ -59,7 +63,8 @@ export class AssignmentController {
       employeeId,
       page,
       limit,
-      body.filters
+      body.filters,
+      query.webinarId,
     );
     return result;
   }
@@ -67,15 +72,13 @@ export class AssignmentController {
   @Get('/activityInactivity')
   async getActiveInactiveAssignments(
     @Id() id: string,
-    @Query('empId') empId: string
-  ):Promise<any> {
-    
-      const result = await this.assignmentService.getActiveInactiveAssignments(empId || id)
-      return result
-    
+    @Query('empId') empId: string,
+  ): Promise<any> {
+    const result = await this.assignmentService.getActiveInactiveAssignments(
+      empId || id,
+    );
+    return result;
   }
-
-
 
   @Get(':id')
   async getAssignments(
@@ -94,9 +97,6 @@ export class AssignmentController {
 
     return result;
   }
-
-
- 
 
   @Post()
   async addAssignment(
@@ -145,25 +145,27 @@ export class AssignmentController {
   @Patch('pullback')
   async pullbackAssignment(
     @Body('id') id: string,
-    @Id() adminId: string
-  ):Promise<any> {
-    const result = await this.assignmentService.pullbackAssignment(id, adminId)
-    return result
+    @Id() adminId: string,
+  ): Promise<any> {
+    const result = await this.assignmentService.pullbackAssignment(id, adminId);
+    return result;
   }
 
   @Post('pullback')
   async getPullbacks(
-    @Body() body: {webinar: string, filters: any},
+    @Body() body: { webinar: string; filters: any },
     @Id() id: string,
-    @Query() query: {page?: string, limit?: string}
-  ):Promise<any> {
-    console.log(body)
-    const page = Number(query?.page) ? Number(query?.page) : 1
-    const limit = Number(query?.limit) ? Number(query?.limit) : 25
-    const result = await this.assignmentService.getPullbacks(body.webinar, id, page, limit)
-    return result
+    @Query() query: { page?: string; limit?: string },
+  ): Promise<any> {
+    console.log(body);
+    const page = Number(query?.page) ? Number(query?.page) : 1;
+    const limit = Number(query?.limit) ? Number(query?.limit) : 25;
+    const result = await this.assignmentService.getPullbacks(
+      body.webinar,
+      id,
+      page,
+      limit,
+    );
+    return result;
   }
-
-
-
 }
