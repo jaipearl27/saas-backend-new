@@ -30,11 +30,10 @@ export class StatusDropdownController {
 
   @Get()
   async findAll(
-    @Id() id: string,
     @Role() role: string,
     @AdminId() adminId: string,
   ) {
-    return await this.statusDropdownService.findAll(role, id, adminId);
+    return await this.statusDropdownService.findAll(role, adminId);
   }
 
   // Update a status by ID

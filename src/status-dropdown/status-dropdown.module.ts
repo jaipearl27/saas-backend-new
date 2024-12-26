@@ -15,6 +15,10 @@ import { GetAdminIdForUserActivityMiddleware } from 'src/middlewares/getAdminIdF
 import { User, UserSchema } from 'src/schemas/User.schema';
 import { UsersModule } from 'src/users/users.module';
 import { JwtModule } from '@nestjs/jwt';
+import { SubscriptionService } from 'src/subscription/subscription.service';
+import { SubscriptionModule } from 'src/subscription/subscription.module';
+import { Subscription, SubscriptionSchema } from 'src/schemas/Subscription.schema';
+import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
 
 @Module({
   imports: [
@@ -31,11 +35,15 @@ import { JwtModule } from '@nestjs/jwt';
         name: User.name,
         schema: UserSchema,
       },
+      {
+        name: Subscription.name,
+        schema: SubscriptionSchema,
+      }
     ]),
     UsersModule,
   ],
   controllers: [StatusDropdownController],
-  providers: [StatusDropdownService, RolesService],
+  providers: [StatusDropdownService, RolesService, SubscriptionService],
 })
 export class StatusDropdownModule {
   configure(consumer: MiddlewareConsumer) {
@@ -48,7 +56,7 @@ export class StatusDropdownModule {
       .forRoutes({ path: 'status-dropdown/:id', method: RequestMethod.ALL });
 
     consumer
-      .apply(GetAdminIdForUserActivityMiddleware)
+      .apply(GetAdminIdMiddleware)
       .forRoutes({ path: 'status-dropdown', method: RequestMethod.GET });
   }
 }
