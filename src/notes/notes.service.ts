@@ -5,20 +5,38 @@ import { Notes } from 'src/schemas/Notes.schema';
 import { CreateNoteDto } from './dto/notes.dto';
 import { UsersService } from 'src/users/users.service';
 import { User } from 'src/schemas/User.schema';
+import { Attendee } from 'src/schemas/Attendee.schema';
 
 @Injectable()
 export class NotesService {
   constructor(
     @InjectModel(Notes.name) private readonly notesModel: Model<Notes>,
     @InjectModel(User.name) private readonly usersModel: Model<User>,
-
+    @InjectModel(Attendee.name) private readonly attendeeModel: Model<Attendee>,
     private readonly usersService: UsersService,
-  ) { }
+  ) {}
 
   async createNote(
     body: CreateNoteDto,
     createdBy: string,
   ): Promise<Notes | null> {
+
+    //check if note's callduration >= user's validCallTime to add validCall: true in attendee
+
+    const user = await this.usersService.getUserById(createdBy);
+
+    if (user && user?.validCallTime) {
+      const callDuration = body.callDuration;
+      const totalCallDuration: number = Number(callDuration.hr) * 60 * 60 + Number(callDuration.min) * 60 + Number(callDuration.sec);
+      const attendee = await this.attendeeModel.findOne({
+        _id: new Types.ObjectId(`${body.attendee}`),
+      });
+      attendee.status = body.status;
+      if (totalCallDuration >= user.validCallTime) {
+          attendee.validCall = true;
+      }
+      await attendee.save();
+    }
     const note = await this.notesModel.create({ ...body, createdBy });
     return note;
   }
@@ -28,7 +46,11 @@ export class NotesService {
     return notes;
   }
 
-  async getNotesByEmployeeId(employeeId: string, startDate: string, endDate: string): Promise<any> {
+  async getNotesByEmployeeId(
+    employeeId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<any> {
     const pipeline: PipelineStage[] = [
       {
         $match: {
@@ -49,24 +71,29 @@ export class NotesService {
         $project: {
           _id: 0,
           status: '$_id',
-          count: '$count'
-        }
-      }
+          count: '$count',
+        },
+      },
     ];
     const notes = await this.notesModel.aggregate(pipeline).exec();
     return notes;
   }
 
-  async getNotesByAdminId(id: string, startDate: string, endDate: string): Promise<any> {
+  async getNotesByAdminId(
+    id: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<any> {
     const adminId = new Types.ObjectId(`${id}`);
-
     // Step 1: Retrieve employees under the given adminId
-    const employees = await this.usersModel.find({ adminId }, '_id email userName'); // Retrieve _id and name for employees
-
+    const employees = await this.usersModel.find(
+      { adminId },
+      '_id email userName',
+    ); // Retrieve _id and name for employees
     // Step 2: Aggregate notes for each employee
     const results = await Promise.all(
       employees.map(async (employee) => {
-        console.log(employee)
+        console.log(employee);
         const notesAggregation = await this.notesModel.aggregate([
           {
             $match: {
@@ -96,6 +123,6 @@ export class NotesService {
       }),
     );
 
-    return results
+    return results;
   }
 }

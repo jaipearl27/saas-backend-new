@@ -1,8 +1,18 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { Attendee } from './Attendee.schema';
+import { User } from './User.schema';
 
 @Schema({ timestamps: true })
 export class Notes extends Document {
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: Attendee.name,
+    required: [true, 'Attendee ID is required'],
+  })  
+  attendee: Types.ObjectId;
+
   @Prop({
     type: String,
     required: [true, 'E-Mail is required'], 
@@ -60,10 +70,12 @@ export class Notes extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'User',
+    ref: User.name,
     required: [true, 'created by id is required'],
   })
   createdBy: Types.ObjectId;
+
+ 
 }
 
 export const NotesSchema = SchemaFactory.createForClass(Notes);
@@ -72,6 +84,9 @@ export const NotesSchema = SchemaFactory.createForClass(Notes);
 NotesSchema.pre('save', function (next) {
   if (typeof this.createdBy === 'string') {
     this.createdBy = new Types.ObjectId(`${this.createdBy}`);
+  }
+   if (typeof this.attendee === 'string') {
+    this.attendee = new Types.ObjectId(`${this.attendee}`);
   }
   next();
 });

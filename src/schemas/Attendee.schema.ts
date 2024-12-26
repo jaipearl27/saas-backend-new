@@ -1,6 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { CustomLeadType } from './custom-lead-type.schema';
+import { User } from './User.schema';
+import { Webinar } from './Webinar.schema';
 
 @Schema({ timestamps: true })
 export class Attendee extends Document {
@@ -48,7 +50,7 @@ export class Attendee extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'Webinar',
+    ref: Webinar.name,
     required: true,
   })
   webinar: Types.ObjectId; // Webinar Name
@@ -76,17 +78,24 @@ export class Attendee extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'User',
+    ref: User.name,
     required: [true, 'adminId is required'],
   })
   adminId: Types.ObjectId;
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'User',
+    ref: User.name,
     default: null,
   })
   assignedTo: Types.ObjectId | null;
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: User.name,
+    default: null,
+  })
+  tempAssignedTo: Types.ObjectId | null;
 
   @Prop({
     type: String,
@@ -95,6 +104,14 @@ export class Attendee extends Document {
     default: null,
   })
   status: string | null;
+
+  
+  @Prop({
+    type: Boolean,
+    required: false,
+    default: false,
+  })
+  validCall: boolean;
 
 }
 
