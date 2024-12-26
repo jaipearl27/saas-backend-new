@@ -42,7 +42,7 @@ export class Assignments extends Document {
     type: String,
     lowercase: true,
     enums: ['active', 'inactive', 'completed'],
-    defualt: 'active',
+    default: 'active',
   })
   status: string;
 }
