@@ -176,8 +176,8 @@ export class GetAttendeesDTO {
   isAttended: boolean;
 
   @IsOptional()
-  @IsBoolean()
-  validCall?: boolean;
+  @IsString()
+  validCall?: string;
 
   @IsNotEmpty()
   @ValidateNested()

@@ -182,11 +182,12 @@ export class AttendeesService {
     page: number,
     limit: number,
     filters: AttendeesFilterDto,
-    validCall?: boolean,
+    validCall?: string,
   ): Promise<any> {
+    console.log(validCall, validCall === 'Valid');
     const skip = (page - 1) * limit;
     // console.log(webinarId, AdminId, isAttended, page, limit, filters);
-  
+
     const pipeline: PipelineStage[] = [
       // Step 1: Match key fields to reduce dataset size
       {
@@ -204,7 +205,13 @@ export class AttendeesService {
                     { assignedTo: { $exists: false } },
                   ],
                 })),
-          ...(typeof validCall === 'boolean' && { validCall: validCall }),
+          ...(validCall && {
+            ...(validCall === 'Valid'
+              ? { validCall: true }
+              : validCall === null
+                ? { validCall: null }
+                : { validCall: { $exists: false } }),
+          }),
         },
       },
       ...(webinarId === ''
