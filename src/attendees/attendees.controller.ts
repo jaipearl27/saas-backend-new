@@ -46,6 +46,9 @@ export class AttendeesController {
     @AdminId() adminId: string,
     @Body() body: GetAttendeesDTO,
   ) {
+
+    console.log(body)
+
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
 
@@ -56,6 +59,7 @@ export class AttendeesController {
       page,
       limit,
       body.filters,
+      body?.validCall,
     );
 
     return result;

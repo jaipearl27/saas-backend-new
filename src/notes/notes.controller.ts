@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   Query,
+  UnauthorizedException,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
@@ -17,10 +18,14 @@ import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { unlinkSync } from 'fs';
 import { Id, Role } from 'src/decorators/custom.decorator';
 import { ConfigService } from '@nestjs/config';
+import { Model, Types } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import { Attendee } from 'src/schemas/Attendee.schema';
 
 @Controller('notes')
 export class NotesController {
   constructor(
+    @InjectModel(Attendee.name) private readonly attendeeModel: Model<Attendee>,
     private readonly notesService: NotesService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly configService: ConfigService,
@@ -37,22 +42,42 @@ export class NotesController {
       throw new BadRequestException('UserID is required.');
     }
 
-    if (Array.isArray(files.image) && files.image.length > 0) {
-      const response = await this.cloudinaryService.uploadImage(
-        files.image[0].path,
-      );
-      if (response) console.log(response);
-      body.image = { url: response.url, public_id: response.public_id };
-      unlinkSync(files.image[0].path);
-    }
-    const note = await this.notesService.createNote(body, createdBy);
-    if (!note) {
-      throw new InternalServerErrorException(
-        'Faced an error creating note, Please try again later.',
-      );
-    }
+    const attendee = await this.attendeeModel.findOne({
+      _id: new Types.ObjectId(`${body.attendee}`),
+    });
 
-    return note;
+    console.log(body)
+
+    console.log(attendee)
+
+    if (
+      attendee &&
+      [
+        String(attendee.assignedTo),
+        String(attendee.adminId),
+        String(attendee.tempAssignedTo),
+      ].includes(String(createdBy))
+    ) {
+      if (Array.isArray(files.image) && files.image.length > 0) {
+        const response = await this.cloudinaryService.uploadImage(
+          files.image[0].path,
+        );
+        if (response) console.log(response);
+        body.image = { url: response.url, public_id: response.public_id };
+        unlinkSync(files.image[0].path);
+      }
+      const note = await this.notesService.createNote(body, createdBy);
+      if (!note) {
+        throw new InternalServerErrorException(
+          'Faced an error creating note, Please try again later.',
+        );
+      }
+      return note;
+    } else {
+      throw new UnauthorizedException(
+        'Only Admin or assigned attendee is allowed to update attendee data.',
+      );
+    }
   }
 
   @Get()
@@ -71,8 +96,8 @@ export class NotesController {
   @Get('/dashboard')
   async getDashboardNotes(
     @Id() userId: string,
-   @Role() role: string,
-   @Query() query: {startDate: string, endDate: string},
+    @Role() role: string,
+    @Query() query: { startDate: string; endDate: string },
   ) {
     if (!userId) {
       throw new BadRequestException('UserID is required.');

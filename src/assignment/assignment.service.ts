@@ -68,6 +68,7 @@ console.log(adminId, id, page, limit, filters, webinarId, usePagination)
       },
       {
         $project: {
+          attendeeId: '$attendee._id',
           email: '$attendee.email',
           firstName: '$attendee.firstName',
           lastName: '$attendee.lastName',
