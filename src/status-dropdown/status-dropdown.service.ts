@@ -1,9 +1,14 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, SchemaTypes, Types } from 'mongoose';
 import { StatusDropdown } from '../schemas/StatusDropdown.schema';
 import { Roles } from 'src/schemas/Roles.schema';
 import { RolesService } from 'src/roles/roles.service';
+import { SubscriptionService } from 'src/subscription/subscription.service';
 
 @Injectable()
 export class StatusDropdownService {
@@ -11,82 +16,109 @@ export class StatusDropdownService {
     @InjectModel(StatusDropdown.name)
     private readonly statusDropdownModel: Model<StatusDropdown>,
     private readonly rolesService: RolesService,
+    private readonly subscriptionService: SubscriptionService,
   ) {}
 
   // Create a new statusimport { BadRequestException } from '@nestjs/common';
 
-async create(
-  label: string,
-  createdBy: string,
-  role: string,
-): Promise<StatusDropdown> {
-  // Check if the label exists as a default option
-  const existingDefault = await this.statusDropdownModel.findOne({
-    label,
-    isDefault: true,
-  });
+  async create(
+    label: string,
+    createdBy: string,
+    role: string,
+  ): Promise<StatusDropdown> {
+    // Check if the label exists as a default option
+    const existingDefault = await this.statusDropdownModel.findOne({
+      label,
+      isDefault: true,
+    });
 
-  if (existingDefault) {
-    throw new BadRequestException(
-      `The label is already marked as a default and cannot be created.`,
-    );
+    if (existingDefault) {
+      throw new BadRequestException(
+        `The label is already marked as a default and cannot be created.`,
+      );
+    }
+
+    // Check if the user already has the same label
+    const existingUserLabel = await this.statusDropdownModel.findOne({
+      label,
+      createdBy: new Types.ObjectId(`${createdBy}`),
+    });
+
+    if (existingUserLabel) {
+      throw new BadRequestException(`The label already exists for this user.`);
+    }
+
+    // Determine if the label should be marked as default
+    const roleName = await this.rolesService.getRoleNameById(role);
+    const isDefault = roleName === 'SUPER_ADMIN';
+
+    // Create and save the new status
+    const newStatus = new this.statusDropdownModel({
+      label,
+      createdBy: new Types.ObjectId(`${createdBy}`),
+      isDefault,
+    });
+
+    return await newStatus.save();
   }
-
-  // Check if the user already has the same label
-  const existingUserLabel = await this.statusDropdownModel.findOne({
-    label,
-    createdBy,
-  });
-
-  if (existingUserLabel) {
-    throw new BadRequestException(
-      `The label already exists for this user.`,
-    );
-  }
-
-  // Determine if the label should be marked as default
-  const roleName = await this.rolesService.getRoleNameById(role);
-  const isDefault = roleName === 'SUPER_ADMIN';
-
-  // Create and save the new status
-  const newStatus = new this.statusDropdownModel({
-    label,
-    createdBy,
-    isDefault,
-  });
-
-  return await newStatus.save();
-}
 
   // Get all statuses
-  async findAll(
-    role: string,
-    createdBy: string,
-    adminId: string,
-  ): Promise<StatusDropdown[]> {
+  async findAll(role: string, adminId: string): Promise<StatusDropdown[]> {
     const roleName = await this.rolesService.getRoleNameById(role);
+    let subscription = null;
+
     const query: any = {};
-  
+    const defaultOptions = [];
+
     if (roleName === 'SUPER_ADMIN') {
-      // Only return documents where isDefault is true
       query['isDefault'] = true;
     } else {
-      // Include isDefault documents and additional conditions based on the role
-      query['$or'] = [
-        { isDefault: true }, // Always include isDefault documents
-      ];
-  
-      if (['EMPLOYEE_SALES', 'EMPLOYEE_REMINDER'].includes(roleName)) {
-        query['$or'].push({ createdBy: adminId.toString() });
-      } else {
-        query['$or'].push({ createdBy: createdBy });
+      subscription = await this.subscriptionService.getSubscription(adminId);
+      if (!subscription) {
+        throw new BadRequestException('Subscription not found');
       }
+      const tableConfig = subscription?.plan?.attendeeTableConfig || {};
+
+      query['$or'] = [
+        { isDefault: true },
+      ];
+
+      if (tableConfig.get('isCustomOptionsAllowed'))
+        query['$or'].push({ createdBy: new Types.ObjectId(`${adminId}`) });
     }
-  
-    console.log(query);
-    return await this.statusDropdownModel.find(query).exec();
+
+    const statuses = await this.statusDropdownModel.find(query).exec();
+    return statuses;
   }
-  
+
+  async getStatusesForFilterDropdown(adminId: string) {
+    const subscription: any =
+      await this.subscriptionService.getSubscription(adminId);
+
+    const tableConfig = subscription?.plan?.attendeeTableConfig || {};
+    const query: any = {};
+
+    query['$or'] = [{ isDefault: true }];
+    if (tableConfig.get('customOptions')?.filterable)
+      query['$or'].push({ createdBy: new Types.ObjectId(`${adminId}`) });
+
+    const defaultOptions = [];
+    const defaultOptionsObject = tableConfig.get('defaultOptions');
+    if (defaultOptionsObject) {
+      const arr = Object.keys(defaultOptionsObject).filter(
+        (key) => defaultOptionsObject[key],
+      );
+      console.log(arr);
+      defaultOptions.push(...arr);
+    }
+
+    const statuses = await this.statusDropdownModel.find(query).exec();
+    if (Array.isArray(statuses)) {
+      return statuses.filter((status) => defaultOptions.includes(status.label));
+    }
+    return statuses;
+  }
+
   // Update a status by ID
   async update(id: string, label: string): Promise<StatusDropdown> {
     const updatedStatus = await this.statusDropdownModel
@@ -119,7 +151,7 @@ async create(
     }
 
     const deletedStatus = await this.statusDropdownModel
-      .findOneAndDelete({ _id: id, createdBy: userId })
+      .findOneAndDelete({ _id: id, createdBy: new Types.ObjectId(`${userId}`) })
       .exec();
 
     if (!deletedStatus) {

@@ -40,10 +40,11 @@ export class AssignmentService {
     limit: number,
     filters: AttendeesFilterDto = {},
     webinarId: string = '',
+    validCall: string = '',
     usePagination: boolean = true, // Flag to enable/disable pagination
   ): Promise<any> {
     const skip = (page - 1) * limit;
-console.log(adminId, id, page, limit, filters, webinarId, usePagination)
+    // console.log(adminId, id, page, limit, filters, webinarId, usePagination)
     const basePipeline: PipelineStage[] = [
       {
         $match: {
@@ -68,10 +69,12 @@ console.log(adminId, id, page, limit, filters, webinarId, usePagination)
       },
       {
         $project: {
+          attendeeId: '$attendee._id',
           email: '$attendee.email',
           firstName: '$attendee.firstName',
           lastName: '$attendee.lastName',
           isAttended: '$attendee.isAttended',
+          validCall: '$attendee.validCall',
           gender: '$attendee.gender',
           leadType: '$attendee.leadType',
           location: '$attendee.location',
@@ -103,6 +106,17 @@ console.log(adminId, id, page, limit, filters, webinarId, usePagination)
           }),
           ...(filters.timeInSession && {
             timeInSession: filters.timeInSession,
+          }),
+          ...(validCall && {
+            ...(validCall === 'Valid'
+              ? { validCall: true }
+              : {
+                  $or: [
+                    { validCall: null },
+                    { validCall: false },
+                    { validCall: { $exists: false } },
+                  ],
+                }),
           }),
         },
       },
@@ -530,7 +544,7 @@ console.log(adminId, id, page, limit, filters, webinarId, usePagination)
   }
 
   async getActiveInactiveAssignments(id: string): Promise<any> {
-    console.log(id)
+    console.log(id);
     const pipeline: PipelineStage[] = [
       {
         // Step 1: Match active assignments in the given date range (status: 'active')
@@ -589,8 +603,24 @@ console.log(adminId, id, page, limit, filters, webinarId, usePagination)
         $addFields: {
           callDurationInSeconds: {
             $add: [
-              { $multiply: [{ $toInt: { $ifNull: ['$notesDetails.callDuration.hr', '0'] } }, 3600] },
-              { $multiply: [{ $toInt: { $ifNull: ['$notesDetails.callDuration.min', '0'] } }, 60] },
+              {
+                $multiply: [
+                  {
+                    $toInt: { $ifNull: ['$notesDetails.callDuration.hr', '0'] },
+                  },
+                  3600,
+                ],
+              },
+              {
+                $multiply: [
+                  {
+                    $toInt: {
+                      $ifNull: ['$notesDetails.callDuration.min', '0'],
+                    },
+                  },
+                  60,
+                ],
+              },
               { $toInt: { $ifNull: ['$notesDetails.callDuration.sec', '0'] } },
             ],
           },
@@ -646,7 +676,7 @@ console.log(adminId, id, page, limit, filters, webinarId, usePagination)
           path: '$webinarDetails',
           preserveNullAndEmptyArrays: true,
         },
-        },
+      },
       {
         // Step 11: Project the result with eligible and ineligible assignments
         $project: {
@@ -657,9 +687,8 @@ console.log(adminId, id, page, limit, filters, webinarId, usePagination)
         },
       },
     ];
-    
 
     const result = await this.assignmentsModel.aggregate(pipeline);
-    return result 
+    return result;
   }
 }

@@ -34,6 +34,7 @@ export class GetAdminIdMiddleware implements NestMiddleware {
 
       const decodedToken = this.jwtService.verify(access_token, decodeOptions);
 
+      req.role = decodedToken.role;
       if (decodedToken.role === this.configService.get('appRoles').ADMIN) {
         req.adminId = new Types.ObjectId(`${decodedToken.id}`); // request type is commented out otherwise typescript won't allow setting this
         req.id = decodedToken.id;

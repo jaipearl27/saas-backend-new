@@ -21,6 +21,9 @@ import {
 } from 'src/schemas/Subscription.schema';
 import { diskStorage } from 'multer';
 import { MulterModule } from '@nestjs/platform-express';
+import { CustomLeadTypeService } from 'src/custom-lead-type/custom-lead-type.service';
+import { CustomLeadType, CustomLeadTypeSchema } from 'src/schemas/custom-lead-type.schema';
+import { CustomLeadTypeModule } from 'src/custom-lead-type/custom-lead-type.module';
 
 @Module({
   imports: [
@@ -51,11 +54,15 @@ import { MulterModule } from '@nestjs/platform-express';
         name: Subscription.name,
         schema: SubscriptionSchema,
       },
+      {
+        name: CustomLeadType.name,
+        schema: CustomLeadTypeSchema,
+      }
     ]),
-    BillingHistoryModule,
+    BillingHistoryModule
   ],
   controllers: [UsersController],
-  providers: [UsersService],
+  providers: [UsersService, CustomLeadTypeService],
   exports: [UsersService],
 })
 export class UsersModule {

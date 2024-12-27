@@ -63,4 +63,21 @@ export class CustomLeadTypeService {
       createdBy: new Types.ObjectId(`${adminId}`),
     });
   }
+
+  async createDefaultLeadTypes(adminId: string) {
+    const defaultLeadTypes = [
+      { label: 'Hot', color: '#FF0000' },
+      { label: 'Warm', color: '#FFA500' },
+      { label: 'Cold', color: '#0000FF' },
+    ];
+
+    const newLeadTypes = defaultLeadTypes.map((leadType) => {
+      return new this.customLeadTypeModel({
+        ...leadType,
+        createdBy: new Types.ObjectId(`${adminId}`),
+      });
+    });
+
+    return await this.customLeadTypeModel.insertMany(newLeadTypes);
+  }
 }

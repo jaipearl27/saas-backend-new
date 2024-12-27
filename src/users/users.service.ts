@@ -29,6 +29,7 @@ import { Subscription } from 'src/schemas/Subscription.schema';
 import { JwtService } from '@nestjs/jwt';
 import { GetClientsFilterDto } from './dto/filters.dto';
 import { EmployeeFilterDTO } from './dto/employee-filter.dto';
+import { CustomLeadTypeService } from 'src/custom-lead-type/custom-lead-type.service';
 
 @Injectable()
 export class UsersService {
@@ -44,6 +45,7 @@ export class UsersService {
     @Inject(forwardRef(() => SubscriptionService))
     private readonly subscriptionService: SubscriptionService,
     private readonly jwtService: JwtService,
+    private readonly customLeadTypeService: CustomLeadTypeService,
   ) {}
 
   getUsers() {
@@ -546,6 +548,31 @@ export class UsersService {
     return { message: 'Password updated successfully!' };
   }
 
+  async isEmployeeCreationAllowed(adminId: string) {
+    const subscription: any =
+      await this.subscriptionService.getSubscription(adminId);
+    if (!subscription) {
+      throw new NotAcceptableException('Subscription not found');
+    }
+    console.log(subscription);
+    if (new Date(subscription.expiryDate) < new Date()) {
+      throw new NotAcceptableException('Subscription Expired');
+    }
+
+    const empCount = subscription?.plan?.employeeCount || 0;
+
+    const existingEmpCount = await this.userModel.countDocuments({
+      adminId: new Types.ObjectId(`${adminId}`),
+      isActive: true,
+    });
+
+    console.log(empCount, existingEmpCount);
+    if (existingEmpCount >= empCount) {
+      throw new NotAcceptableException('You have reached your employee limit');
+    }
+    return true;
+  }
+
   async createEmployee(
     createEmployeeDto: CreateEmployeeDto,
     creatorDetailsDto: CreatorDetailsDto,
@@ -554,6 +581,8 @@ export class UsersService {
       name: createEmployeeDto?.role,
     });
     if (!role) throw new NotFoundException('No Role Found with the given ID.');
+
+    await this.isEmployeeCreationAllowed(creatorDetailsDto.id);
 
     const user = await this.userModel.create({
       ...createEmployeeDto,
@@ -611,14 +640,24 @@ export class UsersService {
     adminId: string,
     status: boolean,
   ): Promise<any> {
-    const subscription = await this.subscriptionModel
-      .findOne({ admin: new mongoose.Types.ObjectId(`${adminId}`) })
-      .exec();
+    const subscription: any =
+      await this.subscriptionService.getSubscription(adminId);
 
     if (!subscription) {
       throw new NotFoundException('No Subscription Found with the given ID.');
     }
-    console.log('subsriptio ----> ', subscription);
+
+    const empCount = subscription?.plan?.employeeCount || 0;
+
+    const existingEmpCount = await this.userModel.countDocuments({
+      adminId: new Types.ObjectId(`${adminId}`),
+      isActive: true,
+    });
+
+    if (existingEmpCount >= empCount && status) {
+      throw new NotAcceptableException('You have reached your employee limit');
+    }
+
     if (new Date(subscription.expiryDate) < new Date()) {
       throw new NotAcceptableException(
         'Your subscription has expired. Please renew your subscription to continue.',
@@ -723,6 +762,8 @@ export class UsersService {
       billingHistoryPayload,
     );
 
+    await this.customLeadTypeService.createDefaultLeadTypes(`${user._id}`);
+
     return { user, subscription, billingHistory };
   }
 
@@ -783,10 +824,8 @@ export class UsersService {
   async incrementCount(id: string): Promise<boolean> {
     const user = await this.userModel.findById(id).exec();
     if (user) {
-      if(user.dailyContactCount)
-      user.dailyContactCount += 1;
-      else
-      user.dailyContactCount = 1;
+      if (user.dailyContactCount) user.dailyContactCount += 1;
+      else user.dailyContactCount = 1;
       await user.save();
       return true;
     }

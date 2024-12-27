@@ -181,10 +181,12 @@ export class AttendeesService {
     isAttended: boolean,
     page: number,
     limit: number,
-    filters: AttendeesFilterDto = {},
+    filters: AttendeesFilterDto,
+    validCall?: string,
   ): Promise<any> {
+    console.log(validCall, validCall === 'Valid');
     const skip = (page - 1) * limit;
-    console.log(webinarId, AdminId, isAttended, page, limit, filters);
+    // console.log(webinarId, AdminId, isAttended, page, limit, filters);
 
     const pipeline: PipelineStage[] = [
       // Step 1: Match key fields to reduce dataset size
@@ -203,6 +205,17 @@ export class AttendeesService {
                     { assignedTo: { $exists: false } },
                   ],
                 })),
+          ...(validCall && {
+            ...(validCall === 'Valid'
+              ? { validCall: true }
+              : {
+                  $or: [
+                    { validCall: null },
+                    { validCall: false },
+                    { validCall: { $exists: false } },
+                  ],
+                }),
+          }),
         },
       },
       ...(webinarId === ''
@@ -275,9 +288,9 @@ export class AttendeesService {
           isAssigned: {
             $arrayElemAt: ['$assignedToDetails.userName', 0],
           },
-          leadType:{
+          leadType: {
             $arrayElemAt: ['$attendeeAssociations.leadType', 0],
-          }
+          },
         },
       },
       {
@@ -299,6 +312,8 @@ export class AttendeesService {
         },
       },
     ];
+
+    // console.log(pipeline)
 
     const aggregationResult = await this.attendeeModel
       .aggregate(pipeline)

@@ -16,6 +16,11 @@ class CallDurationDto {
 }
 
 export class CreateNoteDto {
+
+  @IsString()
+  @IsNotEmpty({ message: 'Attendee ID is required' })
+  attendee: string;
+
   @IsString()
   @IsNotEmpty({ message: 'E-Mail is required' })
   email: string;

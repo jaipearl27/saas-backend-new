@@ -164,6 +164,8 @@ export class AttendeesFilterDto {
   @IsOptional()
   @IsMongoId()
   leadType?: Types.ObjectId;
+
+
 }
 
 export class GetAttendeesDTO {
@@ -173,8 +175,12 @@ export class GetAttendeesDTO {
   @IsBoolean()
   isAttended: boolean;
 
+  @IsOptional()
+  @IsString()
+  validCall?: string;
+
   @IsNotEmpty()
   @ValidateNested()
   @Type(() => AttendeesFilterDto)
-  filters: AttendeesFilterDto;
+  filters: AttendeesFilterDto;  
 }

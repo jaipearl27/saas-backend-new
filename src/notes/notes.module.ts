@@ -9,6 +9,8 @@ import { Notes, NotesSchema } from 'src/schemas/Notes.schema';
 import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
 import { UsersModule } from 'src/users/users.module';
 import { User, UserSchema } from 'src/schemas/User.schema';
+import { Attendee, AttendeeSchema } from 'src/schemas/Attendee.schema';
+import { Assignments, AssignmentsSchema } from 'src/schemas/Assignments.schema';
 
 @Module({
   imports: [
@@ -21,6 +23,14 @@ import { User, UserSchema } from 'src/schemas/User.schema';
       {
         name: User.name,
         schema: UserSchema,
+      },
+      {
+        name: Attendee.name,
+        schema: AttendeeSchema,
+      },
+      {
+        name: Assignments.name,
+        schema: AssignmentsSchema,
       },
     ]),
 

@@ -65,6 +65,7 @@ export class AssignmentController {
       limit,
       body.filters,
       query.webinarId,
+      body.validCall
     );
     return result;
   }
