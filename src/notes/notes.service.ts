@@ -14,7 +14,8 @@ export class NotesService {
     @InjectModel(Notes.name) private readonly notesModel: Model<Notes>,
     @InjectModel(User.name) private readonly usersModel: Model<User>,
     @InjectModel(Attendee.name) private readonly attendeeModel: Model<Attendee>,
-    @InjectModel(Assignments.name) private readonly assignmentsModel: Model<Assignments>,
+    @InjectModel(Assignments.name)
+    private readonly assignmentsModel: Model<Assignments>,
     private readonly usersService: UsersService,
   ) {}
 
@@ -58,7 +59,72 @@ export class NotesService {
     const pipeline: PipelineStage[] = [
       {
         $match: {
-          createdBy: new Types.ObjectId(`${employeeId}`),
+          createdBy: new Types.ObjectId(`${employeeId}`), // Match notes created by this employee
+          createdAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate),
+          },
+        },
+      },
+
+      {
+        $lookup: {
+          from: 'attendees',
+          localField: 'attendee',
+          foreignField: '_id',
+          as: 'attendee',
+        },
+      },
+      {
+        $unwind: '$attendee', // Unwind the attendee array to make it easier to reference fields
+      },
+      {
+        $lookup: {
+          from: 'webinars',
+          localField: 'attendee.webinar',
+          // Field in the attendee document referencing webinar
+          foreignField: '_id',
+          // Field in the webinars collection to match
+          as: 'webinar', // Output field for the joined data
+        },
+      },
+      {
+        $unwind: '$webinar',
+      },
+      {
+        $addFields: {
+          webinarName: '$webinar.webinarName',
+        },
+      },
+      {
+        $facet: {
+          webinarGroup: [
+            {
+              $group: {
+                _id: '$webinarName',
+              },
+            },
+          ],
+          statusGroup: [
+            {
+              $group: {
+                _id: '$status',
+                // Group by the status field
+                count: {
+                  $sum: 1,
+                }, // Count the total for each status
+              },
+            },
+          ],
+        },
+      },
+    ];
+    const notes = await this.notesModel.aggregate(pipeline).exec();
+
+    const totalAssignmentsAggregation = await this.assignmentsModel.aggregate([
+      {
+        $match: {
+          user: new Types.ObjectId(`${employeeId}`),
           createdAt: {
             $gte: new Date(startDate),
             $lte: new Date(endDate),
@@ -67,20 +133,83 @@ export class NotesService {
       },
       {
         $group: {
-          _id: '$status',
-          count: { $sum: 1 },
+          _id: null,
+          uniqueValues: {
+            $addToSet: '$attendee',
+          },
         },
       },
       {
         $project: {
-          _id: 0,
-          status: '$_id',
-          count: '$count',
+          totalAssignments: { $size: '$uniqueValues' },
         },
       },
-    ];
-    const notes = await this.notesModel.aggregate(pipeline).exec();
-    return notes;
+    ]);
+
+    const totalWorkedAggregation = await this.notesModel.aggregate([
+      {
+        $match: {
+          createdBy: new Types.ObjectId(`${employeeId}`),
+          createdAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate),
+          },
+        },
+      },
+      {
+        $addFields: {
+          totalSeconds: {
+            $add: [
+              {
+                $multiply: [
+                  {
+                    $toInt: '$callDuration.hr',
+                  },
+                  3600,
+                ],
+              },
+              {
+                $multiply: [
+                  {
+                    $toInt: '$callDuration.min',
+                  },
+                  60,
+                ],
+              },
+              {
+                $toInt: '$callDuration.sec',
+              },
+            ],
+          },
+        },
+      },
+      {
+        $match: {
+          totalSeconds: {
+            $gte: 10,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$email',
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalWorked: {
+            $sum: 1,
+          },
+        },
+      },
+    ]);
+
+    return {
+      metrics: notes,
+      totalAssignments: totalAssignmentsAggregation[0]?.totalAssignments || 0,
+      totalWorked: totalWorkedAggregation[0]?.totalWorked || 0,
+    };
   }
 
   async getNotesByAdminId(
@@ -97,7 +226,7 @@ export class NotesService {
     // Step 2: Aggregate notes for each employee
     const results = await Promise.all(
       employees.map(async (employee) => {
-        console.log(employee);
+        // console.log(employee);
         const notesAggregation = await this.notesModel.aggregate([
           {
             $match: {
@@ -108,40 +237,85 @@ export class NotesService {
               },
             },
           },
+
           {
-            $group: {
-              _id: '$status', // Group by the status field
-              count: { $sum: 1 }, // Count the total for each status
+            $lookup: {
+              from: 'attendees',
+              localField: 'attendee',
+              foreignField: '_id',
+              as: 'attendee',
+            },
+          },
+          {
+            $unwind: '$attendee', // Unwind the attendee array to make it easier to reference fields
+          },
+          {
+            $lookup: {
+              from: 'webinars',
+              localField: 'attendee.webinar',
+              // Field in the attendee document referencing webinar
+              foreignField: '_id',
+              // Field in the webinars collection to match
+              as: 'webinar', // Output field for the joined data
+            },
+          },
+          {
+            $unwind: '$webinar',
+          },
+          {
+            $addFields: {
+              webinarName: '$webinar.webinarName',
+            },
+          },
+          {
+            $facet: {
+              webinarGroup: [
+                {
+                  $group: {
+                    _id: '$webinarName',
+                  },
+                },
+              ],
+              statusGroup: [
+                {
+                  $group: {
+                    _id: '$status',
+                    // Group by the status field
+                    count: {
+                      $sum: 1,
+                    }, // Count the total for each status
+                  },
+                },
+              ],
             },
           },
         ]);
 
-        const totalAssignmentsAggregation = await this.assignmentsModel.aggregate([
-          {
-            $match: {
-              user: new Types.ObjectId(`${employee._id}`),
-              createdAt: {
-                $gte: new Date(startDate),
-                $lte: new Date(endDate),
+        const totalAssignmentsAggregation =
+          await this.assignmentsModel.aggregate([
+            {
+              $match: {
+                user: new Types.ObjectId(`${employee._id}`),
+                createdAt: {
+                  $gte: new Date(startDate),
+                  $lte: new Date(endDate),
+                },
               },
             },
-          },
-          {
-            $group: {
-              _id: null,
-              uniqueValues: {
-                $addToSet: '$attendee',
+            {
+              $group: {
+                _id: null,
+                uniqueValues: {
+                  $addToSet: '$attendee',
+                },
               },
             },
-          },
-          {
-            $project: {
-              totalAssignments: { $size: '$uniqueValues' },
+            {
+              $project: {
+                totalAssignments: { $size: '$uniqueValues' },
+              },
             },
-          },
-        ]);
-
-        console.log(totalAssignmentsAggregation);
+          ]);
 
         const totalWorkedAggregation = await this.notesModel.aggregate([
           {
@@ -202,16 +376,12 @@ export class NotesService {
           },
         ]);
 
-        console.log(totalWorkedAggregation)
-
         return {
           email: employee.email, // Add employee name
           userName: employee.userName,
-          notes: notesAggregation.map((note) => ({
-            status: note._id, // Status
-            count: note.count, // Total count for this status
-          })),
-          totalAssignments: totalAssignmentsAggregation[0]?.totalAssignments || 0,
+          metrics: notesAggregation,
+          totalAssignments:
+            totalAssignmentsAggregation[0]?.totalAssignments || 0,
           totalWorked: totalWorkedAggregation[0]?.totalWorked || 0,
         };
       }),
