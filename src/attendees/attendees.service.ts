@@ -264,6 +264,9 @@ export class AttendeesService {
           ...(filters.timeInSession && {
             timeInSession: filters.timeInSession,
           }),
+          ...(filters.status && {
+            status: filters.status,
+          })
         },
       },
       {
