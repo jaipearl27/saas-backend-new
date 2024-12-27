@@ -6,6 +6,7 @@ import { CreateNoteDto } from './dto/notes.dto';
 import { UsersService } from 'src/users/users.service';
 import { User } from 'src/schemas/User.schema';
 import { Attendee } from 'src/schemas/Attendee.schema';
+import { Assignments } from 'src/schemas/Assignments.schema';
 
 @Injectable()
 export class NotesService {
@@ -13,6 +14,7 @@ export class NotesService {
     @InjectModel(Notes.name) private readonly notesModel: Model<Notes>,
     @InjectModel(User.name) private readonly usersModel: Model<User>,
     @InjectModel(Attendee.name) private readonly attendeeModel: Model<Attendee>,
+    @InjectModel(Assignments.name) private readonly assignmentsModel: Model<Assignments>,
     private readonly usersService: UsersService,
   ) {}
 
@@ -114,7 +116,7 @@ export class NotesService {
           },
         ]);
 
-        const totalAssignmentsAggregation = await this.attendeeModel.aggregate([
+        const totalAssignmentsAggregation = await this.assignmentsModel.aggregate([
           {
             $match: {
               user: new Types.ObjectId(`${employee._id}`),
@@ -209,6 +211,8 @@ export class NotesService {
             status: note._id, // Status
             count: note.count, // Total count for this status
           })),
+          totalAssignments: totalAssignmentsAggregation[0]?.totalAssignments || 0,
+          totalWorked: totalWorkedAggregation[0]?.totalWorked || 0,
         };
       }),
     );
