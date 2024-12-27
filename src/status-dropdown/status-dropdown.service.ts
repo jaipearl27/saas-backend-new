@@ -71,7 +71,6 @@ export class StatusDropdownService {
     const defaultOptions = [];
 
     if (roleName === 'SUPER_ADMIN') {
-      // Only return documents where isDefault is true
       query['isDefault'] = true;
     } else {
       subscription = await this.subscriptionService.getSubscription(adminId);
@@ -80,28 +79,43 @@ export class StatusDropdownService {
       }
       const tableConfig = subscription?.plan?.attendeeTableConfig || {};
 
-      // Include isDefault documents and additional conditions based on the role
       query['$or'] = [
-        { isDefault: true }, // Always include isDefault documents
+        { isDefault: true },
       ];
 
-      if (tableConfig.get('customOptions')?.filterable)
+      if (tableConfig.get('isCustomOptionsAllowed'))
         query['$or'].push({ createdBy: new Types.ObjectId(`${adminId}`) });
-
-      // const defaultOptionsObject = tableConfig.get('defaultOptions');
-      // if (defaultOptionsObject) {
-      //   const arr = Object.keys(defaultOptionsObject).filter(
-      //     (key) => defaultOptionsObject[key],
-      //   );
-      //   console.log(arr);
-      //   defaultOptions.push(...arr);
-      // }
     }
 
     const statuses = await this.statusDropdownModel.find(query).exec();
-    // if(Array.isArray(statuses && roleName !== 'SUPER_ADMIN')){
-    //   return statuses.filter(status => defaultOptions.includes(status.label));
-    // }
+    return statuses;
+  }
+
+  async getStatusesForFilterDropdown(adminId: string) {
+    const subscription: any =
+      await this.subscriptionService.getSubscription(adminId);
+
+    const tableConfig = subscription?.plan?.attendeeTableConfig || {};
+    const query: any = {};
+
+    query['$or'] = [{ isDefault: true }];
+    if (tableConfig.get('customOptions')?.filterable)
+      query['$or'].push({ createdBy: new Types.ObjectId(`${adminId}`) });
+
+    const defaultOptions = [];
+    const defaultOptionsObject = tableConfig.get('defaultOptions');
+    if (defaultOptionsObject) {
+      const arr = Object.keys(defaultOptionsObject).filter(
+        (key) => defaultOptionsObject[key],
+      );
+      console.log(arr);
+      defaultOptions.push(...arr);
+    }
+
+    const statuses = await this.statusDropdownModel.find(query).exec();
+    if (Array.isArray(statuses)) {
+      return statuses.filter((status) => defaultOptions.includes(status.label));
+    }
     return statuses;
   }
 

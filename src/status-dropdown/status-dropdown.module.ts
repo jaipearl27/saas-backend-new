@@ -17,7 +17,10 @@ import { UsersModule } from 'src/users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
-import { Subscription, SubscriptionSchema } from 'src/schemas/Subscription.schema';
+import {
+  Subscription,
+  SubscriptionSchema,
+} from 'src/schemas/Subscription.schema';
 import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
 
 @Module({
@@ -38,7 +41,7 @@ import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
       {
         name: Subscription.name,
         schema: SubscriptionSchema,
-      }
+      },
     ]),
     UsersModule,
   ],
@@ -57,6 +60,9 @@ export class StatusDropdownModule {
 
     consumer
       .apply(GetAdminIdMiddleware)
-      .forRoutes({ path: 'status-dropdown', method: RequestMethod.GET });
+      .forRoutes(
+        { path: 'status-dropdown', method: RequestMethod.GET },
+        { path: 'status-dropdown/filter', method: RequestMethod.GET },
+      );
   }
 }

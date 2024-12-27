@@ -46,7 +46,10 @@ export class NotesService {
   }
 
   async getNotesByEmail(email: string): Promise<Notes[]> {
-    const notes = await this.notesModel.find({ email }).exec();
+    const notes = await this.notesModel.find({ email })
+    .populate('createdBy', 'userName')
+    .sort({ createdAt: -1 })
+    .exec();
     return notes;
   }
 

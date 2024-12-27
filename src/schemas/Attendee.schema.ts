@@ -99,7 +99,7 @@ export class Attendee extends Document {
 
   @Prop({
     type: String,
-    maxlength: 20,
+    maxlength: 100,
     trim: true,
     default: null,
   })

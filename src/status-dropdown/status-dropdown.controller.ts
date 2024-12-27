@@ -36,6 +36,11 @@ export class StatusDropdownController {
     return await this.statusDropdownService.findAll(role, adminId);
   }
 
+  @Get('/filter')
+  async getStatusesForFilterDropdown(@AdminId() adminId: string) {
+    return await this.statusDropdownService.getStatusesForFilterDropdown(adminId);
+  }
+
   // Update a status by ID
   // @Put(':id')
   // async update(
