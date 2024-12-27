@@ -208,9 +208,13 @@ export class AttendeesService {
           ...(validCall && {
             ...(validCall === 'Valid'
               ? { validCall: true }
-              : validCall === null
-                ? { validCall: null }
-                : { validCall: { $exists: false } }),
+              : {
+                  $or: [
+                    { validCall: null },
+                    { validCall: false },
+                    { validCall: { $exists: false } },
+                  ],
+                }),
           }),
         },
       },

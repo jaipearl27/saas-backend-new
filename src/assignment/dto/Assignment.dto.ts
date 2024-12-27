@@ -50,4 +50,8 @@ export class GetAssignmentDTO {
   @ValidateNested()
   @Type(() => AttendeesFilterDto)
   filters: AttendeesFilterDto;
+
+  @IsOptional()
+  @IsString()
+  validCall?: string;
 }

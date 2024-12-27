@@ -68,6 +68,7 @@ export class StatusDropdownService {
     let subscription = null;
 
     const query: any = {};
+    const defaultOptions = [];
 
     if (roleName === 'SUPER_ADMIN') {
       // Only return documents where isDefault is true
@@ -78,19 +79,30 @@ export class StatusDropdownService {
         throw new BadRequestException('Subscription not found');
       }
       const tableConfig = subscription?.plan?.attendeeTableConfig || {};
-      console.log(tableConfig);
 
       // Include isDefault documents and additional conditions based on the role
       query['$or'] = [
         { isDefault: true }, // Always include isDefault documents
       ];
 
-      // if (tableConfig?.customOptions?.filterable)
+      if (tableConfig.get('customOptions')?.filterable)
         query['$or'].push({ createdBy: new Types.ObjectId(`${adminId}`) });
+
+      // const defaultOptionsObject = tableConfig.get('defaultOptions');
+      // if (defaultOptionsObject) {
+      //   const arr = Object.keys(defaultOptionsObject).filter(
+      //     (key) => defaultOptionsObject[key],
+      //   );
+      //   console.log(arr);
+      //   defaultOptions.push(...arr);
+      // }
     }
 
-    console.log(query);
-    return await this.statusDropdownModel.find(query).exec();
+    const statuses = await this.statusDropdownModel.find(query).exec();
+    // if(Array.isArray(statuses && roleName !== 'SUPER_ADMIN')){
+    //   return statuses.filter(status => defaultOptions.includes(status.label));
+    // }
+    return statuses;
   }
 
   // Update a status by ID

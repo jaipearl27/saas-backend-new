@@ -40,6 +40,7 @@ export class AssignmentService {
     limit: number,
     filters: AttendeesFilterDto = {},
     webinarId: string = '',
+    validCall: string = '',
     usePagination: boolean = true, // Flag to enable/disable pagination
   ): Promise<any> {
     const skip = (page - 1) * limit;
@@ -73,6 +74,7 @@ export class AssignmentService {
           firstName: '$attendee.firstName',
           lastName: '$attendee.lastName',
           isAttended: '$attendee.isAttended',
+          validCall: '$attendee.validCall',
           gender: '$attendee.gender',
           leadType: '$attendee.leadType',
           location: '$attendee.location',
@@ -104,6 +106,17 @@ export class AssignmentService {
           }),
           ...(filters.timeInSession && {
             timeInSession: filters.timeInSession,
+          }),
+          ...(validCall && {
+            ...(validCall === 'Valid'
+              ? { validCall: true }
+              : {
+                  $or: [
+                    { validCall: null },
+                    { validCall: false },
+                    { validCall: { $exists: false } },
+                  ],
+                }),
           }),
         },
       },
