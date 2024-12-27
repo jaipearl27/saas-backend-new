@@ -20,20 +20,22 @@ export class NotesService {
     body: CreateNoteDto,
     createdBy: string,
   ): Promise<Notes | null> {
-
     //check if note's callduration >= user's validCallTime to add validCall: true in attendee
 
     const user = await this.usersService.getUserById(createdBy);
 
     if (user && user?.validCallTime) {
       const callDuration = body.callDuration;
-      const totalCallDuration: number = Number(callDuration.hr) * 60 * 60 + Number(callDuration.min) * 60 + Number(callDuration.sec);
+      const totalCallDuration: number =
+        Number(callDuration.hr) * 60 * 60 +
+        Number(callDuration.min) * 60 +
+        Number(callDuration.sec);
       const attendee = await this.attendeeModel.findOne({
         _id: new Types.ObjectId(`${body.attendee}`),
       });
       attendee.status = body.status;
       if (totalCallDuration >= user.validCallTime) {
-          attendee.validCall = true;
+        attendee.validCall = true;
       }
       await attendee.save();
     }
@@ -111,6 +113,94 @@ export class NotesService {
             },
           },
         ]);
+
+        const totalAssignmentsAggregation = await this.attendeeModel.aggregate([
+          {
+            $match: {
+              user: new Types.ObjectId(`${employee._id}`),
+              createdAt: {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate),
+              },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              uniqueValues: {
+                $addToSet: '$attendee',
+              },
+            },
+          },
+          {
+            $project: {
+              totalAssignments: { $size: '$uniqueValues' },
+            },
+          },
+        ]);
+
+        console.log(totalAssignmentsAggregation);
+
+        const totalWorkedAggregation = await this.notesModel.aggregate([
+          {
+            $match: {
+              createdBy: new Types.ObjectId(`${employee._id}`),
+              createdAt: {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate),
+              },
+            },
+          },
+          {
+            $addFields: {
+              totalSeconds: {
+                $add: [
+                  {
+                    $multiply: [
+                      {
+                        $toInt: '$callDuration.hr',
+                      },
+                      3600,
+                    ],
+                  },
+                  {
+                    $multiply: [
+                      {
+                        $toInt: '$callDuration.min',
+                      },
+                      60,
+                    ],
+                  },
+                  {
+                    $toInt: '$callDuration.sec',
+                  },
+                ],
+              },
+            },
+          },
+          {
+            $match: {
+              totalSeconds: {
+                $gte: 10,
+              },
+            },
+          },
+          {
+            $group: {
+              _id: '$email',
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalWorked: {
+                $sum: 1,
+              },
+            },
+          },
+        ]);
+
+        console.log(totalWorkedAggregation)
 
         return {
           email: employee.email, // Add employee name
