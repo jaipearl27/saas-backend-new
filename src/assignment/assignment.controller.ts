@@ -14,10 +14,13 @@ import {
   AssignmentDto,
   GetAssignmentDTO,
   preWebinarAssignmentDto,
+  ReAssignmentDTO,
+  RequestReAssignmentsDTO,
 } from './dto/Assignment.dto';
 import { UsersService } from 'src/users/users.service';
 import { AssignmentService } from './assignment.service';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
+import { AssignmentStatus } from 'src/schemas/Assignments.schema';
 
 @Controller('assignment')
 export class AssignmentController {
@@ -65,7 +68,29 @@ export class AssignmentController {
       limit,
       body.filters,
       query.webinarId,
-      body.validCall
+      body.validCall,
+      body.assignmentStatus,
+    );
+    return result;
+  }
+
+  @Post('fetch-reassignments')
+  async getReAssignments(
+    @Id() admin: string,
+    @Body() body: GetAssignmentDTO,
+    @Query() query: { page?: string; limit?: string },
+  ) {
+    let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
+    let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
+    const result = await this.assignmentService.getAssignments(
+      admin,
+      '',
+      page,
+      limit,
+      body.filters,
+      body.webinarId,
+      null,
+      AssignmentStatus.REASSIGN_REQUESTED,
     );
     return result;
   }
@@ -81,23 +106,23 @@ export class AssignmentController {
     return result;
   }
 
-  @Get(':id')
-  async getAssignments(
-    @Id() adminId: string,
-    @Param('id') id: string,
-    @Query() query: { page?: string; limit?: string },
-  ): Promise<any> {
-    let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
-    let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
-    const result = await this.assignmentService.getAssignments(
-      adminId,
-      id,
-      page,
-      limit,
-    );
+  // @Get(':id')
+  // async getAssignments(
+  //   @Id() adminId: string,
+  //   @Param('id') id: string,
+  //   @Query() query: { page?: string; limit?: string },
+  // ): Promise<any> {
+  //   let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
+  //   let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
+  //   const result = await this.assignmentService.getAssignments(
+  //     adminId,
+  //     id,
+  //     page,
+  //     limit,
+  //   );
 
-    return result;
-  }
+  //   return result;
+  // }
 
   @Post()
   async addAssignment(
@@ -117,8 +142,6 @@ export class AssignmentController {
       );
     }
 
-    console.log(body.assignments);
-
     //continue assignment
     const result = await this.assignmentService.addAssignment(
       body.assignments,
@@ -134,8 +157,6 @@ export class AssignmentController {
     @Body() body: preWebinarAssignmentDto,
     @Id() adminId: string,
   ): Promise<any> {
-    console.log('---> prewebinar', adminId);
-
     return await this.assignmentService.addPreWebinarAssignments(
       adminId,
       body.webinar,
@@ -158,7 +179,6 @@ export class AssignmentController {
     @Id() id: string,
     @Query() query: { page?: string; limit?: string },
   ): Promise<any> {
-    console.log(body);
     const page = Number(query?.page) ? Number(query?.page) : 1;
     const limit = Number(query?.limit) ? Number(query?.limit) : 25;
     const result = await this.assignmentService.getPullbacks(
@@ -168,5 +188,40 @@ export class AssignmentController {
       limit,
     );
     return result;
+  }
+
+  @Patch('reassign')
+  async reassignAssignment(
+    @Body() body: RequestReAssignmentsDTO,
+    @AdminId() adminId: string,
+    @Id() userId: string,
+  ) {
+    return await this.assignmentService.requestReAssignements(
+      userId,
+      adminId,
+      body.assignments,
+    );
+  }
+
+  @Patch('reassign/approve')
+  async approveReassignment(
+    @Body() body: RequestReAssignmentsDTO,
+    @Id() adminId: string,
+  ) {
+    return await this.assignmentService.approveReAssignments(
+      adminId,
+      body.assignments,
+    );
+  }
+
+  @Patch('reassign/change')
+  async changeReassignment(
+    @Body() body: ReAssignmentDTO,
+    @Id() adminId: string,
+  ) {
+    return await this.assignmentService.changeAssignment(
+      body,
+      adminId,
+    );
   }
 }

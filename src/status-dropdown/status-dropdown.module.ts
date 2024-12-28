@@ -56,7 +56,7 @@ export class StatusDropdownModule {
       
     consumer
       .apply(AuthAdminTokenMiddleware)
-      .forRoutes({ path: 'status-dropdown/:id', method: RequestMethod.ALL });
+      .forRoutes({ path: 'status-dropdown/:id', method: RequestMethod.DELETE });
 
     consumer
       .apply(GetAdminIdMiddleware)

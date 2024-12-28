@@ -1,6 +1,19 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
+export enum RecordType {
+  PRE_WEBINAR = 'preWebinar',
+  POST_WEBINAR = 'postWebinar',
+}
+
+export enum AssignmentStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  COMPLETED = 'completed',
+  REASSIGN_REQUESTED = 'reassignrequested',
+  REASSIGN_APPROVED = 'reassignapproved',
+}
+
 @Schema({ timestamps: true })
 export class Assignments extends Document {
   @Prop({
@@ -13,14 +26,14 @@ export class Assignments extends Document {
   @Prop({
     type: Types.ObjectId,
     ref: 'User',
-    required: [true, 'employee id is required'],
+    required: [true, 'Employee id is required'],
   })
   user: Types.ObjectId;
 
   @Prop({
     type: Types.ObjectId,
     ref: 'Webinar',
-    required: [true, 'webinar id is required'],
+    required: [true, 'Webinar id is required'],
   })
   webinar: Types.ObjectId;
 
@@ -33,18 +46,18 @@ export class Assignments extends Document {
 
   @Prop({
     type: String,
-    required: [true, 'record type is required'],
-    enums: ['preWebinar', 'postWebinar'],
+    required: [true, 'Record type is required'],
+    enum: Object.values(RecordType),
   })
-  recordType: string;
+  recordType: RecordType;
 
   @Prop({
     type: String,
     lowercase: true,
-    enums: ['active', 'inactive', 'completed'],
-    default: 'active',
+    enum: Object.values(AssignmentStatus),
+    default: AssignmentStatus.ACTIVE,
   })
-  status: string;
+  status: AssignmentStatus;
 }
 
 export const AssignmentsSchema = SchemaFactory.createForClass(Assignments);
