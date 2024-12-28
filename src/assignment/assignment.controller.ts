@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import {
   AssignmentDto,
+  FetchReAssignmentsDTO,
   GetAssignmentDTO,
   preWebinarAssignmentDto,
   ReAssignmentDTO,
@@ -219,9 +220,24 @@ export class AssignmentController {
     @Body() body: ReAssignmentDTO,
     @Id() adminId: string,
   ) {
-    return await this.assignmentService.changeAssignment(
-      body,
+    return await this.assignmentService.changeAssignment(body, adminId);
+  }
+
+  @Post('reassign/fetch')
+  async fetchReAssignments(
+    @Body() body: FetchReAssignmentsDTO,
+    @Id() adminId: string,
+    @Query() query: { page?: string; limit?: string },
+  ) {
+    let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
+    let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
+    return await this.assignmentService.getReAssignments(
       adminId,
+      body.webinarId,
+      body.recordType,
+      body.status,
+      page,
+      limit,
     );
   }
 }

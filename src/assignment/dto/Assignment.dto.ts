@@ -15,7 +15,7 @@ import {
   AttendeesFilterDto,
   CreateAttendeeDto,
 } from 'src/attendees/dto/attendees.dto';
-import { AssignmentStatus } from 'src/schemas/Assignments.schema';
+import { AssignmentStatus, RecordType } from 'src/schemas/Assignments.schema';
 
 export class AssignmentDto {
   @IsOptional()
@@ -94,8 +94,27 @@ export class ReAssignmentDTO {
   @IsMongoId()
   employeeId: string;
 
+  @IsEnum(RecordType)
+  recordType: RecordType;
+
+  @IsMongoId()
+  webinarId: string;
+
   @IsArray()
   @ValidateNested({ each: true }) 
   @Type(() => AssignmentAttendee) 
   assignments: AssignmentAttendee[];
+}
+
+export class FetchReAssignmentsDTO{
+
+  @IsMongoId()
+  webinarId?: string;
+
+  @IsEnum(RecordType)
+  recordType: RecordType;
+
+  
+  @IsEnum(AssignmentStatus)
+  status: AssignmentStatus;
 }
