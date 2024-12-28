@@ -7,25 +7,38 @@ import { SubscriptionDto, UpdateSubscriptionDto } from './dto/subscription.dto';
 
 @Injectable()
 export class SubscriptionService {
-    constructor(
-        @InjectModel(Subscription.name) private SubscriptionModel: Model<Subscription>,
-    ){}
+  constructor(
+    @InjectModel(Subscription.name)
+    private SubscriptionModel: Model<Subscription>,
+  ) {}
 
-    async addSubscription(subscriptionDto: SubscriptionDto): Promise<any> {
-        const result = await this.SubscriptionModel.create(subscriptionDto)
-        return result
-    }
+  async addSubscription(subscriptionDto: SubscriptionDto): Promise<any> {
+    const result = await this.SubscriptionModel.create(subscriptionDto);
+    return result;
+  }
 
-    async updateSubscription(id: string, updateSubscriptionDto: UpdateSubscriptionDto): Promise<any> {
-        const result = await this.SubscriptionModel.findByIdAndUpdate(id, updateSubscriptionDto)
-        return result
-    }
+  async updateSubscription(
+    id: string,
+    updateSubscriptionDto: UpdateSubscriptionDto,
+  ): Promise<any> {
+    const result = await this.SubscriptionModel.findByIdAndUpdate(
+      id,
+      updateSubscriptionDto,
+    );
+    return result;
+  }
 
-    async getSubscription(adminId: string): Promise<Subscription> {
-        const result = await this.SubscriptionModel.findOne({admin: new Types.ObjectId(`${adminId}`)})
-        .populate('plan');
-        return result
-    }
+  async getSubscription(adminId: string): Promise<Subscription> {
+    const result = await this.SubscriptionModel.findOne({
+      admin: new Types.ObjectId(`${adminId}`),
+    }).populate('plan');
+    return result;
+  }
 
-
+  async getExpiredSubscriptions(): Promise<Types.ObjectId[]> {
+    const result = await this.SubscriptionModel.find({
+      expiryDate: { $lt: new Date() },
+    });
+    return result.map((subscription) => subscription.admin);
+  }
 }

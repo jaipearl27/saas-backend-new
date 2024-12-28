@@ -1,5 +1,8 @@
 import { Type } from 'class-transformer';
 import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
   IsMongoId,
   IsNotEmpty,
   IsObject,
@@ -8,13 +11,17 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Types } from 'mongoose';
-import { AttendeesFilterDto, CreateAttendeeDto } from 'src/attendees/dto/attendees.dto';
+import {
+  AttendeesFilterDto,
+  CreateAttendeeDto,
+} from 'src/attendees/dto/attendees.dto';
+import { AssignmentStatus } from 'src/schemas/Assignments.schema';
 
 export class AssignmentDto {
   @IsOptional()
   @IsString()
   adminId: string;
-  
+
   @IsOptional()
   @IsString()
   user: string;
@@ -44,7 +51,6 @@ export class preWebinarAssignmentDto {
 }
 
 export class GetAssignmentDTO {
-
   @IsOptional()
   @IsObject()
   @ValidateNested()
@@ -54,4 +60,42 @@ export class GetAssignmentDTO {
   @IsOptional()
   @IsString()
   validCall?: string;
+
+  @IsOptional()
+  @IsMongoId()
+  webinarId?: string;
+
+  @IsEnum(AssignmentStatus, { message: 'assignmentStatus must be a valid value' })
+  assignmentStatus: AssignmentStatus;
+}
+
+export class RequestReAssignmentsDTO {
+  @IsArray()
+  @IsNotEmpty()
+  @IsMongoId({ each: true }) // Validate each item in the array as a MongoID
+  assignments: string[];
+}
+
+
+
+class AssignmentAttendee {
+  @IsMongoId()
+  assignmentId: string;
+
+  @IsMongoId()
+  attendeeId: string;
+}
+
+export class ReAssignmentDTO {
+
+  @IsBoolean()
+  isTemp: boolean;
+
+  @IsMongoId()
+  employeeId: string;
+
+  @IsArray()
+  @ValidateNested({ each: true }) 
+  @Type(() => AssignmentAttendee) 
+  assignments: AssignmentAttendee[];
 }

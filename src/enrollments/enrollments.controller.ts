@@ -45,6 +45,26 @@ export class EnrollmentsController {
     return enrollment;
   }
 
+
+  @Get("attendee/:id")
+  async getAttendeeEnrollments(
+    @Param('id') attendeeId: string,
+    @Query() query: { page?: string; limit?: string },
+    @AdminId() adminId: string,
+  ): Promise<any> {
+    const page = Number(query.page) ? Number(query.page) : 1;
+
+    const limit = Number(query.limit) ? Number(query.limit) : 25;
+    const enrollment = await this.enrollmentsService.getAttendeeEnrollments(
+      adminId,
+      attendeeId,
+      page,
+      limit,
+    );
+
+    return enrollment;
+  }
+
   @Patch(':id')
   async updateEnrollment(
     @Param('id') id: string,
