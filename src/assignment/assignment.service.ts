@@ -5,9 +5,13 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, PipelineStage, Types } from 'mongoose';
-import { Assignments, AssignmentStatus } from 'src/schemas/Assignments.schema';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Model, PipelineStage, Types } from 'mongoose';
+import {
+  Assignments,
+  AssignmentStatus,
+  RecordType,
+} from 'src/schemas/Assignments.schema';
 import { AssignmentDto, ReAssignmentDTO } from './dto/Assignment.dto';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -25,6 +29,7 @@ export class AssignmentService {
   constructor(
     @InjectModel(Assignments.name) private assignmentsModel: Model<Assignments>,
     @InjectModel(Attendee.name) private attendeeModel: Model<Attendee>,
+    @InjectConnection() private readonly mongoConnection: Connection,
 
     private readonly configService: ConfigService,
     private readonly webinarService: WebinarService,
@@ -705,6 +710,94 @@ export class AssignmentService {
     return result;
   }
 
+  async getReAssignments(
+    adminId: string,
+    webinarId: string,
+    recordType: RecordType,
+    status: AssignmentStatus,
+    page: number,
+    limit: number,
+  ) {
+    const skip = (page - 1) * limit;
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          adminId: new Types.ObjectId(`${adminId}`),
+          recordType: recordType,
+          status: status,
+          webinar: new Types.ObjectId(`${webinarId}`),
+        },
+      },
+      {
+        $lookup: {
+          from: 'attendees',
+          localField: 'attendee',
+          foreignField: '_id',
+          as: 'attendeeDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$attendeeDetails',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'userDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$userDetails',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          attendeeEmail: '$attendeeDetails.email',
+          assignedTo: '$userDetails.userName',
+        },
+      },
+      {
+        $project: {
+          attendeeDetails: 0,
+          userDetails: 0,
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      },
+      {
+        $facet: {
+          metadata: [{ $count: 'total' }],
+          data: [{ $skip: skip }, { $limit: limit }],
+        },
+      },
+      {
+        $unwind: {
+          path: '$metadata',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          totalPages: { $ceil: { $divide: ['$metadata.total', limit] } },
+          page: { $literal: page },
+          result: '$data',
+        },
+      },
+    ];
+
+    const result = await this.assignmentsModel.aggregate(pipeline);
+    console.log(result);
+    return Array.isArray(result) && result.length > 0
+      ? result[0]
+      : { result: [], page, totalPages: 0 };
+  }
+
   async approveReAssignments(adminId: string, assignments: string[]) {
     const assignmentsIds = assignments.map(
       (assignment) => new Types.ObjectId(`${assignment}`),
@@ -721,6 +814,9 @@ export class AssignmentService {
   }
 
   async changeAssignment(data: ReAssignmentDTO, adminId: string) {
+    const session = await this.mongoConnection.startSession(); // Start a session
+    session.startTransaction(); // Begin transaction
+
     try {
       const employee = await this.userService.getEmployee(data.employeeId);
       if (!employee || employee.adminId.toString() !== `${adminId}`) {
@@ -733,30 +829,75 @@ export class AssignmentService {
         ? { tempAssignedTo: employee._id }
         : { assignedTo: employee._id };
 
-      const assignmentPromises = data.assignments.map((assignment) => {
+      for (const assignment of data.assignments) {
         const assignmentId = new Types.ObjectId(assignment.assignmentId);
         const attendeeId = new Types.ObjectId(assignment.attendeeId);
 
         // Update assignment status to INACTIVE
-        const updateAssignment = this.assignmentsModel.updateOne(
-          { _id: assignmentId, adminId: new Types.ObjectId(adminId) },
+        const updateAssignment = await this.assignmentsModel.updateOne(
+          {
+            _id: assignmentId,
+            adminId: new Types.ObjectId(`${adminId}`),
+            webinar: new Types.ObjectId(data.webinarId),
+            attendee: attendeeId,
+            recordType: data.recordType,
+          },
           { $set: { status: AssignmentStatus.INACTIVE } },
+          { session }, // Include session in the operation
         );
+        if (updateAssignment.matchedCount === 0) {
+          throw new NotFoundException(
+            `Assignment with ID ${assignment.assignmentId} not found or unauthorized access`,
+          );
+        }
 
         // Update attendee with the new assignment
-        const updateAttendee = this.attendeeModel.updateOne(
-          { _id: attendeeId, adminId: new Types.ObjectId(adminId) },
+        const updateAttendee = await this.attendeeModel.updateOne(
+          {
+            _id: attendeeId,
+            adminId: new Types.ObjectId(`${adminId}`),
+            webinar: new Types.ObjectId(data.webinarId),
+            isAttended:
+              data.recordType === RecordType.POST_WEBINAR ? true : false,
+          },
           { $set: query },
+          { session }, // Include session in the operation
+        );
+        if (updateAttendee.matchedCount === 0) {
+          throw new NotFoundException(
+            `Attendee with ID ${assignment.attendeeId} not found or unauthorized access`,
+          );
+        }
+
+        // Create new assignment
+        const createdAssignment = await this.assignmentsModel.create(
+          [
+            {
+              adminId: new Types.ObjectId(`${adminId}`),
+              user: employee._id,
+              webinar: new Types.ObjectId(data.webinarId),
+              attendee: attendeeId,
+              recordType: data.recordType,
+              status: AssignmentStatus.ACTIVE,
+            },
+          ],
+          { session }, // Include session in the operation
         );
 
-        return Promise.all([updateAssignment, updateAttendee]);
-      });
+        if (!createdAssignment) {
+          throw new InternalServerErrorException(
+            'Failed to create a new assignment',
+          );
+        }
+      }
 
-      // Execute all promises concurrently
-      await Promise.all(assignmentPromises);
+      await session.commitTransaction(); // Commit the transaction if all operations succeed
+      session.endSession();
     } catch (error) {
+      await session.abortTransaction(); // Roll back all changes if any operation fails
+      session.endSession();
       throw new InternalServerErrorException(
-        'An error occurred during reassignment',
+        `An error occurred during reassignment: ${error.message}`,
       );
     }
   }
