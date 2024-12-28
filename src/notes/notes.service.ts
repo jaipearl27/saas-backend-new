@@ -94,6 +94,7 @@ export class NotesService {
       {
         $addFields: {
           webinarName: '$webinar.webinarName',
+          webinarId: '$webinar._id'
         },
       },
       {
@@ -102,6 +103,7 @@ export class NotesService {
             {
               $group: {
                 _id: '$webinarName',
+                webinarId: { $first: '$webinarId' },
               },
             },
           ],
