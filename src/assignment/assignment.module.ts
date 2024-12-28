@@ -45,10 +45,16 @@ import { GetAdminIdForUserActivityMiddleware } from 'src/middlewares/getAdminIdF
 })
 export class AssignmentModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(GetAdminIdForUserActivityMiddleware).forRoutes({
-      path: 'assignment/data/:empId',
-      method: RequestMethod.POST,
-    });
+    consumer.apply(GetAdminIdForUserActivityMiddleware).forRoutes(
+      {
+        path: 'assignment/data/:empId',
+        method: RequestMethod.POST,
+      },
+      {
+        path: 'assignment/reassign',
+        method: RequestMethod.PATCH,
+      },
+    );
 
     consumer
       .apply(AuthAdminTokenMiddleware, AuthActiveUserMiddleware)
@@ -57,6 +63,10 @@ export class AssignmentModule {
         {
           path: 'assignment/activityInactivity',
           method: RequestMethod.GET,
+        },
+        {
+          path: 'assignment/reassign',
+          method: RequestMethod.PATCH,
         },
       )
       .forRoutes({ path: 'assignment*', method: RequestMethod.ALL });

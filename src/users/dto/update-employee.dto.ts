@@ -32,6 +32,11 @@ export class UpdateEmployeeDto {
     dailyContactLimit?: number;
 
     @IsOptional()
+    @IsNumber({ allowNaN: false, allowInfinity: false })
+    @Min(1, { message: 'Inactivity time must be at least 1.' })
+    inactivityTime?: number;
+
+    @IsOptional()
     @IsString()
     password?: string
 

@@ -1,9 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { User } from './User.schema';
 
 @Schema({ timestamps: true })
 export class Subscription extends Document {
-  @Prop({ type: Types.ObjectId, ref: 'users', required: true })
+  @Prop({ type: Types.ObjectId, ref: User.name, required: true })
   admin: Types.ObjectId; // Admin user
 
   @Prop({

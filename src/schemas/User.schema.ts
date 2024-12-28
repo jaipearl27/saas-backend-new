@@ -104,6 +104,13 @@ export class User extends Document {
   dailyContactCount: number;
 
   @Prop({
+    type: Number,
+    required: false,
+    min: 1,
+  })
+  inactivityTime: number;
+
+  @Prop({
     type: [{
       fieldname: String,
       originalname: String,

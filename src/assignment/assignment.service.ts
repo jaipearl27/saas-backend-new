@@ -7,8 +7,8 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, PipelineStage, Types } from 'mongoose';
-import { Assignments } from 'src/schemas/Assignments.schema';
-import { AssignmentDto } from './dto/Assignment.dto';
+import { Assignments, AssignmentStatus } from 'src/schemas/Assignments.schema';
+import { AssignmentDto, ReAssignmentDTO } from './dto/Assignment.dto';
 import { ConfigService } from '@nestjs/config';
 import {
   AttendeesFilterDto,
@@ -41,16 +41,17 @@ export class AssignmentService {
     filters: AttendeesFilterDto = {},
     webinarId: string = '',
     validCall: string = '',
+    assignmentStatus: AssignmentStatus,
     usePagination: boolean = true, // Flag to enable/disable pagination
   ): Promise<any> {
     const skip = (page - 1) * limit;
-    // console.log(adminId, id, page, limit, filters, webinarId, usePagination)
     const basePipeline: PipelineStage[] = [
       {
         $match: {
           adminId: new Types.ObjectId(adminId),
-          user: new Types.ObjectId(id),
+          ...(id && { user: new Types.ObjectId(id) }),
           ...(webinarId && { webinar: new Types.ObjectId(webinarId) }),
+          status: assignmentStatus,
         },
       },
       {
@@ -79,6 +80,7 @@ export class AssignmentService {
           leadType: '$attendee.leadType',
           location: '$attendee.location',
           phone: '$attendee.phone',
+          status: '$attendee.status',
           timeInSession: '$attendee.timeInSession',
           webinar: '$attendee.webinar',
           createdAt: '$createdAt',
@@ -108,15 +110,9 @@ export class AssignmentService {
             timeInSession: filters.timeInSession,
           }),
           ...(validCall && {
-            ...(validCall === 'Valid'
-              ? { validCall: true }
-              : {
-                  $or: [
-                    { validCall: null },
-                    { validCall: false },
-                    { validCall: { $exists: false } },
-                  ],
-                }),
+            ...(validCall === 'Worked'
+              ? { status: { $ne: null } }
+              : { status: null }),
           }),
         },
       },
@@ -188,8 +184,6 @@ export class AssignmentService {
         webinar: new Types.ObjectId(`${webinar}`),
         isAttended: assignmentDto[i].recordType === 'preWebinar' ? false : true,
       });
-
-      // console.log(attendeeData);
 
       const assignedTo =
         attendeeData?.assignedTo !== null
@@ -278,7 +272,6 @@ export class AssignmentService {
             });
           }
         } else {
-          console.log(employee.dailyContactLimit, employee.dailyContactCount);
           failedAssignments.push({
             attendee: assignmentDto[i],
             message: 'Record type must be Pre or Post Webinar.',
@@ -450,8 +443,8 @@ export class AssignmentService {
       );
 
       const employees = filteredEmployee.sort(
-        (a, b) => a.difference - b.difference,
-      ); // Sort by the smallest remaining capacity first
+        (a, b) => b.difference - a.difference,
+      ); // Sort by the largest remaining capacity first
 
       if (employees.length > 0) {
         const employee = employees[0]; // Pick the employee with the smallest remaining capacity
@@ -507,7 +500,7 @@ export class AssignmentService {
         _id: new Types.ObjectId(`${id}`),
         adminId: new Types.ObjectId(`${adminId}`),
       });
-      assignment.status = 'inactive';
+      assignment.status = AssignmentStatus.INACTIVE;
       await assignment.save();
       const attendee = await this.attendeeModel.findOne({
         _id: new Types.ObjectId(`${assignment.attendee}`),
@@ -690,5 +683,81 @@ export class AssignmentService {
 
     const result = await this.assignmentsModel.aggregate(pipeline);
     return result;
+  }
+
+  async requestReAssignements(
+    userId: string,
+    adminId: string,
+    assignments: string[],
+  ) {
+    const assignmentsIds = assignments.map(
+      (assignment) => new Types.ObjectId(`${assignment}`),
+    );
+    const result = await this.assignmentsModel.updateMany(
+      {
+        adminId: new Types.ObjectId(`${adminId}`),
+        user: new Types.ObjectId(`${userId}`),
+        status: AssignmentStatus.ACTIVE,
+        _id: { $in: assignmentsIds },
+      },
+      { $set: { status: AssignmentStatus.REASSIGN_REQUESTED } },
+    );
+    return result;
+  }
+
+  async approveReAssignments(adminId: string, assignments: string[]) {
+    const assignmentsIds = assignments.map(
+      (assignment) => new Types.ObjectId(`${assignment}`),
+    );
+    const result = await this.assignmentsModel.updateMany(
+      {
+        adminId: new Types.ObjectId(`${adminId}`),
+        status: AssignmentStatus.REASSIGN_REQUESTED,
+        _id: { $in: assignmentsIds },
+      },
+      { $set: { status: AssignmentStatus.REASSIGN_APPROVED } },
+    );
+    return result;
+  }
+
+  async changeAssignment(data: ReAssignmentDTO, adminId: string) {
+    try {
+      const employee = await this.userService.getEmployee(data.employeeId);
+      if (!employee || employee.adminId.toString() !== `${adminId}`) {
+        throw new NotFoundException(
+          'Employee not found or unauthorized access',
+        );
+      }
+
+      const query = data.isTemp
+        ? { tempAssignedTo: employee._id }
+        : { assignedTo: employee._id };
+
+      const assignmentPromises = data.assignments.map((assignment) => {
+        const assignmentId = new Types.ObjectId(assignment.assignmentId);
+        const attendeeId = new Types.ObjectId(assignment.attendeeId);
+
+        // Update assignment status to INACTIVE
+        const updateAssignment = this.assignmentsModel.updateOne(
+          { _id: assignmentId, adminId: new Types.ObjectId(adminId) },
+          { $set: { status: AssignmentStatus.INACTIVE } },
+        );
+
+        // Update attendee with the new assignment
+        const updateAttendee = this.attendeeModel.updateOne(
+          { _id: attendeeId, adminId: new Types.ObjectId(adminId) },
+          { $set: query },
+        );
+
+        return Promise.all([updateAssignment, updateAttendee]);
+      });
+
+      // Execute all promises concurrently
+      await Promise.all(assignmentPromises);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'An error occurred during reassignment',
+      );
+    }
   }
 }

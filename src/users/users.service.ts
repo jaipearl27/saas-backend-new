@@ -629,6 +629,7 @@ export class UsersService {
         validCallTime: updateEmployeeDto.validCallTime,
         dailyContactLimit: updateEmployeeDto.dailyContactLimit,
         role: role._id,
+        inactivityTime: updateEmployeeDto.inactivityTime,
       },
       { new: true },
     );
@@ -771,10 +772,12 @@ export class UsersService {
   async deactivateExpiredPlans(): Promise<void> {
     const now = new Date();
     const adminRole = this.configService.get('appRoles').ADMIN;
+    const expiredAdminIds = await this.subscriptionService.getExpiredSubscriptions();
+    if(!Array.isArray(expiredAdminIds) || expiredAdminIds.length == 0) return;
     try {
       const result = await this.userModel.updateMany(
         {
-          currentPlanExpiry: { $lt: now },
+          _id : { $in : expiredAdminIds }, 
           isActive: true,
           role: new Types.ObjectId(`${adminRole}`),
         },

@@ -165,7 +165,9 @@ export class AttendeesFilterDto {
   @IsMongoId()
   leadType?: Types.ObjectId;
 
-
+  @IsOptional()
+  @IsString()
+  status?: string;
 }
 
 export class GetAttendeesDTO {

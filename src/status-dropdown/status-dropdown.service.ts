@@ -97,7 +97,6 @@ export class StatusDropdownService {
 
     const tableConfig = subscription?.plan?.attendeeTableConfig || {};
     const query: any = {};
-
     query['$or'] = [{ isDefault: true }];
     if (tableConfig.get('customOptions')?.filterable)
       query['$or'].push({ createdBy: new Types.ObjectId(`${adminId}`) });
@@ -114,9 +113,9 @@ export class StatusDropdownService {
 
     const statuses = await this.statusDropdownModel.find(query).exec();
     if (Array.isArray(statuses)) {
-      return statuses.filter((status) => defaultOptions.includes(status.label));
+      return statuses.filter((status) => !status?.isDefault || defaultOptions.includes(status.label)).map((status) => ({label: status.label, value: status._id}));
     }
-    return statuses;
+    return [];
   }
 
   // Update a status by ID
