@@ -33,7 +33,7 @@ export class EnrollmentsService {
     page: number,
     limit: number,
   ): Promise<any> {
-    console.log(page, limit)
+    console.log(page, limit);
     const skip = (page - 1) * limit;
 
     const pipeline: PipelineStage[] = [
@@ -98,7 +98,7 @@ export class EnrollmentsService {
             updatedAt: 1,
           },
           attendee: 1,
-          attendeeId:1,
+          attendeeId: 1,
           product: {
             _id: 1,
             name: 1,
@@ -117,8 +117,10 @@ export class EnrollmentsService {
       { $limit: limit },
     ];
 
-    const totalEnrollments =
-      await this.enrollmentModel.countDocuments(pipeline);
+    const totalEnrollments = await this.enrollmentModel.countDocuments({
+      webinar: new Types.ObjectId(`${webinar}`),
+      adminId: new Types.ObjectId(`${adminId}`),
+    });
 
     const totalPages = Math.ceil(totalEnrollments / limit);
 
