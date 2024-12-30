@@ -122,3 +122,17 @@ export class FetchReAssignmentsDTO{
   @IsEnum(AssignmentStatus)
   status: AssignmentStatus;
 }
+
+
+export class MoveToPullbacksDTO {
+  @IsArray()
+  @IsNotEmpty()
+  @IsMongoId({ each: true }) // Validate each item in the array as a MongoID
+  attendees: string[];
+
+  @IsEnum(RecordType)
+  recordType: RecordType;
+
+  @IsMongoId()
+  webinarId: string;
+}

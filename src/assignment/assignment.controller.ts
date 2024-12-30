@@ -14,6 +14,7 @@ import {
   AssignmentDto,
   FetchReAssignmentsDTO,
   GetAssignmentDTO,
+  MoveToPullbacksDTO,
   preWebinarAssignmentDto,
   ReAssignmentDTO,
   RequestReAssignmentsDTO,
@@ -209,8 +210,7 @@ export class AssignmentController {
     @Body() body: RequestReAssignmentsDTO,
     @Id() adminId: string,
   ) {
-
-    if(!body.status){
+    if (!body.status) {
       throw new NotAcceptableException('Status is required');
     }
 
@@ -227,6 +227,19 @@ export class AssignmentController {
     @Id() adminId: string,
   ) {
     return await this.assignmentService.changeAssignment(body, adminId);
+  }
+
+  @Patch('reassign/pullback')
+  async movieToPullbacks(
+    @Body() body: MoveToPullbacksDTO,
+    @Id() adminId: string,
+  ) {
+    return await this.assignmentService.changeAttendeeAssignmentStatus(
+      body.attendees,
+      adminId,
+      body.webinarId,
+      body.recordType,
+    );
   }
 
   @Post('reassign/fetch')

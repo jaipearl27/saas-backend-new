@@ -830,7 +830,7 @@ export class AssignmentService {
   async changeAssignment(data: ReAssignmentDTO, adminId: string) {
     const session = await this.mongoConnection.startSession(); // Start a session
     session.startTransaction(); // Begin transaction
-  
+
     try {
       const employee = await this.userService.getEmployee(data.employeeId);
       if (!employee || employee.adminId.toString() !== `${adminId}`) {
@@ -838,19 +838,19 @@ export class AssignmentService {
           'Employee not found or unauthorized access',
         );
       }
-  
+
       const query = data.isTemp
         ? { tempAssignedTo: employee._id }
         : { assignedTo: employee._id };
-  
+
       let updatedAssignmentsCount = 0;
       let updatedAttendeesCount = 0;
       const newAssignments = [];
-  
+
       for (const assignment of data.assignments) {
         const assignmentId = new Types.ObjectId(assignment.assignmentId);
         const attendeeId = new Types.ObjectId(assignment.attendeeId);
-  
+
         // Update assignment status to INACTIVE
         const updateAssignment = await this.assignmentsModel.updateOne(
           {
@@ -869,7 +869,7 @@ export class AssignmentService {
           );
         }
         updatedAssignmentsCount++;
-  
+
         // Update attendee with the new assignment
         const updateAttendee = await this.attendeeModel.updateOne(
           {
@@ -888,7 +888,7 @@ export class AssignmentService {
           );
         }
         updatedAttendeesCount++;
-  
+
         // Create new assignment
         const createdAssignment = await this.assignmentsModel.create(
           [
@@ -903,7 +903,7 @@ export class AssignmentService {
           ],
           { session }, // Include session in the operation
         );
-  
+
         if (!createdAssignment) {
           throw new InternalServerErrorException(
             'Failed to create a new assignment',
@@ -911,10 +911,10 @@ export class AssignmentService {
         }
         newAssignments.push(createdAssignment);
       }
-  
+
       await session.commitTransaction(); // Commit the transaction if all operations succeed
       session.endSession();
-  
+
       return {
         message: 'Reassignment completed successfully',
         updatedAssignmentsCount,
@@ -929,5 +929,30 @@ export class AssignmentService {
       );
     }
   }
-  
+
+  async changeAttendeeAssignmentStatus(
+    attendees: string[],
+    adminId: string,
+    webinarId: string,
+    recordType: RecordType
+  ) {
+    const attendeeIds = attendees.map(
+      (attendee) => new Types.ObjectId(`${attendee}`),
+    );
+    const updatedAssignments = await this.assignmentsModel.updateMany(
+      {
+        adminId: new Types.ObjectId(`${adminId}`),
+        attendee: { $in: attendeeIds },
+        status: AssignmentStatus.ACTIVE,
+        webinar: new Types.ObjectId(`${webinarId}`),
+        recordType: recordType
+      },
+      {
+        $set: { status: AssignmentStatus.REASSIGN_APPROVED },
+      },
+    );
+
+    return updatedAssignments;
+
+  }
 }
