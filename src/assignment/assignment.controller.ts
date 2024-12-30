@@ -209,9 +209,15 @@ export class AssignmentController {
     @Body() body: RequestReAssignmentsDTO,
     @Id() adminId: string,
   ) {
+
+    if(!body.status){
+      throw new NotAcceptableException('Status is required');
+    }
+
     return await this.assignmentService.approveReAssignments(
       adminId,
       body.assignments,
+      body.status,
     );
   }
 

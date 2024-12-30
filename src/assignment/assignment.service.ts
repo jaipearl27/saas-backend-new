@@ -798,17 +798,31 @@ export class AssignmentService {
       : { result: [], page, totalPages: 0 };
   }
 
-  async approveReAssignments(adminId: string, assignments: string[]) {
+  async approveReAssignments(
+    adminId: string,
+    assignments: string[],
+    status: string,
+  ) {
     const assignmentsIds = assignments.map(
       (assignment) => new Types.ObjectId(`${assignment}`),
     );
+    const query =
+      status === 'approved'
+        ? { status: AssignmentStatus.REASSIGN_APPROVED }
+        : status === 'rejected'
+          ? { status: AssignmentStatus.ACTIVE }
+          : null;
+
+    if (!query) {
+      throw new BadRequestException('Invalid status provided.');
+    }
+
     const result = await this.assignmentsModel.updateMany(
       {
         adminId: new Types.ObjectId(`${adminId}`),
-        status: AssignmentStatus.REASSIGN_REQUESTED,
         _id: { $in: assignmentsIds },
       },
-      { $set: { status: AssignmentStatus.REASSIGN_APPROVED } },
+      { $set: query },
     );
     return result;
   }
@@ -816,7 +830,7 @@ export class AssignmentService {
   async changeAssignment(data: ReAssignmentDTO, adminId: string) {
     const session = await this.mongoConnection.startSession(); // Start a session
     session.startTransaction(); // Begin transaction
-
+  
     try {
       const employee = await this.userService.getEmployee(data.employeeId);
       if (!employee || employee.adminId.toString() !== `${adminId}`) {
@@ -824,15 +838,19 @@ export class AssignmentService {
           'Employee not found or unauthorized access',
         );
       }
-
+  
       const query = data.isTemp
         ? { tempAssignedTo: employee._id }
         : { assignedTo: employee._id };
-
+  
+      let updatedAssignmentsCount = 0;
+      let updatedAttendeesCount = 0;
+      const newAssignments = [];
+  
       for (const assignment of data.assignments) {
         const assignmentId = new Types.ObjectId(assignment.assignmentId);
         const attendeeId = new Types.ObjectId(assignment.attendeeId);
-
+  
         // Update assignment status to INACTIVE
         const updateAssignment = await this.assignmentsModel.updateOne(
           {
@@ -850,7 +868,8 @@ export class AssignmentService {
             `Assignment with ID ${assignment.assignmentId} not found or unauthorized access`,
           );
         }
-
+        updatedAssignmentsCount++;
+  
         // Update attendee with the new assignment
         const updateAttendee = await this.attendeeModel.updateOne(
           {
@@ -868,7 +887,8 @@ export class AssignmentService {
             `Attendee with ID ${assignment.attendeeId} not found or unauthorized access`,
           );
         }
-
+        updatedAttendeesCount++;
+  
         // Create new assignment
         const createdAssignment = await this.assignmentsModel.create(
           [
@@ -883,16 +903,24 @@ export class AssignmentService {
           ],
           { session }, // Include session in the operation
         );
-
+  
         if (!createdAssignment) {
           throw new InternalServerErrorException(
             'Failed to create a new assignment',
           );
         }
+        newAssignments.push(createdAssignment);
       }
-
+  
       await session.commitTransaction(); // Commit the transaction if all operations succeed
       session.endSession();
+  
+      return {
+        message: 'Reassignment completed successfully',
+        updatedAssignmentsCount,
+        updatedAttendeesCount,
+        newAssignments,
+      };
     } catch (error) {
       await session.abortTransaction(); // Roll back all changes if any operation fails
       session.endSession();
@@ -901,4 +929,5 @@ export class AssignmentService {
       );
     }
   }
+  
 }
