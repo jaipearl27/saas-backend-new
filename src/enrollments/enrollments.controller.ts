@@ -26,14 +26,13 @@ export class EnrollmentsController {
     return enrollment;
   }
 
-  @Get(":id")
+  @Get(':id')
   async getEnrollment(
     @Param('id') webinarId: string,
     @Query() query: { page?: string; limit?: string },
     @AdminId() adminId: string,
   ): Promise<any> {
     const page = Number(query.page) ? Number(query.page) : 1;
-
     const limit = Number(query.limit) ? Number(query.limit) : 25;
     const enrollment = await this.enrollmentsService.getEnrollment(
       adminId,
@@ -45,8 +44,7 @@ export class EnrollmentsController {
     return enrollment;
   }
 
-
-  @Get("attendee/:id")
+  @Get('attendee/:id')
   async getAttendeeEnrollments(
     @Param('id') attendeeId: string,
     @Query() query: { page?: string; limit?: string },

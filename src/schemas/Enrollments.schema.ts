@@ -4,11 +4,10 @@ import { Document, Types } from 'mongoose';
 @Schema({ timestamps: true })
 export class Enrollment extends Document {
   @Prop({
-    type: Types.ObjectId,
-    ref: 'Attendee',
-    required: [true, 'Admin Id is required.'],
+    type: String,
+    required: [true, 'Attendee E-Mail is required.'],
   })
-  attendee: Types.ObjectId;
+  attendee: string;
 
   @Prop({
     type: Types.ObjectId,
@@ -21,7 +20,6 @@ export class Enrollment extends Document {
     type: Types.ObjectId,
     ref: 'Products',
     require: [true, 'Product ID is required.'],
-    unique: true,
   })
   product: Types.ObjectId;
 
@@ -38,9 +36,6 @@ const EnrollmentSchema = SchemaFactory.createForClass(Enrollment);
 EnrollmentSchema.pre('save', function (next) {
   if (typeof this.webinar === 'string') {
     this.webinar = new Types.ObjectId(`${this.webinar}`);
-  }
-  if (typeof this.attendee === 'string') {
-    this.attendee = new Types.ObjectId(`${this.attendee}`);
   }
   if (typeof this.product === 'string') {
     this.product = new Types.ObjectId(`${this.product}`);
