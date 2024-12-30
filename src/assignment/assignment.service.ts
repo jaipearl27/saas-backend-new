@@ -879,7 +879,7 @@ export class AssignmentService {
             isAttended:
               data.recordType === RecordType.POST_WEBINAR ? true : false,
           },
-          { $set: query },
+          { $set: { isPulledback: false, ...query} },
           { session }, // Include session in the operation
         );
         if (updateAttendee.matchedCount === 0) {
@@ -934,25 +934,87 @@ export class AssignmentService {
     attendees: string[],
     adminId: string,
     webinarId: string,
-    recordType: RecordType
+    recordType: RecordType,
+    employeeId?: string,
+    isTemp?: boolean,
   ) {
     const attendeeIds = attendees.map(
       (attendee) => new Types.ObjectId(`${attendee}`),
     );
-    const updatedAssignments = await this.assignmentsModel.updateMany(
-      {
+
+    if (!employeeId) {
+      const updatations = attendeeIds.map(async (attendeeId) => {
+        const updatedAttendee = await this.attendeeModel.findOneAndUpdate(
+          {
+            adminId: new Types.ObjectId(`${adminId}`),
+            webinar: new Types.ObjectId(`${webinarId}`),
+            isAttended: recordType === RecordType.POST_WEBINAR ? true : false,
+            assignedTo: { $ne: null },
+            _id: attendeeId,
+          },
+          { $set: { isPulledback: true } },
+        );
+
+        if (!updatedAttendee) {
+          throw new NotFoundException(
+            `Attendee with id ${attendeeId} not found`,
+          );
+        }
+
+        const updatedAssignment = await this.assignmentsModel.findOneAndUpdate(
+          {
+            attendee: attendeeId,
+            adminId: new Types.ObjectId(`${adminId}`),
+            webinar: new Types.ObjectId(`${webinarId}`),
+            recordType: recordType,
+            status: AssignmentStatus.ACTIVE,
+          },
+          {
+            $set: {
+              status: AssignmentStatus.REASSIGN_APPROVED,
+            },
+          },
+        );
+
+        if (!updatedAssignment) {
+          throw new NotFoundException(
+            `Assignment for attendee with id ${attendeeId} not found`,
+          );
+        }
+
+        return updatedAssignment;
+      });
+
+      const results = await Promise.all(updatations);
+      return results;
+    } else {
+      const assignments = await this.assignmentsModel.find({
         adminId: new Types.ObjectId(`${adminId}`),
-        attendee: { $in: attendeeIds },
         status: AssignmentStatus.ACTIVE,
         webinar: new Types.ObjectId(`${webinarId}`),
-        recordType: recordType
-      },
-      {
-        $set: { status: AssignmentStatus.REASSIGN_APPROVED },
-      },
-    );
+        recordType: recordType,
+        attendee: { $in: attendeeIds },
+      });
 
-    return updatedAssignments;
+      if (!assignments || assignments.length === 0) {
+        throw new NotFoundException(
+          `No assignments found for the given webinar and adminId: ${webinarId} ${adminId}`,
+        );
+      }
 
+      return await this.changeAssignment(
+        {
+          assignments: assignments.map((assignment) => ({
+            attendeeId: assignment.attendee.toString(),
+            assignmentId: assignment._id.toString(),
+          })),
+          employeeId: employeeId,
+          webinarId: webinarId,
+          recordType: recordType,
+          isTemp: isTemp,
+        },
+        adminId,
+      );
+    }
   }
 }

@@ -239,6 +239,8 @@ export class AssignmentController {
       adminId,
       body.webinarId,
       body.recordType,
+      body.employeeId,
+      body.isTemp
     );
   }
 

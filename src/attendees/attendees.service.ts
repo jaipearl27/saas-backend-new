@@ -211,7 +211,7 @@ export class AttendeesService {
           }),
           ...(assignmentType && {
             ...(assignmentType === 'Assigned'
-              ? { assignedTo: { $ne: null } }
+              ? { $and: [{assignedTo: { $ne: null }}, {isPulledback: { $ne: true }}] }
               : { assignedTo: null }),
           }),
         },
@@ -268,11 +268,21 @@ export class AttendeesService {
         },
       },
       {
+        $addFields: {
+          lookupField: { $ifNull: ["$tempAssignedTo", "$assignedTo"] },
+        },
+      },
+      {
         $lookup: {
-          from: 'users',
-          localField: 'assignedTo',
-          foreignField: '_id',
-          as: 'assignedToDetails',
+          from: "users",
+          localField: "lookupField",
+          foreignField: "_id",
+          as: "assignedToDetails",
+        },
+      },
+      {
+        $project: {
+          lookupField: 0, // Remove temporary lookupField if not needed in the output
         },
       },
       {
