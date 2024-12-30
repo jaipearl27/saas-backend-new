@@ -60,6 +60,7 @@ export class AttendeesController {
       limit,
       body.filters,
       body?.validCall,
+      body?.assignmentType
     );
 
     return result;

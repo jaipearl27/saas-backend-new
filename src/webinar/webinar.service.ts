@@ -212,4 +212,15 @@ export class WebinarService {
     });
     return result;
   }
+
+  async getAssignedEmployees(webinarId: string): Promise<any> {
+    const result = await this.webinarModel
+      .findById(webinarId)
+      .populate('assignedEmployees')
+      .lean();
+
+    if (!result) return [];
+
+    return result.assignedEmployees || [];
+  }
 }

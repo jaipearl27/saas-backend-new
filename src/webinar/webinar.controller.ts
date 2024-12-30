@@ -75,4 +75,11 @@ export class WebinarController {
     const result = await this.webinarService.deleteWebinar(id, adminId);
     return result;
   }
+
+  @Get('employee/:id')
+  async getAssignedEmployees(
+    @Param('id') webinarId: string,
+  ){
+    return await this.webinarService.getAssignedEmployees(webinarId);
+  }
 }
