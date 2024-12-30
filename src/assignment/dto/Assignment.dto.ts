@@ -65,7 +65,9 @@ export class GetAssignmentDTO {
   @IsMongoId()
   webinarId?: string;
 
-  @IsEnum(AssignmentStatus, { message: 'assignmentStatus must be a valid value' })
+  @IsEnum(AssignmentStatus, {
+    message: 'assignmentStatus must be a valid value',
+  })
   assignmentStatus: AssignmentStatus;
 }
 
@@ -74,9 +76,11 @@ export class RequestReAssignmentsDTO {
   @IsNotEmpty()
   @IsMongoId({ each: true }) // Validate each item in the array as a MongoID
   assignments: string[];
+
+  @IsOptional()
+  @IsEnum(['approved', 'rejected'])
+  status: string;
 }
-
-
 
 class AssignmentAttendee {
   @IsMongoId()
@@ -87,7 +91,6 @@ class AssignmentAttendee {
 }
 
 export class ReAssignmentDTO {
-
   @IsBoolean()
   isTemp: boolean;
 
@@ -101,20 +104,39 @@ export class ReAssignmentDTO {
   webinarId: string;
 
   @IsArray()
-  @ValidateNested({ each: true }) 
-  @Type(() => AssignmentAttendee) 
+  @ValidateNested({ each: true })
+  @Type(() => AssignmentAttendee)
   assignments: AssignmentAttendee[];
 }
 
-export class FetchReAssignmentsDTO{
-
+export class FetchReAssignmentsDTO {
   @IsMongoId()
   webinarId?: string;
 
   @IsEnum(RecordType)
   recordType: RecordType;
 
-  
   @IsEnum(AssignmentStatus)
   status: AssignmentStatus;
+}
+
+export class MoveToPullbacksDTO {
+  @IsOptional()
+  @IsBoolean()
+  isTemp: boolean;
+
+  @IsOptional()
+  @IsMongoId()
+  employeeId: string;
+
+  @IsArray()
+  @IsNotEmpty()
+  @IsMongoId({ each: true }) // Validate each item in the array as a MongoID
+  attendees: string[];
+
+  @IsEnum(RecordType)
+  recordType: RecordType;
+
+  @IsMongoId()
+  webinarId: string;
 }

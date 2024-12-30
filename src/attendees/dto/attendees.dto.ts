@@ -181,6 +181,10 @@ export class GetAttendeesDTO {
   @IsString()
   validCall?: string;
 
+  @IsOptional()
+  @IsString()
+  assignmentType?: string;
+
   @IsNotEmpty()
   @ValidateNested()
   @Type(() => AttendeesFilterDto)

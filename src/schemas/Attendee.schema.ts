@@ -113,6 +113,13 @@ export class Attendee extends Document {
   })
   validCall: boolean;
 
+  @Prop({
+    type: Boolean,
+    required: false,
+    default: false,
+  })
+  isPulledback: boolean;
+
 }
 
 export const AttendeeSchema = SchemaFactory.createForClass(Attendee);

@@ -183,6 +183,7 @@ export class AttendeesService {
     limit: number,
     filters: AttendeesFilterDto,
     validCall?: string,
+    assignmentType?: string
   ): Promise<any> {
     const skip = (page - 1) * limit;
 
@@ -207,6 +208,11 @@ export class AttendeesService {
             ...(validCall === 'Worked'
               ? { status: { $ne: null } }
               : { status: null }),
+          }),
+          ...(assignmentType && {
+            ...(assignmentType === 'Assigned'
+              ? { $and: [{assignedTo: { $ne: null }}, {isPulledback: { $ne: true }}] }
+              : { assignedTo: null }),
           }),
         },
       },
@@ -262,11 +268,21 @@ export class AttendeesService {
         },
       },
       {
+        $addFields: {
+          lookupField: { $ifNull: ["$tempAssignedTo", "$assignedTo"] },
+        },
+      },
+      {
         $lookup: {
-          from: 'users',
-          localField: 'assignedTo',
-          foreignField: '_id',
-          as: 'assignedToDetails',
+          from: "users",
+          localField: "lookupField",
+          foreignField: "_id",
+          as: "assignedToDetails",
+        },
+      },
+      {
+        $project: {
+          lookupField: 0, // Remove temporary lookupField if not needed in the output
         },
       },
       {

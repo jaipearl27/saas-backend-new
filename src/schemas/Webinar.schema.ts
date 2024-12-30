@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { Document, Types } from 'mongoose';
+import { User } from './User.schema';
 
 @Schema({ timestamps: true })
 export class Webinar extends Document {
@@ -17,13 +18,13 @@ export class Webinar extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'User',
+    ref: User.name,
     required: [true, 'Admin Id is required'],
   })
   adminId: Types.ObjectId;
 
   @Prop({
-    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: User.name }],
     required: false,
   })
   assignedEmployees: Types.ObjectId[]; // Assigned Employees
