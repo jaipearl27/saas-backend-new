@@ -1,6 +1,6 @@
 import { Injectable, NotAcceptableException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model, PipelineStage, Types } from 'mongoose';
 import { Enrollment } from 'src/schemas/Enrollments.schema';
 import { CreateEnrollmentDto, UpdateEnrollmentDto } from './dto/enrollment.dto';
 
@@ -15,13 +15,13 @@ export class EnrollmentsService {
     createEnrollmentDto: CreateEnrollmentDto,
   ): Promise<any> {
     const pipeline = {
-      webinar: new Types.ObjectId(`${createEnrollmentDto.webinar}`),
-      attendee: new Types.ObjectId(`${createEnrollmentDto.attendee}`),
+      // webinar: new Types.ObjectId(`${createEnrollmentDto.webinar}`),
+      attendee: createEnrollmentDto.attendee,
       product: new Types.ObjectId(`${createEnrollmentDto.product}`),
-    }
-    const isExist = await this.enrollmentModel.findOne(pipeline)
+    };
+    const isExist = await this.enrollmentModel.findOne(pipeline);
 
-    if(isExist) throw new NotAcceptableException('Enrollment already exists')
+    if (isExist) throw new NotAcceptableException('Enrollment already exists');
 
     const result = await this.enrollmentModel.create(createEnrollmentDto);
     return result;
@@ -33,38 +33,109 @@ export class EnrollmentsService {
     page: number,
     limit: number,
   ): Promise<any> {
+    console.log(page, limit)
     const skip = (page - 1) * limit;
 
-
-    const pipeline = {
-      webinar: new Types.ObjectId(`${webinar}`),
-      adminId: new Types.ObjectId(`${adminId}`),
-    };
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          webinar: new Types.ObjectId(`${webinar}`),
+          adminId: new Types.ObjectId(`${adminId}`),
+        },
+      },
+      {
+        $lookup: {
+          from: 'webinars',
+          localField: 'webinar',
+          foreignField: '_id',
+          as: 'webinar',
+        },
+      },
+      {
+        $lookup: {
+          from: 'attendees',
+          let: { email: '$attendee' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$email', '$$email'] },
+                    { $eq: ['$webinar', new Types.ObjectId(`${webinar}`)] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: 'attendee',
+        },
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'product',
+          foreignField: '_id',
+          as: 'product',
+        },
+      },
+      { $unwind: '$webinar' },
+      { $unwind: '$attendee' },
+      {
+        $addFields: {
+          attendee: '$attendee.email',
+          attendeeId: '$attendee._id',
+        },
+      },
+      { $unwind: '$product' },
+      {
+        $project: {
+          _id: 1,
+          webinar: {
+            _id: 1,
+            webinarName: 1,
+            webinarDate: 1,
+            createdAt: 1,
+            updatedAt: 1,
+          },
+          attendee: 1,
+          attendeeId:1,
+          product: {
+            _id: 1,
+            name: 1,
+            level: 1,
+            price: 1,
+            createdAt: 1,
+            updatedAt: 1,
+          },
+          status: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      },
+      { $sort: { updatedAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+    ];
 
     const totalEnrollments =
       await this.enrollmentModel.countDocuments(pipeline);
 
     const totalPages = Math.ceil(totalEnrollments / limit);
 
-    const result = await this.enrollmentModel
-      .find(pipeline)
-      .populate('webinar attendee product')
-      .sort({ updatedAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const result = await this.enrollmentModel.aggregate(pipeline);
     return { page, totalPages, result };
   }
 
   async getAttendeeEnrollments(
     adminId: string,
-    attendeeId: string,
+    attendeeEmail: string,
     page: number,
     limit: number,
   ): Promise<any> {
     const skip = (page - 1) * limit;
 
     const pipeline = {
-      attendee: new Types.ObjectId(`${attendeeId}`),
+      attendee: attendeeEmail,
       adminId: new Types.ObjectId(`${adminId}`),
     };
 
@@ -82,11 +153,10 @@ export class EnrollmentsService {
     return { page, totalPages, result };
   }
 
-
   async updateEnrollment(
     id: string,
     adminId: string,
-    
+
     updateEnrollmentDto: UpdateEnrollmentDto,
   ): Promise<any> {
     const result = await this.enrollmentModel.findOneAndUpdate(
