@@ -4,6 +4,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, PipelineStage, Types } from 'mongoose';
@@ -806,25 +807,69 @@ export class AssignmentService {
     const assignmentsIds = assignments.map(
       (assignment) => new Types.ObjectId(`${assignment}`),
     );
-    const query =
-      status === 'approved'
-        ? { status: AssignmentStatus.REASSIGN_APPROVED }
-        : status === 'rejected'
-          ? { status: AssignmentStatus.ACTIVE }
-          : null;
 
-    if (!query) {
+    if (status === 'approved') {
+      const session = await this.assignmentsModel.db.startSession();
+      session.startTransaction();
+
+      try {
+        const updates = assignmentsIds.map(async (assignmentId) => {
+          const updatedAssignment =
+            await this.assignmentsModel.findOneAndUpdate(
+              {
+                adminId: new Types.ObjectId(`${adminId}`),
+                _id: assignmentId,
+              },
+              { $set: { status: AssignmentStatus.REASSIGN_APPROVED } },
+              { session }, // Add session to ensure transaction
+            );
+
+          if (!updatedAssignment) {
+            throw new NotFoundException('Assignment not found');
+          }
+
+          const updatedAttendee = await this.attendeeModel.findOneAndUpdate(
+            {
+              adminId: new Types.ObjectId(`${adminId}`),
+              _id: updatedAssignment.attendee,
+            },
+            { $set: { isPulledback: true } },
+            { session }, // Add session to ensure transaction
+          );
+
+          if (!updatedAttendee) {
+            throw new NotFoundException('Attendee not found');
+          }
+
+          return updatedAssignment;
+        });
+
+        const results = await Promise.all(updates);
+
+        // Commit the transaction if everything succeeds
+        await session.commitTransaction();
+        session.endSession();
+
+        return results;
+      } catch (error) {
+        // Abort the transaction in case of an error
+        await session.abortTransaction();
+        session.endSession();
+        throw error;
+      }
+    } else if (status === 'rejected') {
+      // Using updateMany for rejected
+      const result = await this.assignmentsModel.updateMany(
+        {
+          adminId: new Types.ObjectId(`${adminId}`),
+          _id: { $in: assignmentsIds },
+        },
+        { $set: { status: AssignmentStatus.ACTIVE } },
+      );
+      return result;
+    } else {
       throw new BadRequestException('Invalid status provided.');
     }
-
-    const result = await this.assignmentsModel.updateMany(
-      {
-        adminId: new Types.ObjectId(`${adminId}`),
-        _id: { $in: assignmentsIds },
-      },
-      { $set: query },
-    );
-    return result;
   }
 
   async changeAssignment(data: ReAssignmentDTO, adminId: string) {
@@ -838,10 +883,23 @@ export class AssignmentService {
           'Employee not found or unauthorized access',
         );
       }
+      if (employee.isActive === false) {
+        throw new BadRequestException('Employee is inactive');
+      }
+
+      if (employee.adminId.toString() !== `${adminId}`) {
+        throw new BadRequestException('Unauthorized access');
+      }
+
+      if (employee.dailyContactCount >= employee.dailyContactLimit) {
+        throw new BadRequestException(
+          'Employee has reached daily contact limit',
+        );
+      }
 
       const query = data.isTemp
         ? { tempAssignedTo: employee._id }
-        : { assignedTo: employee._id };
+        : { assignedTo: employee._id, tempAssignedTo: null };
 
       let updatedAssignmentsCount = 0;
       let updatedAttendeesCount = 0;
@@ -879,7 +937,7 @@ export class AssignmentService {
             isAttended:
               data.recordType === RecordType.POST_WEBINAR ? true : false,
           },
-          { $set: { isPulledback: false, ...query} },
+          { $set: { isPulledback: false, ...query } },
           { session }, // Include session in the operation
         );
         if (updateAttendee.matchedCount === 0) {
@@ -912,6 +970,11 @@ export class AssignmentService {
         newAssignments.push(createdAssignment);
       }
 
+      await this.userService.incrementCount(
+        employee._id.toString(),
+        updatedAssignmentsCount,
+      );
+
       await session.commitTransaction(); // Commit the transaction if all operations succeed
       session.endSession();
 
@@ -942,51 +1005,66 @@ export class AssignmentService {
       (attendee) => new Types.ObjectId(`${attendee}`),
     );
 
+    // if employee ID not exists that means user chose the option to pullback all attendees Assignments
     if (!employeeId) {
-      const updatations = attendeeIds.map(async (attendeeId) => {
-        const updatedAttendee = await this.attendeeModel.findOneAndUpdate(
-          {
-            adminId: new Types.ObjectId(`${adminId}`),
-            webinar: new Types.ObjectId(`${webinarId}`),
-            isAttended: recordType === RecordType.POST_WEBINAR ? true : false,
-            assignedTo: { $ne: null },
-            _id: attendeeId,
-          },
-          { $set: { isPulledback: true } },
-        );
+      const session = await this.attendeeModel.db.startSession();
+      session.startTransaction();
 
-        if (!updatedAttendee) {
-          throw new NotFoundException(
-            `Attendee with id ${attendeeId} not found`,
-          );
-        }
-
-        const updatedAssignment = await this.assignmentsModel.findOneAndUpdate(
-          {
-            attendee: attendeeId,
-            adminId: new Types.ObjectId(`${adminId}`),
-            webinar: new Types.ObjectId(`${webinarId}`),
-            recordType: recordType,
-            status: AssignmentStatus.ACTIVE,
-          },
-          {
-            $set: {
-              status: AssignmentStatus.REASSIGN_APPROVED,
+      try {
+        const updatations = attendeeIds.map(async (attendeeId) => {
+          const updatedAttendee = await this.attendeeModel.findOneAndUpdate(
+            {
+              adminId: new Types.ObjectId(`${adminId}`),
+              webinar: new Types.ObjectId(`${webinarId}`),
+              isAttended: recordType === RecordType.POST_WEBINAR,
+              assignedTo: { $ne: null },
+              _id: attendeeId,
             },
-          },
-        );
-
-        if (!updatedAssignment) {
-          throw new NotFoundException(
-            `Assignment for attendee with id ${attendeeId} not found`,
+            { $set: { isPulledback: true } },
+            { session },
           );
-        }
 
-        return updatedAssignment;
-      });
+          if (!updatedAttendee) {
+            throw new NotFoundException(
+              `Attendee with id ${attendeeId} not found`,
+            );
+          }
 
-      const results = await Promise.all(updatations);
-      return results;
+          const updatedAssignment =
+            await this.assignmentsModel.findOneAndUpdate(
+              {
+                attendee: attendeeId,
+                adminId: new Types.ObjectId(`${adminId}`),
+                webinar: new Types.ObjectId(`${webinarId}`),
+                recordType: recordType,
+                status: AssignmentStatus.ACTIVE,
+              },
+              {
+                $set: {
+                  status: AssignmentStatus.REASSIGN_APPROVED,
+                },
+              },
+              { session },
+            );
+
+          if (!updatedAssignment) {
+            throw new NotFoundException(
+              `Assignment for attendee with id ${attendeeId} not found`,
+            );
+          }
+
+          return updatedAssignment;
+        });
+
+        const results = await Promise.all(updatations);
+        await session.commitTransaction();
+        session.endSession();
+        return results;
+      } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        throw error;
+      }
     } else {
       const assignments = await this.assignmentsModel.find({
         adminId: new Types.ObjectId(`${adminId}`),

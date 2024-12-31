@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -13,10 +14,12 @@ import { AdminId, Id } from 'src/decorators/custom.decorator';
 import { WebinarService } from './webinar.service';
 import { CreateWebinarDto, UpdateWebinarDto } from './dto/createWebinar.dto';
 import { WebinarFilterDTO } from './dto/webinar-filter.dto';
+import { UsersService } from 'src/users/users.service';
 @Controller('webinar')
 export class WebinarController {
   constructor(
     private readonly webinarService: WebinarService,
+    private readonly usersService: UsersService,
   ) {}
 
   @Post('data')
@@ -28,19 +31,35 @@ export class WebinarController {
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
 
-    const result = await this.webinarService.getWebinars(adminId, page, limit, body.filters);
+    const result = await this.webinarService.getWebinars(
+      adminId,
+      page,
+      limit,
+      body.filters,
+    );
     return result;
-  } 
+  }
 
   @Get()
   async getEmployeeWebinars(
     @AdminId() adminId: string,
     @Id() id: string,
+    @Query('employeeId') employeeId: string | undefined,
   ): Promise<any> {
-    if(!id || !adminId){
+    if (employeeId) {
+      const employee = await this.usersService.getEmployee(employeeId);
+
+      if (!employee || employee.adminId.toString() !== id.toString()) {
+        throw new BadRequestException(
+          'You are not authorized to access this resource.',
+        );
+      }
+    }
+
+    if (!id || !adminId) {
       throw new NotAcceptableException('Invalid request');
     }
-  return await this.webinarService.getEmployeeWebinars(id, adminId);
+    return await this.webinarService.getEmployeeWebinars(employeeId|| id, adminId);
   }
 
   @Post()
@@ -77,9 +96,7 @@ export class WebinarController {
   }
 
   @Get('employee/:id')
-  async getAssignedEmployees(
-    @Param('id') webinarId: string,
-  ){
+  async getAssignedEmployees(@Param('id') webinarId: string) {
     return await this.webinarService.getAssignedEmployees(webinarId);
   }
 }

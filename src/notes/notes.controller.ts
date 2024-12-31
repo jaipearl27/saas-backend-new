@@ -21,6 +21,7 @@ import { ConfigService } from '@nestjs/config';
 import { Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Attendee } from 'src/schemas/Attendee.schema';
+import { UsersService } from 'src/users/users.service';
 
 @Controller('notes')
 export class NotesController {
@@ -29,6 +30,7 @@ export class NotesController {
     private readonly notesService: NotesService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly configService: ConfigService,
+    private readonly usersService: UsersService,
   ) {}
 
   @Post()
@@ -46,9 +48,9 @@ export class NotesController {
       _id: new Types.ObjectId(`${body.attendee}`),
     });
 
-    console.log(body)
+    console.log(body);
 
-    console.log(attendee)
+    console.log(attendee);
 
     if (
       attendee &&
@@ -97,17 +99,30 @@ export class NotesController {
   async getDashboardNotes(
     @Id() userId: string,
     @Role() role: string,
-    @Query() query: { startDate: string; endDate: string },
+    @Query() query: { startDate: string; endDate: string; employeeId: undefined | string },
   ) {
+    let isAdminAllowed = false;
+    if (query.employeeId) {
+      const employee = await this.usersService.getEmployee(query.employeeId);
+
+      if (!employee || employee.adminId.toString() !== userId.toString()) {
+        throw new BadRequestException(
+          'You are not authorized to access this resource.',
+        );
+      }
+      isAdminAllowed = true;
+    }
+
     if (!userId) {
       throw new BadRequestException('UserID is required.');
     }
     if (
       role === this.configService.get('appRoles')['EMPLOYEE_SALES'] ||
-      role === this.configService.get('appRoles')['EMPLOYEE_REMINDER']
+      role === this.configService.get('appRoles')['EMPLOYEE_REMINDER'] ||
+      isAdminAllowed
     ) {
       const notes = await this.notesService.getNotesByEmployeeId(
-        userId,
+        query.employeeId || userId,
         query.startDate,
         query.endDate,
       );

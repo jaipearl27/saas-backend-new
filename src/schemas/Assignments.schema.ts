@@ -80,3 +80,7 @@ AssignmentsSchema.pre('save', function (next) {
 
   next();
 });
+
+AssignmentsSchema.index({ adminId: 1 });
+AssignmentsSchema.index({ webinar: 1 });
+AssignmentsSchema.index({ attendee: 1 });
