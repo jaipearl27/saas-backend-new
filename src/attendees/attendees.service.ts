@@ -226,28 +226,6 @@ export class AttendeesService {
           }),
         },
       },
-      ...(webinarId === ''
-        ? [
-            {
-              $lookup: {
-                from: 'webinars',
-                localField: 'webinar',
-                foreignField: '_id',
-                as: 'webinarDetails',
-              },
-            },
-            {
-              $addFields: {
-                webinarName: {
-                  $arrayElemAt: ['$webinarDetails.webinarName', 0],
-                }, // Extract webinarName
-              },
-            },
-            {
-              $project: { webinarDetails: 0 }, // Remove the webinarDetails array if it's no longer needed
-            },
-          ]
-        : []),
       // Step 3: Apply optional filters
 
       ...(hasFilters

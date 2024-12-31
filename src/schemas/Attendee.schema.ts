@@ -124,5 +124,7 @@ export class Attendee extends Document {
 
 export const AttendeeSchema = SchemaFactory.createForClass(Attendee);
 
-// Add index for csvId and recordType fields
-AttendeeSchema.index({ webinar: 1, recordType: 1 });
+AttendeeSchema.index({ adminId: 1 });
+AttendeeSchema.index({ webinar: 1 });
+AttendeeSchema.index({ webinar: 1, adminId: 1 });
+AttendeeSchema.index({ webinar: 1, adminId: 1, isAttended: 1 });
