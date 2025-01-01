@@ -59,10 +59,11 @@ export class AssignmentController {
       }
       employeeId = employee;
       adminId = id;
-    }
 
+    }
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
+
     const result = await this.assignmentService.getAssignments(
       adminId,
       employeeId,

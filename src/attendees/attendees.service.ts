@@ -183,9 +183,14 @@ export class AttendeesService {
     limit: number,
     filters: AttendeesFilterDto,
     validCall?: string,
-    assignmentType?: string
+    assignmentType?: string,
   ): Promise<any> {
     const skip = (page - 1) * limit;
+
+    const hasFilters = Object.keys(filters).some(
+      (key) => filters[key] !== null && filters[key] !== undefined,
+    );
+    console.log('hassFilts ===> ', hasFilters, filters);
 
     const pipeline: PipelineStage[] = [
       // Step 1: Match key fields to reduce dataset size
@@ -211,106 +216,97 @@ export class AttendeesService {
           }),
           ...(assignmentType && {
             ...(assignmentType === 'Assigned'
-              ? { $and: [{assignedTo: { $ne: null }}, {isPulledback: { $ne: true }}] }
+              ? {
+                  $and: [
+                    { assignedTo: { $ne: null } },
+                    { isPulledback: { $ne: true } },
+                  ],
+                }
               : { assignedTo: null }),
           }),
         },
       },
-      ...(webinarId === ''
+      // Step 3: Apply optional filters
+
+      ...(hasFilters
         ? [
             {
+              $match: {
+                ...(filters.email && {
+                  email: { $regex: filters.email, $options: 'i' },
+                }),
+                ...(filters.firstName && {
+                  firstName: { $regex: filters.firstName, $options: 'i' },
+                }),
+                ...(filters.lastName && {
+                  lastName: { $regex: filters.lastName, $options: 'i' },
+                }),
+                ...(filters.gender && {
+                  gender: { $regex: filters.gender, $options: 'i' },
+                }),
+                ...(filters.phone && {
+                  phone: { $regex: filters.phone, $options: 'i' },
+                }),
+                ...(filters.location && {
+                  location: { $regex: filters.location, $options: 'i' },
+                }),
+                ...(filters.timeInSession && {
+                  timeInSession: filters.timeInSession,
+                }),
+                ...(filters.status && {
+                  status: filters.status,
+                }),
+              },
+            },
+          ]
+        : []),
+      {
+        $facet: {
+          metadata: [{ $count: 'total' }],
+          data: [
+            { $sort: { email: 1 } },
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $addFields: {
+                lookupField: { $ifNull: ['$tempAssignedTo', '$assignedTo'] },
+              },
+            },
+            {
               $lookup: {
-                from: 'webinars',
-                localField: 'webinar',
+                from: 'users',
+                localField: 'lookupField',
                 foreignField: '_id',
-                as: 'webinarDetails',
+                as: 'assignedToDetails',
+              },
+            },
+            {
+              $project: {
+                lookupField: 0, // Remove temporary lookupField if not needed in the output
+              },
+            },
+            {
+              $lookup: {
+                from: 'attendeeassociations',
+                localField: 'email',
+                foreignField: 'email',
+                as: 'attendeeAssociations',
               },
             },
             {
               $addFields: {
-                webinarName: {
-                  $arrayElemAt: ['$webinarDetails.webinarName', 0],
-                }, // Extract webinarName
+                isAssigned: {
+                  $arrayElemAt: ['$assignedToDetails.userName', 0],
+                },
+                leadType: {
+                  $arrayElemAt: ['$attendeeAssociations.leadType', 0],
+                },
               },
             },
             {
-              $project: { webinarDetails: 0 }, // Remove the webinarDetails array if it's no longer needed
+              $project: { assignedToDetails: 0, attendeeAssociations: 0 },
             },
-          ]
-        : []),
-      // Step 3: Apply optional filters
-      {
-        $match: {
-          ...(filters.email && {
-            email: { $regex: filters.email, $options: 'i' },
-          }),
-          ...(filters.firstName && {
-            firstName: { $regex: filters.firstName, $options: 'i' },
-          }),
-          ...(filters.lastName && {
-            lastName: { $regex: filters.lastName, $options: 'i' },
-          }),
-          ...(filters.gender && {
-            gender: { $regex: filters.gender, $options: 'i' },
-          }),
-          ...(filters.phone && {
-            phone: { $regex: filters.phone, $options: 'i' },
-          }),
-          ...(filters.location && {
-            location: { $regex: filters.location, $options: 'i' },
-          }),
-          ...(filters.timeInSession && {
-            timeInSession: filters.timeInSession,
-          }),
-          ...(filters.status && {
-            status: filters.status,
-          })
-        },
-      },
-      {
-        $addFields: {
-          lookupField: { $ifNull: ["$tempAssignedTo", "$assignedTo"] },
-        },
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "lookupField",
-          foreignField: "_id",
-          as: "assignedToDetails",
-        },
-      },
-      {
-        $project: {
-          lookupField: 0, // Remove temporary lookupField if not needed in the output
-        },
-      },
-      {
-        $lookup: {
-          from: 'attendeeassociations',
-          localField: 'email',
-          foreignField: 'email',
-          as: 'attendeeAssociations',
-        },
-      },
-
-      {
-        $addFields: {
-          isAssigned: {
-            $arrayElemAt: ['$assignedToDetails.userName', 0],
-          },
-          leadType: {
-            $arrayElemAt: ['$attendeeAssociations.leadType', 0],
-          },
-        },
-      },
-      {
-        $project: { assignedToDetails: 0, attendeeAssociations: 0 },
-      },
-      {
-        $facet: {
-          metadata: [{ $count: 'total' }],
-          data: [{ $sort: { email: 1 } }, { $skip: skip }, { $limit: limit }],
+          ],
         },
       },
       // Step 7: Unwind metadata to extract total count and calculate total pages
@@ -323,7 +319,6 @@ export class AttendeesService {
         },
       },
     ];
-
 
     const aggregationResult = await this.attendeeModel
       .aggregate(pipeline)

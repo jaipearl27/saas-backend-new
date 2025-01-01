@@ -214,13 +214,13 @@ export class WebinarService {
   }
 
   async getAssignedEmployees(webinarId: string): Promise<any> {
-    const result = await this.webinarModel
+    const result: any = await this.webinarModel
       .findById(webinarId)
       .populate('assignedEmployees')
       .lean();
 
-    if (!result) return [];
+    if (!result || !Array.isArray(result.assignedEmployees)) return [];
 
-    return result.assignedEmployees || [];
+    return result.assignedEmployees.filter(employee => employee?.isActive) || [];
   }
 }

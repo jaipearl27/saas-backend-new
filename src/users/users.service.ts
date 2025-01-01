@@ -824,11 +824,11 @@ export class UsersService {
     }
   }
 
-  async incrementCount(id: string): Promise<boolean> {
+  async incrementCount(id: string, incrementValue: number = 1): Promise<boolean> {
     const user = await this.userModel.findById(id).exec();
     if (user) {
-      if (user.dailyContactCount) user.dailyContactCount += 1;
-      else user.dailyContactCount = 1;
+      // Increment dailyContactCount by the given value
+      user.dailyContactCount = (user.dailyContactCount || 0) + incrementValue;
       await user.save();
       return true;
     }
