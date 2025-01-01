@@ -37,6 +37,7 @@ import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { DeleteDataModule } from './delete-data/delete-data.module';
 import { CustomLeadTypeModule } from './custom-lead-type/custom-lead-type.module';
 import { AttendeeAssociationModule } from './attendee-association/attendee-association.module';
+import { WebsocketsModule } from './websockets/websockets.module';
 
 @Module({
   imports: [
@@ -89,6 +90,7 @@ import { AttendeeAssociationModule } from './attendee-association/attendee-assoc
     EnrollmentsModule,
     DeleteDataModule,
     CustomLeadTypeModule,
+    WebsocketsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
