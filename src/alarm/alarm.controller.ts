@@ -12,7 +12,9 @@ export class AlarmController {
     @Id() id: string,
     @Body() createAlarmDto: CreateAlarmDto,
   ): Promise<any> {
-    const result = await this.alarmService.setAlarm(id, createAlarmDto);
+    createAlarmDto.user = id;
+    const result = await this.alarmService.setAlarm(createAlarmDto);
     return result;
+    
   }
 }

@@ -37,7 +37,7 @@ import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { DeleteDataModule } from './delete-data/delete-data.module';
 import { CustomLeadTypeModule } from './custom-lead-type/custom-lead-type.module';
 import { AttendeeAssociationModule } from './attendee-association/attendee-association.module';
-import { WebsocketsModule } from './websockets/websockets.module';
+import { CalendarService } from './calendar/calendar.service';
 
 @Module({
   imports: [
@@ -90,10 +90,9 @@ import { WebsocketsModule } from './websockets/websockets.module';
     EnrollmentsModule,
     DeleteDataModule,
     CustomLeadTypeModule,
-    WebsocketsModule,
-  ],
+   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, CalendarService],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
