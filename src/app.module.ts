@@ -38,6 +38,7 @@ import { DeleteDataModule } from './delete-data/delete-data.module';
 import { CustomLeadTypeModule } from './custom-lead-type/custom-lead-type.module';
 import { AttendeeAssociationModule } from './attendee-association/attendee-association.module';
 import { WebsocketsModule } from './websockets/websockets.module';
+import { AddonModule } from './addon/addon.module';
 
 @Module({
   imports: [
@@ -91,6 +92,7 @@ import { WebsocketsModule } from './websockets/websockets.module';
     DeleteDataModule,
     CustomLeadTypeModule,
     WebsocketsModule,
+    AddonModule,
   ],
   controllers: [AppController],
   providers: [AppService],
