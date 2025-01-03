@@ -57,6 +57,7 @@ export class AlarmService {
         deleteResult,
       });
     });
+    //mail sent
     this.schedulerRegistry.addCronJob(id, alarm);
     alarm.start();
     // add alarm data in DB
