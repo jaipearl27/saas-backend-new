@@ -1,34 +1,44 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsBoolean, IsDate, IsDateString, IsMongoId, Min } from 'class-validator';
+import { IsNumber, Min, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateAddOnDto {
-  @IsMongoId()
   @IsNotEmpty()
-  admin: string; // Admin user ID
-
-  @IsMongoId()
-  @IsNotEmpty()
-  subscription: string;
-
-  @IsEnum(['employeeLimit', 'contactLimit'])
-  @IsNotEmpty()
-  type: string;
-
-  @IsNumber()
-  @Min(1)
-  @IsNotEmpty()
-  amount: number;
-
-  @IsDateString()
-  @IsNotEmpty()
-  startDate: Date;
-
-  @IsDateString()
-  @IsNotEmpty()
-  expiryDate: Date;
-
   @IsNumber()
   @Min(0)
+  employeeLimit: number;
+
   @IsNotEmpty()
+  @IsNumber()
+  @Min(0)
+  contactLimit: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(0)
   addOnPrice: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(1)
+  validityInDays: number;
 }
 
+export class UpdateAddOnDto {
+  @IsNumber()
+  @Min(0)
+  employeeLimit?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0) 
+  contactLimit?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  addOnPrice?: number;
+
+  @IsOptional()
+  @IsNotEmpty()
+  @Min(1) 
+  validityInDays?: number;
+}
