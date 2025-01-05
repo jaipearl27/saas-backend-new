@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document, Types, Schema as MongooseSchema } from 'mongoose';
 import { User } from './User.schema';
 
 @Schema({ timestamps: true })
@@ -37,6 +37,22 @@ export class Subscription extends Document {
     required: [true, 'Toggle Limit is required'],
   })
   toggleLimit: number; //Plan duration
+
+  @Prop({
+    type: Number,
+    min: 0,
+    default: 0,
+    required: false,
+  })
+  employeeLimitAddon: number; // Employee limit add-on
+
+  @Prop({
+    type: Number,
+    min: 0,
+    default: 0,
+    required: false,
+  })
+  contactLimitAddon: number; // Employee limit add-on
 }
 
 const SubscriptionSchema = SchemaFactory.createForClass(Subscription);

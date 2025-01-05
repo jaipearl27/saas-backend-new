@@ -37,6 +37,9 @@ import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { DeleteDataModule } from './delete-data/delete-data.module';
 import { CustomLeadTypeModule } from './custom-lead-type/custom-lead-type.module';
 import { AttendeeAssociationModule } from './attendee-association/attendee-association.module';
+import { CalendarService } from './calendar/calendar.service';
+import { AddonModule } from './addon/addon.module';
+import { SubscriptionAddonModule } from './subscription-addon/subscription-addon.module';
 
 @Module({
   imports: [
@@ -89,9 +92,11 @@ import { AttendeeAssociationModule } from './attendee-association/attendee-assoc
     EnrollmentsModule,
     DeleteDataModule,
     CustomLeadTypeModule,
+     AddonModule,
+     SubscriptionAddonModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, CalendarService],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
