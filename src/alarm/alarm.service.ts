@@ -1,10 +1,16 @@
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  NotAcceptableException,
+} from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CreateAlarmDto } from './dto/alarm.dto';
 import { CronJob } from 'cron';
 import { InjectModel } from '@nestjs/mongoose';
 import { Alarm } from 'src/schemas/Alarm.schema';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { WebsocketGateway } from 'src/websocket/websocket.gateway';
 @Injectable()
 export class AlarmService {
@@ -17,13 +23,30 @@ export class AlarmService {
 
   private readonly logger = new Logger(AlarmService.name);
 
-  async setAlarm(createAlarmDto: CreateAlarmDto, id?: string): Promise<any> {
+  async setAlarm(
+    createAlarmDto: CreateAlarmDto,
+    id?: string,
+    startup?: boolean,
+  ): Promise<any> {
     //perform check here
+
+    const alarmExists = await this.getAttendeeAlarm(
+      createAlarmDto.user,
+      createAlarmDto.email,
+    );
+
+    if (alarmExists && !startup)
+      throw new NotAcceptableException(
+        'Alarm for this attendee already exists.',
+      );
 
     let reminderAlarmDate = new Date(
       new Date(createAlarmDto.date).getTime() - 900 * 1000,
     );
     let alarmDate = new Date(new Date(createAlarmDto.date).getTime());
+
+    if (alarmDate.getTime() - Date.now() <= 0 && !startup)
+      throw new NotAcceptableException('Cannot set alarm for time in past.');
 
     if (!id) {
       const alarmData = await this.saveAlarmInDB(createAlarmDto);
@@ -53,7 +76,7 @@ export class AlarmService {
         createAlarmDto.user,
       );
       this.websocketGateway.server.to(socketId).emit('playAlarm', {
-        message: '!!!!!!!!!!! Alarm played !!!!!!!!!!!',
+        message: '!!! Alarm played !!!',
         deleteResult,
       });
     });
@@ -63,6 +86,7 @@ export class AlarmService {
     // add alarm data in DB
 
     this.logger.warn(`Alarm ${createAlarmDto.user} added for ${alarmDate}!`);
+    return 'Alarm set.';
   }
 
   async saveAlarmInDB(createAlarmDto: CreateAlarmDto): Promise<any> {
@@ -75,6 +99,14 @@ export class AlarmService {
     return alarm;
   }
 
+  async getAttendeeAlarm(user: string, email: string) {
+    const alarm = await this.alarmsModel.findOne({
+      user: new Types.ObjectId(`${user}`),
+      email: email,
+    });
+    return alarm;
+  }
+
   async onModuleInit(): Promise<void> {
     console.log("===================I'm running bitches===================");
     const alarms: any[] = await this.alarmsModel.find({});
@@ -83,10 +115,11 @@ export class AlarmService {
       alarms.forEach(async (alarm) => {
         const createAlarmDto: CreateAlarmDto = {
           user: alarm.user,
+          email: alarm?.email,
           date: alarm.date,
           note: alarm.note,
         };
-        await this.setAlarm(createAlarmDto, alarm?._id);
+        await this.setAlarm(createAlarmDto, alarm?._id, true);
       });
     }
   }
