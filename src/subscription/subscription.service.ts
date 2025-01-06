@@ -1,5 +1,9 @@
-import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Model, Types } from 'mongoose';
 import { Subscription } from 'src/schemas/Subscription.schema';
@@ -7,16 +11,19 @@ import { SubscriptionDto, UpdateSubscriptionDto } from './dto/subscription.dto';
 import { AddOnService } from 'src/addon/addon.service';
 import { BillingHistoryService } from 'src/billing-history/billing-history.service';
 import { SubscriptionAddonService } from 'src/subscription-addon/subscription-addon.service';
+import { PlansService } from 'src/plans/plans.service';
 
 @Injectable()
 export class SubscriptionService {
   constructor(
     @InjectModel(Subscription.name)
     private SubscriptionModel: Model<Subscription>,
+    @Inject(forwardRef(() => AddOnService))
     private readonly addOnService: AddOnService,
     @Inject(forwardRef(() => SubscriptionAddonService))
     private readonly subscriptionAddonService: SubscriptionAddonService,
     private readonly BillingHistoryService: BillingHistoryService,
+    private readonly plansService: PlansService,
   ) {}
 
   async addSubscription(subscriptionDto: SubscriptionDto): Promise<any> {
@@ -52,29 +59,29 @@ export class SubscriptionService {
   async addAddonToSubscription(adminId: string, addonId: string) {
     const session = await this.SubscriptionModel.db.startSession();
     session.startTransaction();
-  
+
     try {
       const addOn = await this.addOnService.getAddOnById(addonId);
-  
+
       const subscription = await this.SubscriptionModel.findOne({
         admin: new Types.ObjectId(`${adminId}`),
       }).session(session); // Use session for the query
-  
+
       if (!subscription) {
         throw new NotFoundException(
           `Subscription with admin ID ${adminId} not found`,
         );
       }
-  
+
       if (new Date() > subscription.expiryDate) {
         throw new NotFoundException('Subscription Expired');
       }
-  
+
       const currentDate = new Date();
       const addOnExpiryFromValidity = new Date(
         currentDate.getTime() + addOn.validityInDays * 24 * 60 * 60 * 1000,
       );
-  
+
       const addOnExpiry = subscription.expiryDate
         ? new Date(
             Math.min(
@@ -84,16 +91,16 @@ export class SubscriptionService {
           )
         : addOnExpiryFromValidity;
 
-  
-      const subscriptionAddon =
-        await this.subscriptionAddonService.createSubscriptionAddon(
+      const subscriptionAddon = await this.subscriptionAddonService
+        .createSubscriptionAddon(
           subscription._id as string,
           addOnExpiry,
           addOn._id as string,
-        ).catch(() => {
+        )
+        .catch(() => {
           throw new Error('Failed to create subscription addon');
         });
-  
+
       const billing = await this.BillingHistoryService.addOneBillingHistory(
         adminId,
         addonId,
@@ -101,10 +108,21 @@ export class SubscriptionService {
       ).catch(() => {
         throw new Error('Failed to create billing history');
       });
-  
+
+      subscription.employeeLimitAddon = Math.max(
+        (subscription.employeeLimitAddon || 0) + addOn.employeeLimit,
+        0,
+      );
+
+      subscription.contactLimitAddon = Math.max(
+        (subscription.contactLimitAddon || 0) + addOn.contactLimit,
+        0,
+      );
+
+      await subscription.save();
       await session.commitTransaction();
       session.endSession();
-  
+
       return {
         subscription,
         billing,
@@ -122,7 +140,7 @@ export class SubscriptionService {
     employeeLimit: number,
     contactLimit: number,
     subscriptionId: Types.ObjectId,
-    session: ClientSession
+    session: ClientSession,
   ): Promise<Subscription | null> {
     const result = await this.SubscriptionModel.findById(subscriptionId);
     if (!result) {
@@ -139,9 +157,24 @@ export class SubscriptionService {
       0,
     );
     console.log(result);
-     await result.save({ session });
+    await result.save({ session });
     return result;
   }
-  
-  
+
+  async updateClientPlan(adminId: string, planId: string) {
+    const subscription = await this.SubscriptionModel.findOne({
+      admin: new Types.ObjectId(`${adminId}`),
+    });
+    if (!subscription) {
+      throw new NotFoundException(
+        `Subscription with admin ID ${adminId} not found`,
+      );
+    }
+
+    const plan = await this.plansService.getPlan(planId);
+
+    if (subscription.plan === plan._id) {
+      console.log('plan is same');
+    }
+  }
 }
