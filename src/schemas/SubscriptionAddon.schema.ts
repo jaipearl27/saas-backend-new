@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { Subscription } from './subscription.schema';
+import { Subscription } from './Subscription.schema';
 import { AddOn } from './addon.schema';
 
 @Schema({ timestamps: true })
