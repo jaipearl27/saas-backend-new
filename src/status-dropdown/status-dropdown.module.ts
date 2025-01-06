@@ -38,15 +38,12 @@ import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
         name: User.name,
         schema: UserSchema,
       },
-      {
-        name: Subscription.name,
-        schema: SubscriptionSchema,
-      },
     ]),
     UsersModule,
+    SubscriptionModule,
   ],
   controllers: [StatusDropdownController],
-  providers: [StatusDropdownService, RolesService, SubscriptionService],
+  providers: [StatusDropdownService, RolesService],
 })
 export class StatusDropdownModule {
   configure(consumer: MiddlewareConsumer) {

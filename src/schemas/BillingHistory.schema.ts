@@ -1,9 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { Plans } from './Plans.schema';
+import { User } from './User.schema';
 
 @Schema({ timestamps: true })
 export class BillingHistory extends Document {
-  @Prop({ type: Types.ObjectId, ref: 'users', required: true })
+  @Prop({ type: Types.ObjectId, ref: User.name
+    , required: true })
   admin: Types.ObjectId; // Admin user
 
   @Prop({
@@ -14,16 +17,23 @@ export class BillingHistory extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'plans',
-    required: [true, 'Plans id is required'],
+    ref: Plans.name,
+    required: false
   })
-  plan: Types.ObjectId;
+  plan ?: Types.ObjectId | null;
 
   @Prop({
     type: Number,
     required: [true, 'Billing amount is required'],
   })
   amount: number;
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: Plans.name,
+    required: false
+  })
+  addOn ?: Types.ObjectId | null;
 }
 
 const BillingHistorySchema = SchemaFactory.createForClass(BillingHistory);
@@ -35,6 +45,9 @@ BillingHistorySchema.pre('save', function (next) {
   }
   if (typeof this.plan === 'string') {
     this.plan = new Types.ObjectId(`${this.plan}`);
+  }
+  if (typeof this.addOn === 'string') {
+    this.addOn = new Types.ObjectId(`${this.addOn}`);
   }
   next();
 });

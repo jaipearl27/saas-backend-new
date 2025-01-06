@@ -39,6 +39,7 @@ import { CustomLeadTypeModule } from './custom-lead-type/custom-lead-type.module
 import { AttendeeAssociationModule } from './attendee-association/attendee-association.module';
 import { CalendarService } from './calendar/calendar.service';
 import { AddonModule } from './addon/addon.module';
+import { SubscriptionAddonModule } from './subscription-addon/subscription-addon.module';
 
 @Module({
   imports: [
@@ -91,7 +92,8 @@ import { AddonModule } from './addon/addon.module';
     EnrollmentsModule,
     DeleteDataModule,
     CustomLeadTypeModule,
-    AddonModule,
+     AddonModule,
+     SubscriptionAddonModule,
   ],
   controllers: [AppController],
   providers: [AppService, CalendarService],
