@@ -17,9 +17,9 @@ export class AddonController {
     return this.addOnService.getAddOns();
   }
 
-  @Get(':id')
-  async getAddOnById(@Param('id') id: string): Promise<AddOn> {
-    return this.addOnService.getAddOnById(id);
+  @Get('client/:id')
+  async getAddOnById(@Param('id') id: string) {
+    return await this.addOnService.getAdminAddons(id);
   }
 
   @Put(':id')

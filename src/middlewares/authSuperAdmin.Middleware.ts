@@ -15,19 +15,43 @@ export class AuthSuperAdminMiddleware implements NestMiddleware {
   ) {}
 
   async use(req /*:  Request */, res: Response, next: NextFunction) {
- 
     const access_token =
       req.cookies[this.configService.get('ACCESS_TOKEN_NAME')];
-    const pabbly_access_token = this.extractTokenFromHeader(req)
+    const pabbly_access_token = this.extractTokenFromHeader(req);
+    console.log('access_token', access_token);
+    console.log('pabbly_access_token', pabbly_access_token);
 
     if (!access_token && !pabbly_access_token) {
       throw new UnauthorizedException('Access token not found.');
     }
 
     try {
+      if (pabbly_access_token) {
+        console.log('super admin pabbly access token');
+        const decodeOptions = {
+          secret: this.configService.get('PABBLY_ACCESS_TOKEN_SECRET'),
+        };
 
-      if (access_token) {
-        console.log('super admin access token')
+        const decodedToken = this.jwtService.verify(
+          pabbly_access_token,
+          decodeOptions,
+        );
+
+        if (
+          decodedToken &&
+          decodedToken.role === this.configService.get('appRoles').SUPER_ADMIN
+        ) {
+          req.id = decodedToken.id;
+          req.role = decodedToken.role;
+          req.plan = decodedToken.plan;
+          next();
+        } else {
+          throw new UnauthorizedException(
+            'Unauthorized, Invalid Pabbly access token.',
+          );
+        }
+      } else if (access_token) {
+        console.log('super admin access token');
         const decodeOptions = {
           secret: this.configService.get('ACCESS_TOKEN_SECRET'),
         };
@@ -47,37 +71,12 @@ export class AuthSuperAdminMiddleware implements NestMiddleware {
           next();
         } else {
           throw new UnauthorizedException(
-            'Unauthorized, Invalid access token.',
-          );
-        }
-      } else if (pabbly_access_token) {
-        console.log('super admin pabbly access token')
-        const decodeOptions = {
-          secret: this.configService.get('PABBLY_ACCESS_TOKEN_SECRET'),
-        };
-
-        const decodedToken = this.jwtService.verify(
-          pabbly_access_token,
-          decodeOptions,
-        );
-
-        if (
-          decodedToken &&
-          decodedToken.role === this.configService.get('appRoles').SUPER_ADMIN
-        ) {
-
-          req.id = decodedToken.id;
-          req.role = decodedToken.role;
-          req.plan = decodedToken.plan;
-          next();
-        } else {
-          throw new UnauthorizedException(
-            'Unauthorized, Invalid access token.',
+            'Unauthorized, Invalid accesss token.',
           );
         }
       }
     } catch (error) {
-      console.log(error)
+      // console.log(error);
       throw new UnauthorizedException('Invalid or expired access token.');
     }
   }
@@ -87,5 +86,3 @@ export class AuthSuperAdminMiddleware implements NestMiddleware {
     return type === 'Bearer' ? token : undefined;
   }
 }
-
-

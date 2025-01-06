@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { SubscriptionAddOn } from 'src/schemas/SubscriptionAddon.schema';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 
@@ -38,13 +38,12 @@ export class SubscriptionAddonService {
         .populate('addOn', 'employeeLimit contactLimit')
         .session(session); // Associate session with this query
 
-
       // Loop through the expired subscription add-ons
       for (const subscriptionAddon of result) {
         // Decrement subscription add-ons
         await this.subscriptionService.decrementSubscriptionAddons(
           subscriptionAddon.addOn?.employeeLimit || 0, // Default to 0 if undefined
-          subscriptionAddon.addOn?.contactLimit || 0,  // Default to 0 if undefined
+          subscriptionAddon.addOn?.contactLimit || 0, // Default to 0 if undefined
           subscriptionAddon.subscription,
           session, // Pass session to the decrement method
         );
@@ -57,7 +56,7 @@ export class SubscriptionAddonService {
 
       // Commit the transaction
       await session.commitTransaction();
-      
+
       // Return the result for logging or further use
       return result;
     } catch (error) {
@@ -70,4 +69,37 @@ export class SubscriptionAddonService {
     }
   }
 
+  async getUserAddons(subscriptionId: string) {
+    return await this.SubscriptionAddOnModel.aggregate([
+      {
+        $match: {
+          subscription: new Types.ObjectId(`${subscriptionId}`),
+        },
+      },
+      {
+        $lookup: {
+          from: 'addons',
+          localField: 'addOn',
+          foreignField: '_id',
+          as: 'addOnDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$addOnDetails',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          addonName: '$addOnDetails.addonName',
+          expiryDate: '$expiryDate',
+          employeeLimit: '$addOnDetails.employeeLimit',
+          contactLimit: '$addOnDetails.contactLimit',
+          addOnPrice: '$addOnDetails.addOnPrice',
+          addOnId: '$addOnDetails._id',
+        },
+      },
+    ]).exec();
+  }
 }

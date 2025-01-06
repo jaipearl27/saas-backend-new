@@ -1,6 +1,11 @@
-import { IsNumber, Min, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsNumber, Min, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateAddOnDto {
+
+  @IsString()
+  @IsNotEmpty()
+  addonName: string;
+
   @IsNotEmpty()
   @IsNumber()
   @Min(0)

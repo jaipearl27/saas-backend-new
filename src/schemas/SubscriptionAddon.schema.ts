@@ -17,4 +17,6 @@ export class SubscriptionAddOn extends Document {
 
 const SubscriptionAddOnSchema = SchemaFactory.createForClass(SubscriptionAddOn);
 
+SubscriptionAddOnSchema.index({ subscription: 1 });
+
 export { SubscriptionAddOnSchema };
