@@ -125,6 +125,7 @@ export class Attendee extends Document {
 export const AttendeeSchema = SchemaFactory.createForClass(Attendee);
 
 AttendeeSchema.index({ adminId: 1 });
+AttendeeSchema.index({ email: 1 });
 AttendeeSchema.index({ webinar: 1 });
 AttendeeSchema.index({ webinar: 1, adminId: 1 });
 AttendeeSchema.index({ webinar: 1, adminId: 1, isAttended: 1 });

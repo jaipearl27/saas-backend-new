@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Logger, UseFilters } from '@nestjs/common';
+import { Logger, UseFilters } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -9,7 +9,6 @@ import {
 import { Server, Socket } from 'socket.io';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { WebsocketExceptionFilter } from './ws-exception.filter';
-import { AlarmService } from 'src/alarm/alarm.service';
 
 @WebSocketGateway({
   cors: {
@@ -27,6 +26,12 @@ export class WebsocketGateway {
 
   @WebSocketServer()
   server: Server;
+
+
+  handleConnection(client: any) {
+    this.logger.log(`Client connected: ${client.id}`);
+  }
+
 
   @SubscribeMessage('join')
   handleJoin(

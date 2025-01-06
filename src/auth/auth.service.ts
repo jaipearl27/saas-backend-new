@@ -169,7 +169,7 @@ export class AuthService {
 
     //create jwt with payload here
     const token = await this.jwtService.signAsync(payload, {
-      secret: this.configService.get('PABBLY_ACCESS_TOKEN_SECRET'),
+      secret: this.configService.get('PABBLY_CLIENT_ACCESS_TOKEN_SECRET'),
     });
 
     return token;

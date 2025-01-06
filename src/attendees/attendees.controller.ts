@@ -47,7 +47,6 @@ export class AttendeesController {
     @Body() body: GetAttendeesDTO,
   ) {
 
-    console.log(body)
 
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
