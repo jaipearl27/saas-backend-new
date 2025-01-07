@@ -12,6 +12,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Alarm } from 'src/schemas/Alarm.schema';
 import { Model, Types } from 'mongoose';
 import { WebsocketGateway } from 'src/websocket/websocket.gateway';
+import { WhatsappService } from 'src/whatsapp/whatsapp.service';
 @Injectable()
 export class AlarmService {
   constructor(
@@ -19,6 +20,8 @@ export class AlarmService {
     private schedulerRegistry: SchedulerRegistry,
     @Inject(forwardRef(() => WebsocketGateway)) // Lazy inject AlarmGateway
     private readonly websocketGateway: WebsocketGateway,
+    @Inject(forwardRef(() => WhatsappService))
+    private readonly whatsappService: WhatsappService,
   ) {}
 
   private readonly logger = new Logger(AlarmService.name);
@@ -29,7 +32,6 @@ export class AlarmService {
     startup?: boolean,
   ): Promise<any> {
     //perform check here
-
     const alarmExists = await this.getAttendeeAlarm(
       createAlarmDto.user,
       createAlarmDto.email,
@@ -53,15 +55,25 @@ export class AlarmService {
       id = alarmData._id;
     }
 
-    console.log('id in db', id);
-
     // reminder alarm
     if (reminderAlarmDate.getTime() - Date.now() > 0) {
       const reminderId = `reminder-${id}`; //format: reminder-{alarm _id from MongoDB}
-      const reminderAlarm = new CronJob(reminderAlarmDate, () => {
+      const reminderAlarm = new CronJob(reminderAlarmDate, async () => {
+        const alarmDetails: any = await this.alarmsModel
+          .findById(id)
+          .populate('user');
+
         this.logger.warn(
           `reminder for the alarm was set (${Date.now()}) for job ${reminderId} to run!`,
         );
+
+        const msgData = {
+          phone: alarmDetails.user.phone,
+          attendeeEmail: alarmDetails.email,
+          userName: alarmDetails.user.userName,
+          note: alarmDetails.note,
+        };
+        this.whatsappService.sendReminderMsg(msgData);
       });
 
       this.schedulerRegistry.addCronJob(reminderId, reminderAlarm);
@@ -71,6 +83,10 @@ export class AlarmService {
     }
 
     const alarm = new CronJob(alarmDate, async () => {
+      const alarmDetails: any = await this.alarmsModel
+        .findById(id)
+        .populate('user');
+      // console.log(alarmDetails)
       const deleteResult = await this.deleteAlarm(id);
       const socketId = this.websocketGateway.activeUsers.get(
         createAlarmDto.user,
@@ -79,10 +95,16 @@ export class AlarmService {
         message: '!!! Alarm played !!!',
         deleteResult,
       });
+      const msgData = {
+        phone: alarmDetails.user.phone,
+        attendeeEmail: alarmDetails.email,
+        userName: alarmDetails.user.userName,
+        note: alarmDetails.note,
+      };
+      this.whatsappService.sendAlarmMsg(msgData);
     });
 
-
-    const alarmId = `alarm-${id}`
+    const alarmId = `alarm-${id}`;
 
     this.schedulerRegistry.addCronJob(alarmId, alarm); //id === alarm document ID in DB
     alarm.start();
@@ -110,22 +132,31 @@ export class AlarmService {
     return alarm;
   }
 
+  private checkIfCronJobExists(jobName: string): boolean {
+    try {
+      const cronJob = this.schedulerRegistry.getCronJob(jobName);
+      return !!cronJob; // If the job is found, return true
+    } catch (error) {
+      return false; // If an error occurs (job not found), return false
+    }
+  }
+
   async cancelAlarm(alarmId: string, id: string): Promise<any> {
-    
     const alarmData = await this.alarmsModel.findById(alarmId);
-    console.log(alarmId, alarmData)
+    console.log(alarmId, alarmData);
 
     if (alarmData) {
-      const reminderAlarm = this.schedulerRegistry.getCronJob(
-        `reminder-${alarmId}`,
-      );
-      if (reminderAlarm) {
+      const reminderJobName = `reminder-${alarmId}`;
+      if (this.checkIfCronJobExists(reminderJobName)) {
+        const reminderAlarm =
+          this.schedulerRegistry.getCronJob(reminderJobName);
         reminderAlarm.stop();
         console.log('====reminder alarm stopped===');
       }
 
-      const alarm = this.schedulerRegistry.getCronJob(`alarm-${alarmId}`);
-      if (alarm) {
+      const alarmJobName = `alarm-${alarmId}`;
+      if (this.checkIfCronJobExists(alarmJobName)) {
+        const alarm = this.schedulerRegistry.getCronJob(alarmJobName);
         alarm.stop();
         console.log('====alarm stopped===');
       }

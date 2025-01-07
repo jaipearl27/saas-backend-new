@@ -40,6 +40,7 @@ import { AttendeeAssociationModule } from './attendee-association/attendee-assoc
 import { CalendarService } from './calendar/calendar.service';
 import { AddonModule } from './addon/addon.module';
 import { SubscriptionAddonModule } from './subscription-addon/subscription-addon.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -94,6 +95,7 @@ import { SubscriptionAddonModule } from './subscription-addon/subscription-addon
     CustomLeadTypeModule,
      AddonModule,
      SubscriptionAddonModule,
+     WhatsappModule,
   ],
   controllers: [AppController],
   providers: [AppService, CalendarService],
