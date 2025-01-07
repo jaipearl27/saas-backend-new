@@ -1,4 +1,4 @@
-import { Body, Controller, Get, NotAcceptableException, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, NotAcceptableException, Param, Patch, Post, Query } from '@nestjs/common';
 import { AlarmService } from './alarm.service';
 import { Id } from 'src/decorators/custom.decorator';
 import { CreateAlarmDto } from './dto/alarm.dto';
@@ -32,5 +32,16 @@ export class AlarmController {
   async getUserAlarms(@Param('id') id: string): Promise<any> {
     console.log(id);
     return await this.alarmService.fetchAlarmsByMonthAndYear(id,1, 2025);
+  }
+
+  
+  @Patch()
+  async cancelAlarm(
+    @Id() id: string,
+    @Body('id') alarmId: string ,
+  ): Promise<any> {
+    const result = await this.alarmService.cancelAlarm(alarmId, id);
+    return result;
+    
   }
 }
