@@ -1,4 +1,4 @@
-import { Body, Controller, Get, NotAcceptableException, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, NotAcceptableException, Param, Patch, Post, Query } from '@nestjs/common';
 import { AlarmService } from './alarm.service';
 import { Id } from 'src/decorators/custom.decorator';
 import { CreateAlarmDto } from './dto/alarm.dto';
@@ -26,5 +26,15 @@ export class AlarmController {
     if(!query?.email) throw new NotAcceptableException('E-mail not provided in query.')
     const result = await this.alarmService.getAttendeeAlarm(id, query.email)
     return result
+  }
+
+  @Patch()
+  async cancelAlarm(
+    @Id() id: string,
+    @Body('id') alarmId: string ,
+  ): Promise<any> {
+    const result = await this.alarmService.cancelAlarm(alarmId, id);
+    return result;
+    
   }
 }

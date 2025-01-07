@@ -57,7 +57,7 @@ export class AlarmService {
 
     // reminder alarm
     if (reminderAlarmDate.getTime() - Date.now() > 0) {
-      const reminderId = `reminder${Date.now()}-${createAlarmDto.user}-${id}}`;
+      const reminderId = `reminder-${id}`; //format: reminder-{alarm _id from MongoDB}
       const reminderAlarm = new CronJob(reminderAlarmDate, () => {
         this.logger.warn(
           `reminder for the alarm was set (${Date.now()}) for job ${reminderId} to run!`,
@@ -80,12 +80,15 @@ export class AlarmService {
         deleteResult,
       });
     });
-    //mail sent
-    this.schedulerRegistry.addCronJob(id, alarm);
+
+
+    const alarmId = `alarm-${id}`
+
+    this.schedulerRegistry.addCronJob(alarmId, alarm); //id === alarm document ID in DB
     alarm.start();
     // add alarm data in DB
 
-    this.logger.warn(`Alarm ${createAlarmDto.user} added for ${alarmDate}!`);
+    this.logger.warn(`Alarm ${alarmId} added for ${alarmDate}!`);
     return 'Alarm set.';
   }
 
@@ -105,6 +108,34 @@ export class AlarmService {
       email: email,
     });
     return alarm;
+  }
+
+  async cancelAlarm(alarmId: string, id: string): Promise<any> {
+    
+    const alarmData = await this.alarmsModel.findById(alarmId);
+    console.log(alarmId, alarmData)
+
+    if (alarmData) {
+      const reminderAlarm = this.schedulerRegistry.getCronJob(
+        `reminder-${alarmId}`,
+      );
+      if (reminderAlarm) {
+        reminderAlarm.stop();
+        console.log('====reminder alarm stopped===');
+      }
+
+      const alarm = this.schedulerRegistry.getCronJob(`alarm-${alarmId}`);
+      if (alarm) {
+        alarm.stop();
+        console.log('====alarm stopped===');
+      }
+    }
+    const deleteAlarm = await this.alarmsModel.findOneAndDelete({
+      _id: new Types.ObjectId(`${alarmId}`),
+      user: new Types.ObjectId(`${id}`),
+    });
+
+    return deleteAlarm;
   }
 
   async onModuleInit(): Promise<void> {
