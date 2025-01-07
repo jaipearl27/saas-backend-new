@@ -11,6 +11,12 @@ export class Alarm extends Document {
   user: Types.ObjectId; //userId
 
   @Prop({
+    type: String,
+    required: [true, 'Attendee E-Mail is required.']
+  })
+  email: string
+
+  @Prop({
     type: Date,
     required: [true, 'Alarm Date-Time is required '],
   })
@@ -24,3 +30,10 @@ export class Alarm extends Document {
 }
 
 export const AlarmSchema = SchemaFactory.createForClass(Alarm);
+
+AlarmSchema.pre('save', function (next) {
+  if(typeof this.user === 'string'){
+    this.user = new Types.ObjectId(`${this.user}`)
+  }
+  next();
+})

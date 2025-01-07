@@ -4,6 +4,9 @@ import { Document } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class AddOn extends Document {
+  @Prop({ type: String, required: true })
+  addonName: string;
+
   @Prop({ type: Number, min: 0, required: true })
   employeeLimit: number;
 

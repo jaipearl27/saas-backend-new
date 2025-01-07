@@ -51,10 +51,6 @@ import { CustomLeadTypeModule } from 'src/custom-lead-type/custom-lead-type.modu
         schema: RolesSchema,
       },
       {
-        name: Subscription.name,
-        schema: SubscriptionSchema,
-      },
-      {
         name: CustomLeadType.name,
         schema: CustomLeadTypeSchema,
       }

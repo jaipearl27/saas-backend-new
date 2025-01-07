@@ -6,7 +6,10 @@ export class CreateAlarmDto {
   @IsNotEmpty()
   user?: string;
 
-  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  email: string
+
   @IsString()
   @IsNotEmpty()
   date: Date;

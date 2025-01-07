@@ -44,3 +44,24 @@ export class UpdateSubscriptionDto {
   @IsNumber()
   expiryDate?: number; 
 }
+
+
+export class UpdatePlanDTO{
+  @IsNotEmpty()
+  @IsMongoId()
+  adminId: string;
+
+  @IsNotEmpty()
+  @IsMongoId()
+  planId: string;
+}
+
+export class AddAddOnDTO{
+  @IsNotEmpty()
+  @IsMongoId()
+  adminId: string;
+
+  @IsNotEmpty()
+  @IsMongoId()
+  addonId: string;
+}
