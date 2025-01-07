@@ -189,7 +189,6 @@ export class AlarmService {
   async fetchAlarmsByMonthAndYear(userId: string, month: number, year: number) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 1);
-    console.log(startDate, endDate);
     const alarms = await this.alarmsModel
       .find({
         user: new Types.ObjectId(`${userId}`),
@@ -198,6 +197,7 @@ export class AlarmService {
           $lt: endDate,
         },
       })
+      .select('date email note _id')
       .exec();
 
     return alarms;
