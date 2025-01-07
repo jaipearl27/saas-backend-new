@@ -25,6 +25,7 @@ export class Alarm extends Document {
   @Prop({
     type: String,
     required: false,
+    maxlength: 600,
   })
   note: string;
 }
