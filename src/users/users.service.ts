@@ -434,6 +434,17 @@ export class UsersService {
     return result[0] || { result: [], totalPages: 0, page: page };
   }
 
+  async getEmployeesCount(AdminId: string): Promise<any> {
+    const query = {
+      adminId: new Types.ObjectId(`${AdminId}`),
+    };
+
+    const totalContacts =
+      (await this.userModel.countDocuments(query)) || 0;
+
+    return totalContacts;
+  }
+
   getEmployee(id: string): Promise<User | null> {
     const employee = this.userModel.findById(id);
 

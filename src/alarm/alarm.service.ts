@@ -123,4 +123,21 @@ export class AlarmService {
       });
     }
   }
+
+  async fetchAlarmsByMonthAndYear(userId: string, month: number, year: number) {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 1);
+    console.log(startDate, endDate);
+    const alarms = await this.alarmsModel
+      .find({
+        user: new Types.ObjectId(`${userId}`),
+        date: {
+          $gte: startDate,
+          $lt: endDate,
+        },
+      })
+      .exec();
+
+    return alarms;
+  }
 }

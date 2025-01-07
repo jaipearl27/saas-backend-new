@@ -18,7 +18,7 @@ export class AlarmController {
     
   }
 
-  @Get('')
+  @Get()
   async getAttendeeAlarm(
     @Id() id: string,
     @Query() query: {email: string}
@@ -26,5 +26,11 @@ export class AlarmController {
     if(!query?.email) throw new NotAcceptableException('E-mail not provided in query.')
     const result = await this.alarmService.getAttendeeAlarm(id, query.email)
     return result
+  }
+
+  @Get('user/:id')
+  async getUserAlarms(@Param('id') id: string): Promise<any> {
+    console.log(id);
+    return await this.alarmService.fetchAlarmsByMonthAndYear(id,1, 2025);
   }
 }
