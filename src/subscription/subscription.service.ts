@@ -12,6 +12,7 @@ import { AddOnService } from 'src/addon/addon.service';
 import { BillingHistoryService } from 'src/billing-history/billing-history.service';
 import { SubscriptionAddonService } from 'src/subscription-addon/subscription-addon.service';
 import { PlansService } from 'src/plans/plans.service';
+import { AttendeesService } from 'src/attendees/attendees.service';
 
 @Injectable()
 export class SubscriptionService {
@@ -22,6 +23,8 @@ export class SubscriptionService {
     private readonly addOnService: AddOnService,
     @Inject(forwardRef(() => SubscriptionAddonService))
     private readonly subscriptionAddonService: SubscriptionAddonService,
+    @Inject(forwardRef(() => AttendeesService))
+    private readonly attendeesService: AttendeesService,
     private readonly BillingHistoryService: BillingHistoryService,
     private readonly plansService: PlansService,
   ) {}
@@ -171,10 +174,14 @@ export class SubscriptionService {
       );
     }
 
+    const isPlanExpired = new Date() > new Date(subscription.expiryDate);
+    console.log(isPlanExpired);
+
     const plan = await this.plansService.getPlan(planId);
 
     if (subscription.plan === plan._id) {
       console.log('plan is same');
+      
     }
   }
 }

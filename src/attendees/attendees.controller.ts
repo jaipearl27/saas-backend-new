@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  forwardRef,
   Get,
+  Inject,
   NotAcceptableException,
   NotFoundException,
   Param,
@@ -26,6 +28,7 @@ import { WebinarService } from 'src/webinar/webinar.service';
 export class AttendeesController {
   constructor(
     private readonly attendeesService: AttendeesService,
+    @Inject(forwardRef(() => SubscriptionService))
     private readonly subscriptionService: SubscriptionService,
     private readonly webinarService: WebinarService,
   ) { }

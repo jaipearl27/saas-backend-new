@@ -29,6 +29,7 @@ import { SubscriptionAddonService } from 'src/subscription-addon/subscription-ad
 import { BillingHistoryModule } from 'src/billing-history/billing-history.module';
 import { PlansModule } from 'src/plans/plans.module';
 import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
+import { AttendeesModule } from 'src/attendees/attendees.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middlew
     ]),
     forwardRef(() => UsersModule),
     forwardRef(() => SubscriptionAddonModule),
+    forwardRef(() => AttendeesModule),
     BillingHistoryModule,
     forwardRef(() => AddonModule),
     PlansModule,

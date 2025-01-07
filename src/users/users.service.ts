@@ -38,8 +38,6 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Roles.name) private rolesModel: Model<Roles>,
     @InjectModel(Plans.name) private plansModel: Model<Plans>,
-    @InjectModel(Subscription.name)
-    private subscriptionModel: Model<Subscription>,
     private configService: ConfigService,
     private readonly billingHistoryService: BillingHistoryService,
     @Inject(forwardRef(() => SubscriptionService))

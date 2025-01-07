@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module } from '@nestjs/common';
+import { forwardRef, MiddlewareConsumer, Module } from '@nestjs/common';
 import { AttendeeAssociationController } from './attendee-association.controller';
 import { AttendeeAssociationService } from './attendee-association.service';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -11,7 +11,7 @@ import { UsersModule } from 'src/users/users.module';
 
 @Module({
   imports: [
-    UsersModule,
+    forwardRef(() => UsersModule),
     MongooseModule.forFeature([
       {
         name: AttendeeAssociation.name,
@@ -21,6 +21,7 @@ import { UsersModule } from 'src/users/users.module';
   ],
   controllers: [AttendeeAssociationController],
   providers: [AttendeeAssociationService],
+  exports:[AttendeeAssociationService]
 })
 export class AttendeeAssociationModule {
   configure(consumer: MiddlewareConsumer) {

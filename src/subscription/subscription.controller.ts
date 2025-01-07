@@ -22,7 +22,6 @@ export class SubscriptionController {
 
   @Patch('update')
   async updateSubscription(@Body() body: UpdatePlanDTO) {
-    console.log('in teh controller baby')
     return await this.subscriptionService.updateClientPlan(
       body.adminId,
       body.planId,

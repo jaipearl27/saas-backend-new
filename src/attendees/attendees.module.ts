@@ -19,9 +19,8 @@ import { WebinarModule } from 'src/webinar/webinar.module';
 
 @Module({
   imports: [
-    UsersModule,
-    SubscriptionModule,
-    AttendeesModule,
+    forwardRef(() => UsersModule),
+    forwardRef(() => SubscriptionModule),
     MongooseModule.forFeature([
       {
         name: Attendee.name,

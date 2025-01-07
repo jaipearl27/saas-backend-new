@@ -1,4 +1,6 @@
 import {
+  forwardRef,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -23,6 +25,7 @@ export class AttendeesService {
     private readonly assignmentsModel: Model<Assignments>,
     @InjectModel(Attendee.name) private attendeeModel: Model<Attendee>,
     private readonly configService: ConfigService,
+    @Inject(forwardRef(() => UsersService))
     private readonly userService: UsersService,
   ) {}
 
