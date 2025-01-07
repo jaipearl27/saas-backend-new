@@ -687,6 +687,7 @@ export class UsersService {
     await user.save();
 
     subscription.toggleLimit = subscription.toggleLimit - 1;
+    subscription.employeeLimit  = subscription.employeeLimit || 0;
     await subscription.save();
     return { message: 'Status updated successfully!', subscription };
   }
