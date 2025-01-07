@@ -218,6 +218,7 @@ export class WebinarService {
       .findById(webinarId)
       .populate('assignedEmployees')
       .lean();
+      console.log()
 
     if (!result || !Array.isArray(result.assignedEmployees)) return [];
 

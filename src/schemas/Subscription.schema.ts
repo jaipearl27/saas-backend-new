@@ -27,6 +27,12 @@ export class Subscription extends Document {
   })
   contactLimit: number;
 
+  @Prop({
+    type: Number,
+    required: [true, 'Employee limit is required'],
+  })
+  employeeLimit: number;
+
   @Prop({ type: Date, required: true })
   expiryDate: Date; // Calculated based on the plan duration
 

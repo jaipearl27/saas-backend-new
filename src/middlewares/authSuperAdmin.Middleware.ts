@@ -18,8 +18,6 @@ export class AuthSuperAdminMiddleware implements NestMiddleware {
     const access_token =
       req.cookies[this.configService.get('ACCESS_TOKEN_NAME')];
     const pabbly_access_token = this.extractTokenFromHeader(req);
-    console.log('access_token', access_token);
-    console.log('pabbly_access_token', pabbly_access_token);
 
     if (!access_token && !pabbly_access_token) {
       throw new UnauthorizedException('Access token not found.');

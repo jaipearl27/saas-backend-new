@@ -11,10 +11,11 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Alarm, AlarmSchema } from 'src/schemas/Alarm.schema';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { WebsocketGateway } from 'src/websocket/websocket.gateway';
+import { WhatsappModule } from 'src/whatsapp/whatsapp.module';
 
 @Module({
   imports: [
-    
+    forwardRef(() => WhatsappModule),
     MongooseModule.forFeature([
       {
         name: Alarm.name,

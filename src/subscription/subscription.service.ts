@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   forwardRef,
   Inject,
   Injectable,
@@ -13,6 +14,7 @@ import { BillingHistoryService } from 'src/billing-history/billing-history.servi
 import { SubscriptionAddonService } from 'src/subscription-addon/subscription-addon.service';
 import { PlansService } from 'src/plans/plans.service';
 import { AttendeesService } from 'src/attendees/attendees.service';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class SubscriptionService {
@@ -25,6 +27,8 @@ export class SubscriptionService {
     private readonly subscriptionAddonService: SubscriptionAddonService,
     @Inject(forwardRef(() => AttendeesService))
     private readonly attendeesService: AttendeesService,
+    @Inject(forwardRef(() => UsersService))
+    private readonly userService: UsersService,
     private readonly BillingHistoryService: BillingHistoryService,
     private readonly plansService: PlansService,
   ) {}
@@ -168,6 +172,7 @@ export class SubscriptionService {
     const subscription = await this.SubscriptionModel.findOne({
       admin: new Types.ObjectId(`${adminId}`),
     });
+
     if (!subscription) {
       throw new NotFoundException(
         `Subscription with admin ID ${adminId} not found`,
@@ -175,13 +180,45 @@ export class SubscriptionService {
     }
 
     const isPlanExpired = new Date() > new Date(subscription.expiryDate);
-    console.log(isPlanExpired);
+
+    const usedContacts = await this.attendeesService.getAttendeesCount(
+      '',
+      adminId,
+    );
+    const usedEmployees = await this.userService.getEmployeesCount(adminId);
 
     const plan = await this.plansService.getPlan(planId);
 
-    if (subscription.plan === plan._id) {
-      console.log('plan is same');
-      
+    if (usedContacts > plan.contactLimit) {
+      throw new BadRequestException('You cannot downgrade the plan');
     }
+
+    if (usedEmployees > plan.employeeCount) {
+      throw new BadRequestException('You cannot downgrade the plan');
+    }
+
+    subscription.plan = new Types.ObjectId(`${planId}`);
+    subscription.contactLimit = plan.contactLimit;
+    subscription.employeeLimit = plan.employeeCount;
+    subscription.toggleLimit = plan.toggleLimit;
+    subscription.startDate = new Date();
+
+    subscription.expiryDate = new Date(
+      Date.now() + plan.planDuration * 24 * 60 * 60 * 1000,
+    );
+
+
+    const billing = await this.BillingHistoryService.addBillingHistory({
+      admin: adminId,
+      plan: planId,
+      amount: plan.amount,
+    });
+
+    if (isPlanExpired)
+      await this.userService.updateClient(adminId, { isActive: true });
+
+    return { subscription, billing };
+
+    // await subscription.save();
   }
 }
