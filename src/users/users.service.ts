@@ -757,6 +757,7 @@ export class UsersService {
       admin: String(user._id),
       plan: String(plan._id),
       contactLimit: plan.contactLimit,
+      employeeLimit: plan.employeeCount,
       toggleLimit: plan.toggleLimit,
       expiryDate: currentPlanExpiry,
     };

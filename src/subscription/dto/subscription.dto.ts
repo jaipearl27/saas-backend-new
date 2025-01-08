@@ -14,6 +14,10 @@ export class SubscriptionDto {
   @IsOptional()
   contactLimit?: number;
 
+  @IsNumber()
+  @IsOptional()
+  employeeLimit?: number;
+
   @IsInt({ message: 'Toggle limit must be an integer value.' })
   @Min(0, { message: 'Toggle limit cannot be less than 0.' })
   @IsNotEmpty({ message: 'Toggle limit is required.' })
