@@ -29,7 +29,7 @@ export class Subscription extends Document {
 
   @Prop({
     type: Number,
-    required: [true, 'Contact limit is required'],
+    required: [true, 'Employee limit is required'],
   })
   employeeLimit: number;
 
