@@ -19,6 +19,7 @@ import { Model, Types } from 'mongoose';
 import { CreatorDetailsDto } from './dto/creatorDetails.dto';
 import { PlansService } from 'src/plans/plans.service';
 import { CreateClientDto } from './dto/createClient.dto';
+import { SubscriptionService } from 'src/subscription/subscription.service';
 
 @Injectable()
 export class AuthService {
@@ -27,7 +28,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly plansService: PlansService,
+    private readonly subscriptionService: SubscriptionService,
   ) {}
 
   async signIn(signInDto: SignInDto): Promise<any> {
@@ -82,8 +83,6 @@ export class AuthService {
   async refreshToken(userName: string): Promise<any> {
     const user = await this.usersService.getUser(userName);
 
-    console.log(userName, '<--- user ---> ', user?._id);
-
     if (!user) {
       throw new NotFoundException('Incorrect Username');
     }
@@ -91,9 +90,13 @@ export class AuthService {
     const result = user.toObject();
     delete result['password'];
 
-    const payload = { id: user?._id, role: user?.role, adminId: user?.adminId, plan: user?.plan };
+    const payload = {
+      id: user?._id,
+      role: user?.role,
+      adminId: user?.adminId,
+      plan: user?.plan,
+    };
 
-    console.log('access token --> ', this.configService.get('ACCESS_TOKEN_SECRET'))
     const access_token = await this.jwtService.signAsync(payload, {
       secret: this.configService.get('ACCESS_TOKEN_SECRET'),
       expiresIn: '1h',
@@ -105,7 +108,21 @@ export class AuthService {
     createEmployeeDto: CreateEmployeeDto,
     creatorDetailsDto: CreatorDetailsDto,
   ): Promise<any> {
-    const plan = await this.plansService.getPlan(creatorDetailsDto?.plan);
+    const subscription = await this.subscriptionService.getSubscription(
+      creatorDetailsDto.id,
+    );
+    if (!subscription) {
+      throw new NotFoundException('Subscription not found');
+    }
+
+    if (new Date(subscription.expiryDate) < new Date()) {
+      throw new NotAcceptableException('Subscription Expired');
+    }
+
+    const totalEmployeeLimit =
+      (subscription.employeeLimit ?? 0) +
+      (subscription.employeeLimitAddon ?? 0);
+
 
     const isUserExists = await this.userModel.findOne({
       email: createEmployeeDto.email,
@@ -115,17 +132,12 @@ export class AuthService {
       throw new BadRequestException('User already exists');
     }
 
-    console.log({
-      adminId: creatorDetailsDto.id,
-      isActive: true,
-    })
-
     const employeeCount = await this.userModel.countDocuments({
       adminId: new Types.ObjectId(`${creatorDetailsDto.id}`),
       isActive: true,
     });
 
-    if (employeeCount < plan.employeeCount) {
+    if (employeeCount < totalEmployeeLimit) {
       const hashPassword = await bcrypt.hash(createEmployeeDto.password, 10);
       createEmployeeDto.password = hashPassword;
 
@@ -175,9 +187,9 @@ export class AuthService {
     return token;
   }
 
-  async getCurrentUser(id:string) : Promise<User>{
+  async getCurrentUser(id: string): Promise<User> {
     const user = await this.userModel.findById(id).select('-password');
-    if(!user){
+    if (!user) {
       throw new NotFoundException('No user found with the given ID.');
     }
 

@@ -24,6 +24,7 @@ import { WebinarService } from 'src/webinar/webinar.service';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 import { AttendeesService } from 'src/attendees/attendees.service';
 import { UsersService } from 'src/users/users.service';
+import { User } from 'src/schemas/User.schema';
 
 @Injectable()
 export class AssignmentService {
@@ -179,6 +180,13 @@ export class AssignmentService {
     const failedAssignments = [];
     const assignmentDtoLength = assignmentDto.length;
 
+    const empContactLimit = employee?.dailyContactLimit ?? 0;
+    const empContactCount = employee?.dailyContactCount ?? 0;
+
+    if((empContactCount + assignmentDtoLength) > empContactLimit) {
+      throw new BadRequestException('Daily Contact Limit Exceeded');
+    }
+
     for (let i = 0; i < assignmentDtoLength; i++) {
       assignmentDto[i]['adminId'] = employee.adminId;
       assignmentDto[i].user = employee._id;
@@ -208,7 +216,6 @@ export class AssignmentService {
         if (assignmentDto[i].recordType === 'preWebinar') {
           // assignment to reminder employees
           if (
-            employee.dailyContactLimit > (employee?.dailyContactCount || 0) &&
             String(employee.role) ===
               this.configService.get('appRoles')['EMPLOYEE_REMINDER']
           ) {
@@ -241,7 +248,6 @@ export class AssignmentService {
             });
           }
         } else if (
-          employee.dailyContactLimit > (employee?.dailyContactCount || 0) &&
           assignmentDto[i].recordType === 'postWebinar'
         ) {
           // assignment to reminder employees
