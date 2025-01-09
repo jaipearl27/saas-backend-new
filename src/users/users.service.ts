@@ -451,8 +451,8 @@ export class UsersService {
     return employee;
   }
 
-  async getUser(userName: string): Promise<any> {
-    const user = await this.userModel.findOne({ userName: userName });
+  async getUser(email: string): Promise<any> {
+    const user = await this.userModel.findOne({ email: email });
     return user;
   }
 
@@ -557,30 +557,6 @@ export class UsersService {
     return { message: 'Password updated successfully!' };
   }
 
-  async isEmployeeCreationAllowed(adminId: string) {
-    const subscription: any =
-      await this.subscriptionService.getSubscription(adminId);
-    if (!subscription) {
-      throw new NotAcceptableException('Subscription not found');
-    }
-    console.log(subscription);
-    if (new Date(subscription.expiryDate) < new Date()) {
-      throw new NotAcceptableException('Subscription Expired');
-    }
-
-    const empCount = subscription?.plan?.employeeCount || 0;
-
-    const existingEmpCount = await this.userModel.countDocuments({
-      adminId: new Types.ObjectId(`${adminId}`),
-      isActive: true,
-    });
-
-    console.log(empCount, existingEmpCount);
-    if (existingEmpCount >= empCount) {
-      throw new NotAcceptableException('You have reached your employee limit');
-    }
-    return true;
-  }
 
   async createEmployee(
     createEmployeeDto: CreateEmployeeDto,
@@ -590,8 +566,6 @@ export class UsersService {
       name: createEmployeeDto?.role,
     });
     if (!role) throw new NotFoundException('No Role Found with the given ID.');
-
-    await this.isEmployeeCreationAllowed(creatorDetailsDto.id);
 
     const user = await this.userModel.create({
       ...createEmployeeDto,
@@ -656,16 +630,9 @@ export class UsersService {
     if (!subscription) {
       throw new NotFoundException('No Subscription Found with the given ID.');
     }
-
-    const empCount = subscription?.plan?.employeeCount || 0;
-
-    const existingEmpCount = await this.userModel.countDocuments({
-      adminId: new Types.ObjectId(`${adminId}`),
-      isActive: true,
-    });
-
-    if (existingEmpCount >= empCount && status) {
-      throw new NotAcceptableException('You have reached your employee limit');
+    
+    if (subscription.toggleLimit <= 0) {
+      throw new NotAcceptableException('Your toggle limit has expired.');
     }
 
     if (new Date(subscription.expiryDate) < new Date()) {
@@ -674,9 +641,19 @@ export class UsersService {
       );
     }
 
-    if (subscription.toggleLimit <= 0) {
-      throw new NotAcceptableException('Your toggle limit has expired.');
+    const totalEmployeeLimit =
+    (subscription.employeeLimit ?? 0) +
+    (subscription.employeeLimitAddon ?? 0);
+
+    const existingEmpCount = await this.userModel.countDocuments({
+      adminId: new Types.ObjectId(`${adminId}`),
+      isActive: true,
+    });
+
+    if (existingEmpCount >= totalEmployeeLimit && status) {
+      throw new NotAcceptableException('You have reached your employee limit');
     }
+
 
     const user = await this.userModel.findById(userId).exec();
     if (!user) {

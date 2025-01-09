@@ -41,6 +41,7 @@ import { CalendarService } from './calendar/calendar.service';
 import { AddonModule } from './addon/addon.module';
 import { SubscriptionAddonModule } from './subscription-addon/subscription-addon.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { RazorpayModule } from './razorpay/razorpay.module';
 
 @Module({
   imports: [
@@ -96,6 +97,7 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
      AddonModule,
      SubscriptionAddonModule,
      WhatsappModule,
+     RazorpayModule,
   ],
   controllers: [AppController],
   providers: [AppService, CalendarService],

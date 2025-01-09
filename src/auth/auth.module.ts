@@ -5,16 +5,14 @@ import { UsersModule } from 'src/users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from 'src/schemas/User.schema';
-import { Plans, PlansSchema } from 'src/schemas/Plans.schema';
-import { PlansModule } from 'src/plans/plans.module';
 import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
 import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
 import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
+import { SubscriptionModule } from 'src/subscription/subscription.module';
 
 @Module({
   imports: [
     UsersModule,
-    PlansModule,
     JwtModule.register({
       global: true,
     }),
@@ -23,11 +21,8 @@ import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
         name: User.name,
         schema: UserSchema,
       },
-      {
-        name: Plans.name,
-        schema: PlansSchema,
-      },
     ]),
+    SubscriptionModule
   ],
   controllers: [AuthController],
   providers: [AuthService],
