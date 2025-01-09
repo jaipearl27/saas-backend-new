@@ -451,8 +451,8 @@ export class UsersService {
     return employee;
   }
 
-  async getUser(userName: string): Promise<any> {
-    const user = await this.userModel.findOne({ userName: userName });
+  async getUser(email: string): Promise<any> {
+    const user = await this.userModel.findOne({ email: email });
     return user;
   }
 

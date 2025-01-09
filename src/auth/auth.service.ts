@@ -32,10 +32,10 @@ export class AuthService {
   ) {}
 
   async signIn(signInDto: SignInDto): Promise<any> {
-    const user = await this.usersService.getUser(signInDto.userName);
+    const user = await this.usersService.getUser(signInDto.email);
 
     if (!user) {
-      throw new NotFoundException('Incorrect Username');
+      throw new NotFoundException('Incorrect E-Mail');
     }
 
     // if (!user?.isActive) {
@@ -80,11 +80,13 @@ export class AuthService {
     };
   }
 
-  async refreshToken(userName: string): Promise<any> {
-    const user = await this.usersService.getUser(userName);
+  async refreshToken(email: string): Promise<any> {
+    const user = await this.usersService.getUser(email);
+
+    console.log(email, '<--- user ---> ', user?._id);
 
     if (!user) {
-      throw new NotFoundException('Incorrect Username');
+      throw new NotFoundException('Incorrect E-Mail');
     }
 
     const result = user.toObject();
