@@ -25,6 +25,12 @@ import { SubscriptionService } from 'src/subscription/subscription.service';
 import { AttendeesService } from 'src/attendees/attendees.service';
 import { UsersService } from 'src/users/users.service';
 import { User } from 'src/schemas/User.schema';
+import { NotificationService } from 'src/notification/notification.service';
+import { title } from 'process';
+import {
+  notificationActionType,
+  notificationType,
+} from 'src/schemas/notification.schema';
 
 @Injectable()
 export class AssignmentService {
@@ -34,6 +40,7 @@ export class AssignmentService {
     @InjectConnection() private readonly mongoConnection: Connection,
 
     private readonly configService: ConfigService,
+    private readonly notificationService: NotificationService,
     private readonly webinarService: WebinarService,
     private readonly subscriptionService: SubscriptionService,
     private readonly attendeeService: AttendeesService,
@@ -183,7 +190,7 @@ export class AssignmentService {
     const empContactLimit = employee?.dailyContactLimit ?? 0;
     const empContactCount = employee?.dailyContactCount ?? 0;
 
-    if((empContactCount + assignmentDtoLength) > empContactLimit) {
+    if (empContactCount + assignmentDtoLength > empContactLimit) {
       throw new BadRequestException('Daily Contact Limit Exceeded');
     }
 
@@ -217,7 +224,7 @@ export class AssignmentService {
           // assignment to reminder employees
           if (
             String(employee.role) ===
-              this.configService.get('appRoles')['EMPLOYEE_REMINDER']
+            this.configService.get('appRoles')['EMPLOYEE_REMINDER']
           ) {
             // reminder employee assignment logic
             const result = await this.assignmentsModel.create(assignmentDto[i]);
@@ -247,9 +254,7 @@ export class AssignmentService {
                 'Pre-Webinar records can only be assigned to Reminder Employee',
             });
           }
-        } else if (
-          assignmentDto[i].recordType === 'postWebinar'
-        ) {
+        } else if (assignmentDto[i].recordType === 'postWebinar') {
           // assignment to reminder employees
           if (
             String(employee.role) ===
@@ -296,6 +301,23 @@ export class AssignmentService {
         });
       }
     }
+
+    if (assignments.length > 0) {
+      const [assignment] = assignments;
+      const notification = {
+        recipient: assignment?.user,
+        title: 'New Tasks Assigned',
+        message: `You have been assigned ${assignments.length} new tasks. Please check your task list for details.`,
+        type: notificationType.INFO,
+        actionType: notificationActionType.ASSIGNMENT,
+        metadata: {
+          webinarId: assignment?.webinar,
+        },
+      };
+
+      await this.notificationService.createNotification(notification);
+    }
+
     return { assignments, failedAssignments };
   }
 
