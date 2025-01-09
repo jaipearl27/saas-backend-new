@@ -17,9 +17,10 @@ export class RazorpayService {
       currency: 'INR',
     };
 
-    const result = instance.orders.create(options, function (err, order) {
-      console.log(order);
-    });
-    return 'success';
+    const result = instance.orders.create(options);
+    return result
+   
   }
+
+  
 }

@@ -25,7 +25,7 @@ export class WebsocketGateway {
   public activeUsers = new Map<string, string>(); // Map to store userId -> socketId
 
   @WebSocketServer()
-  server: Server;
+  public server: Server;
 
 
   handleConnection(client: any) {
