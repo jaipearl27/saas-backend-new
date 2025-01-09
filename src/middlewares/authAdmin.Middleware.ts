@@ -38,7 +38,7 @@ export class AuthAdminTokenMiddleware implements NestMiddleware {
 
         if (
           decodedToken &&
-          decodedToken.role === this.configService.get('appRoles').SUPER_ADMIN
+          decodedToken.role === this.configService.get('appRoles').ADMIN
         ) {
           req.id = decodedToken.id;
           req.role = decodedToken.role;
