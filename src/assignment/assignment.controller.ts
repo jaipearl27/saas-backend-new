@@ -219,6 +219,7 @@ export class AssignmentController {
       adminId,
       body.assignments,
       body.status,
+      body.userId
     );
   }
 

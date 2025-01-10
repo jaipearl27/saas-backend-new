@@ -736,6 +736,22 @@ export class AssignmentService {
       },
       { $set: { status: AssignmentStatus.REASSIGN_REQUESTED } },
     );
+
+    const reassignmentCount = result.modifiedCount;
+
+    if (reassignmentCount > 0) {
+      await this.notificationService.createNotification({
+        recipient: adminId,
+        title: 'Reassignment Requests Submitted',
+        message: `${reassignmentCount} reassignment requests have been submitted.`,
+        type: notificationType.INFO,
+        actionType: notificationActionType.REASSIGNMENT,
+        metadata: {
+          userId,
+          reassignmentCount,
+        },
+      });
+    }
     return result;
   }
 
@@ -831,6 +847,7 @@ export class AssignmentService {
     adminId: string,
     assignments: string[],
     status: string,
+    userId: string,
   ) {
     const assignmentsIds = assignments.map(
       (assignment) => new Types.ObjectId(`${assignment}`),
@@ -878,6 +895,14 @@ export class AssignmentService {
         await session.commitTransaction();
         session.endSession();
 
+        await this.notificationService.createNotification({
+          recipient: userId,
+          title: 'Reassignment Request Approved',
+          message: 'Your reassignment request has been approved.',
+          type: notificationType.SUCCESS,
+          actionType: notificationActionType.REASSIGNMENT,
+        });
+
         return results;
       } catch (error) {
         // Abort the transaction in case of an error
@@ -894,6 +919,13 @@ export class AssignmentService {
         },
         { $set: { status: AssignmentStatus.ACTIVE } },
       );
+      await this.notificationService.createNotification({
+        recipient: userId,
+        title: 'Reassignment Request Rejected',
+        message: 'Your reassignment request has been rejected.',
+        type: notificationType.WARNING,
+        actionType: notificationActionType.REASSIGNMENT,
+      });
       return result;
     } else {
       throw new BadRequestException('Invalid status provided.');
@@ -1006,6 +1038,17 @@ export class AssignmentService {
       await session.commitTransaction(); // Commit the transaction if all operations succeed
       session.endSession();
 
+      await this.notificationService.createNotification({
+        recipient: employee._id.toString(),
+        title: 'New Tasks Assigned',
+        message: `You have been assigned ${updatedAssignmentsCount} new tasks ${data.isTemp ? 'temporarily' : ''}. Please check your task list for details.`,
+        type: notificationType.INFO,
+        actionType: notificationActionType.REASSIGNMENT,
+        metadata: {
+          webinarId: data.webinarId,
+        },
+      });
+
       return {
         message: 'Reassignment completed successfully',
         updatedAssignmentsCount,
@@ -1032,7 +1075,7 @@ export class AssignmentService {
     const attendeeIds = attendees.map(
       (attendee) => new Types.ObjectId(`${attendee}`),
     );
-
+    console.log('attendeeIds', employeeId);
     // if employee ID not exists that means user chose the option to pullback all attendees Assignments
     if (!employeeId) {
       const session = await this.attendeeModel.db.startSession();
