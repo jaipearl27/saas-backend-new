@@ -15,23 +15,36 @@ import { Webinar, WebinarSchema } from 'src/schemas/Webinar.schema';
 import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: User.name, schema: UserSchema },{name: Webinar.name, schema: WebinarSchema}]), UsersModule,SubscriptionModule,WebinarModule, AttendeesModule, ],
+  imports: [
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+    ]),
+    UsersModule,
+    SubscriptionModule,
+    WebinarModule,
+    AttendeesModule,
+  ],
   controllers: [ExportExcelController],
-  providers: [ExportExcelService,WebinarService],
+  providers: [ExportExcelService],
 })
 export class ExportExcelModule {
   configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(AuthTokenMiddleware, GetAdminIdMiddleware, ValidateBodyFilters)
+      .forRoutes({
+        path: 'export-excel/webinar-attendees/',
+        method: RequestMethod.POST,
+      });
 
     consumer
-    .apply(AuthTokenMiddleware, GetAdminIdMiddleware, ValidateBodyFilters)
-    .forRoutes({ path: 'export-excel/webinar-attendees/', method: RequestMethod.POST });
+      .apply(AuthAdminTokenMiddleware)
+      .forRoutes({
+        path: 'export-excel/employees',
+        method: RequestMethod.POST,
+      });
 
     consumer
-    .apply(AuthAdminTokenMiddleware)
-    .forRoutes({ path: 'export-excel/employees', method: RequestMethod.POST });
-
-    consumer
-    .apply(AuthAdminTokenMiddleware)
-    .forRoutes({ path: 'export-excel/webinars', method: RequestMethod.POST });
+      .apply(AuthAdminTokenMiddleware)
+      .forRoutes({ path: 'export-excel/webinars', method: RequestMethod.POST });
   }
 }

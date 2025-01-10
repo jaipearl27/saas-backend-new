@@ -6,6 +6,8 @@ import { CreateWebinarDto, UpdateWebinarDto } from './dto/createWebinar.dto';
 import { ConfigService } from '@nestjs/config';
 import { AttendeesService } from 'src/attendees/attendees.service';
 import { WebinarFilterDTO } from './dto/webinar-filter.dto';
+import { NotificationService } from 'src/notification/notification.service';
+import { notificationActionType, notificationType } from 'src/schemas/notification.schema';
 
 @Injectable()
 export class WebinarService {
@@ -13,14 +15,35 @@ export class WebinarService {
     @InjectModel(Webinar.name) private webinarModel: Model<Webinar>,
     private readonly configService: ConfigService,
     private readonly attendeesService: AttendeesService,
+    private readonly notificationService: NotificationService
   ) {}
 
   async createWebiar(createWebinarDto: CreateWebinarDto): Promise<any> {
-    //create webinar
+    // Create webinar
     console.log(createWebinarDto);
+  
     const result = await this.webinarModel.create(createWebinarDto);
+    
+    if (result) {
+      createWebinarDto.assignedEmployees.forEach(async (employeeId) => {
+        // Create a notification for each assigned employee
+        await this.notificationService.createNotification({
+          recipient: `${employeeId}`,
+          title: 'New Webinar Assigned',
+          message: `You have been assigned to a new webinar: ${createWebinarDto.webinarName}`,
+          type: notificationType.INFO,
+          actionType: notificationActionType.WEBINAR_ASSIGNMENT,
+          metadata: {
+            webinarId: result._id,
+            webinarTitle: createWebinarDto.webinarName,
+          },
+        });
+      });
+    }
+  
     return result;
   }
+  
 
   async getWebinars(
     adminId: string,
