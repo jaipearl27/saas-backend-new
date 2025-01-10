@@ -29,7 +29,6 @@ export class WebinarService {
     filters: WebinarFilterDTO = {},
     usePagination: boolean = true, // Flag to enable/disable pagination
   ): Promise<any> {
-    console.log(filters);
     const skip = (page - 1) * limit;
 
     const query = { adminId: new Types.ObjectId(`${adminId}`) };
@@ -116,6 +115,11 @@ export class WebinarService {
           }),
         },
       },
+      {
+        $sort: {
+          createdAt: -1, // Sort by createdAt in descending order
+        },
+      }
     ];
 
     if (usePagination) {
