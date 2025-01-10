@@ -207,7 +207,6 @@ export class SubscriptionService {
       Date.now() + plan.planDuration * 24 * 60 * 60 * 1000,
     );
 
-
     const billing = await this.BillingHistoryService.addBillingHistory({
       admin: adminId,
       plan: planId,
@@ -217,8 +216,7 @@ export class SubscriptionService {
     if (isPlanExpired)
       await this.userService.updateClient(adminId, { isActive: true });
 
+    await subscription.save();
     return { subscription, billing };
-
-    // await subscription.save();
   }
 }
