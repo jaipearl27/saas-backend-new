@@ -43,6 +43,7 @@ import { SubscriptionAddonModule } from './subscription-addon/subscription-addon
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { RazorpayModule } from './razorpay/razorpay.module';
 import { NotificationModule } from './notification/notification.module';
+import { LocationModule } from './location/location.module';
 
 @Module({
   imports: [
@@ -100,6 +101,7 @@ import { NotificationModule } from './notification/notification.module';
      WhatsappModule,
      RazorpayModule,
      NotificationModule,
+     LocationModule,
   ],
   controllers: [AppController],
   providers: [AppService, CalendarService],
