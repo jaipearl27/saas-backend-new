@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   NestMiddleware,
   UnauthorizedException,
@@ -21,11 +22,11 @@ export class AuthActiveUserMiddleware implements NestMiddleware {
        
         next();
       } else {
-        throw new UnauthorizedException('User is Inactive, kindly recharge or contact the administrator.');
+        throw new BadRequestException('User is Inactive, kindly recharge or contact the administrator.');
       }
     } catch (error) {
-      console.log(error)
-      throw new UnauthorizedException('Invalid or expired access token.');
+      console.log()
+      throw error;
     }
   }
 }

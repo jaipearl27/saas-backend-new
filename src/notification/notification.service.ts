@@ -51,7 +51,7 @@ export class NotificationService {
       },
       {
         $facet: {
-          metadata: [{ $count: 'totalPages' }],
+          metadata: [{ $count: 'total' }],
           notifications: [{ $skip: skip }, { $limit: limit }],
           isSeenCount: [
             { $match: { isSeen: false } },
@@ -73,7 +73,7 @@ export class NotificationService {
       },
       {
         $addFields: {
-          totalPages: '$metadata.totalPages',
+          totalPages: { $ceil: { $divide: ['$metadata.total', limit] } },
           unseenCount: '$isSeenCount.unseenCount',
           page: { $literal: page },
         },

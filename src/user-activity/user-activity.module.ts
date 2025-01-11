@@ -10,6 +10,7 @@ import { User, UserSchema } from 'src/schemas/User.schema';
 import { UsersModule } from 'src/users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 import { GetAdminIdForUserActivityMiddleware } from 'src/middlewares/getAdminIdForUserActivity.Middleware';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { GetAdminIdForUserActivityMiddleware } from 'src/middlewares/getAdminIdF
     JwtModule.register({
       global: true,
     }),
+    NotificationModule
   ],
   controllers: [UserActivityController],
   providers: [UserActivityService],

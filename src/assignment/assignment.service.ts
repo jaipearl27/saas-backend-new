@@ -458,6 +458,21 @@ export class AssignmentService {
             );
           }
 
+          const notification = {
+            recipient: employee._id.toString(),
+            title: 'New Task Assigned',
+            message: `You have been assigned a new task. Please check your task list for details.`,
+            type: notificationType.INFO,
+            actionType: notificationActionType.ASSIGNMENT,
+            metadata: {
+              webinarId,
+              attendeeId: newAttendee._id.toString(),
+              assignmentId: newAssignment._id.toString(),
+            },
+          };
+    
+          await this.notificationService.createNotification(notification);
+
           return { newAssignment, updatedAttendee };
         }
       }
@@ -518,6 +533,21 @@ export class AssignmentService {
             'Failed to update employee contact count.',
           );
         }
+
+        const notification = {
+          recipient: employee._id.toString(),
+          title: 'New Task Assigned',
+          message: `You have been assigned a new task. Please check your task list for details.`,
+          type: notificationType.INFO,
+          actionType: notificationActionType.ASSIGNMENT,
+          metadata: {
+            webinarId,
+            attendeeId: newAttendee._id.toString(),
+            assignmentId: newAssignment._id.toString(),
+          },
+        };
+  
+        await this.notificationService.createNotification(notification);
 
         return { newAssignment, updatedAttendee };
       } else {

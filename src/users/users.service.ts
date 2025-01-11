@@ -353,6 +353,22 @@ export class UsersService {
       updateUserInfoDto,
       { new: true },
     );
+    console.log(result._id, updateUserInfoDto.isActive);
+    if (result && updateUserInfoDto.isActive === false) {
+
+      await this.userModel.updateMany(
+        {
+          adminId: result._id,
+          isActive: true,
+        },
+        {
+          $set: {
+            isActive: false,
+          },
+        },
+      );
+    }
+
     return result;
   }
 
@@ -439,8 +455,7 @@ export class UsersService {
       adminId: new Types.ObjectId(`${AdminId}`),
     };
 
-    const totalContacts =
-      (await this.userModel.countDocuments(query)) || 0;
+    const totalContacts = (await this.userModel.countDocuments(query)) || 0;
 
     return totalContacts;
   }
@@ -557,7 +572,6 @@ export class UsersService {
     return { message: 'Password updated successfully!' };
   }
 
-
   async createEmployee(
     createEmployeeDto: CreateEmployeeDto,
     creatorDetailsDto: CreatorDetailsDto,
@@ -630,7 +644,7 @@ export class UsersService {
     if (!subscription) {
       throw new NotFoundException('No Subscription Found with the given ID.');
     }
-    
+
     if (subscription.toggleLimit <= 0) {
       throw new NotAcceptableException('Your toggle limit has expired.');
     }
@@ -642,8 +656,8 @@ export class UsersService {
     }
 
     const totalEmployeeLimit =
-    (subscription.employeeLimit ?? 0) +
-    (subscription.employeeLimitAddon ?? 0);
+      (subscription.employeeLimit ?? 0) +
+      (subscription.employeeLimitAddon ?? 0);
 
     const existingEmpCount = await this.userModel.countDocuments({
       adminId: new Types.ObjectId(`${adminId}`),
@@ -654,7 +668,6 @@ export class UsersService {
       throw new NotAcceptableException('You have reached your employee limit');
     }
 
-
     const user = await this.userModel.findById(userId).exec();
     if (!user) {
       throw new NotFoundException('No User Found with the given ID.');
@@ -664,7 +677,7 @@ export class UsersService {
     await user.save();
 
     subscription.toggleLimit = subscription.toggleLimit - 1;
-    subscription.employeeLimit  = subscription.employeeLimit || 0;
+    subscription.employeeLimit = subscription.employeeLimit || 0;
     await subscription.save();
     return { message: 'Status updated successfully!', subscription };
   }
@@ -760,12 +773,13 @@ export class UsersService {
   async deactivateExpiredPlans(): Promise<void> {
     const now = new Date();
     const adminRole = this.configService.get('appRoles').ADMIN;
-    const expiredAdminIds = await this.subscriptionService.getExpiredSubscriptions();
-    if(!Array.isArray(expiredAdminIds) || expiredAdminIds.length == 0) return;
+    const expiredAdminIds =
+      await this.subscriptionService.getExpiredSubscriptions();
+    if (!Array.isArray(expiredAdminIds) || expiredAdminIds.length == 0) return;
     try {
       const result = await this.userModel.updateMany(
         {
-          _id : { $in : expiredAdminIds }, 
+          _id: { $in: expiredAdminIds },
           isActive: true,
           role: new Types.ObjectId(`${adminRole}`),
         },
@@ -812,7 +826,10 @@ export class UsersService {
     }
   }
 
-  async incrementCount(id: string, incrementValue: number = 1): Promise<boolean> {
+  async incrementCount(
+    id: string,
+    incrementValue: number = 1,
+  ): Promise<boolean> {
     const user = await this.userModel.findById(id).exec();
     if (user) {
       // Increment dailyContactCount by the given value
@@ -821,5 +838,14 @@ export class UsersService {
       return true;
     }
     return false;
+  }
+
+  resetDailyContactCount() {
+    return this.userModel.updateMany(
+      {
+        dailyContactCount: { $gt: 0 },
+      },
+      { $set: { dailyContactCount: 0 } },
+    );
   }
 }

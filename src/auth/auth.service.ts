@@ -38,19 +38,6 @@ export class AuthService {
       throw new NotFoundException('Incorrect E-Mail');
     }
 
-    // if (!user?.isActive) {
-    //   throw new UnauthorizedException(
-    //     'Access denied: User account is inactive. Please contact your administrator.',
-    //   );
-    // }
-
-    // const admin = await this.usersService.getUserById(user._id);
-
-    // if (!admin.isActive) {
-    //   throw new UnauthorizedException(
-    //     'Access denied: Admin account is inactive. Please contact your administrator.',
-    //   );
-    // }
 
     const matchPassword = await bcrypt.compare(
       signInDto.password,
@@ -58,7 +45,7 @@ export class AuthService {
     );
 
     if (!matchPassword) {
-      throw new UnauthorizedException('Incorrect Password');
+      throw new NotFoundException('Incorrect Password');
     }
 
     const result = user.toObject();

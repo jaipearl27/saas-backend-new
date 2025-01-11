@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Patch } from '@nestjs/common';
+import { Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { Notification } from 'src/schemas/notification.schema';
 import { Id } from 'src/decorators/custom.decorator';
@@ -9,9 +9,12 @@ export class NotificationController {
 
   @Get('/:recipient') 
   async getNotification(
-    @Param('recipient') recipient: string,
+    @Param('recipient') recipient: string,@Query() query: { page?: string; limit?: string },
   ): Promise<Notification[]> {
-    return await this.notificationService.getUsernotifications(recipient);
+    const page = Number(query.page) ? Number(query.page) : 1;
+    const limit = Number(query.limit) ? Number(query.limit) : 10;
+
+    return await this.notificationService.getUsernotifications(recipient, page, limit);
   }
 
   @Patch('/unseen')

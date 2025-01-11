@@ -12,7 +12,7 @@ export enum notificationType {
 export enum notificationActionType {
   REASSIGNMENT = 'reassignment',
   ASSIGNMENT = 'assignment',
-  USER_INACTIVITY = 'user_inactivity',
+  USER_ACTIVITY = 'user_activity',
   WEBINAR_ASSIGNMENT = 'webinar_assignment',
 }
 
