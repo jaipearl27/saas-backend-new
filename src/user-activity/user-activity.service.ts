@@ -1,16 +1,25 @@
 import { Injectable } from '@nestjs/common';
-import { CreateUserActivityDto } from './dto/user-activity.dto';
+import {
+  CreateUserActivityDto,
+  InactiviUserDTO,
+} from './dto/user-activity.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { UserActivity } from 'src/schemas/UserActivity.schema';
 import { Model, Types } from 'mongoose';
 import { MailerService } from '@nestjs-modules/mailer';
+import { NotificationService } from 'src/notification/notification.service';
+import {
+  notificationActionType,
+  notificationType,
+} from 'src/schemas/notification.schema';
 
 @Injectable()
 export class UserActivityService {
   constructor(
     @InjectModel(UserActivity.name)
     private readonly userActivityModel: Model<UserActivity>,
-    private readonly mailerService: MailerService
+    private readonly mailerService: MailerService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async addUserActivity(
@@ -23,8 +32,8 @@ export class UserActivityService {
     }
 
     return this.userActivityModel.create({
-      user : new Types.ObjectId(user),
-      adminId : new Types.ObjectId(adminId),
+      user: new Types.ObjectId(user),
+      adminId: new Types.ObjectId(adminId),
       action: dto.action,
       details: dto.details || '',
     });
@@ -38,7 +47,7 @@ export class UserActivityService {
     const skip = (page - 1) * limit;
 
     const activities = await this.userActivityModel
-      .find({  user: userId })
+      .find({ user: userId })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -59,16 +68,22 @@ export class UserActivityService {
     };
   }
 
-  async sendInactivityEmail( email: string) {
+  async sendInactivityNotification(adminId: string, body: InactiviUserDTO) {
+    const notification = {
+      recipient: adminId,
+      title: 'User Inactivity Alert',
+      message: `User ${body.userName} (${body.email}) has been inactive for a while.`,
+      type: notificationType.INFO,
+      actionType: notificationActionType.USER_ACTIVITY,
+      metadata: {
+        userId: body.userId,
+        email: body.email,
+        userName: body.userName,
+      },
+    };
 
-    const response = await this.mailerService
-    .sendMail({
-      to: 'copopoco71@gmail.com', // list of receivers
-      from: 'anukulssdfsdyuyiuyiaxena@pearlorganisation.com', // sender address
-      subject: 'Testsing Nest asasdasdMailerModule ✔', // Subject line
-      text: 'welcome bhai tumhara employee mje maar rha hai', // plaintext body
-      html: '<b>welcome welcome bhai tumhara employee mje maar rha hai</b>', // HTML body content
-    })
-    return response
+    await this.notificationService.createNotification(notification);
+
+    return [];
   }
 }

@@ -2,7 +2,7 @@
 import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Post, Put, Query, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
-import { CreateUserActivityDto } from './dto/user-activity.dto';
+import { CreateUserActivityDto, InactiviUserDTO } from './dto/user-activity.dto';
 import { UserActivityService } from './user-activity.service';
 import { Types } from 'mongoose';
 import { UsersService } from 'src/users/users.service';
@@ -72,12 +72,13 @@ export class UserActivityController {
 
   @Put('inactive')
   async sendInactiveEmail(  
-    @AdminId() adminId: string
+    @AdminId() adminId: string,
+    @Body() body: InactiviUserDTO
   ){
-    const admin = await this.userService.getUserById(adminId);
-    if(!admin){
-      throw new NotFoundException('Admin not found');
-    }
-    return await this.userActivityService.sendInactivityEmail(admin.email);
+    // const admin = await this.userService.getUserById(adminId);
+    // if(!admin){
+    //   throw new NotFoundException('Admin not found');
+    // }
+    return await this.userActivityService.sendInactivityNotification(adminId, body);
   }
 }

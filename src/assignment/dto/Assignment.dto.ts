@@ -80,6 +80,10 @@ export class RequestReAssignmentsDTO {
   @IsOptional()
   @IsEnum(['approved', 'rejected'])
   status: string;
+
+  @IsOptional()
+  @IsMongoId()
+  userId?: string;
 }
 
 class AssignmentAttendee {

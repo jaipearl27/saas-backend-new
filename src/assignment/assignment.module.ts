@@ -17,6 +17,7 @@ import { Webinar, WebinarSchema } from 'src/schemas/Webinar.schema';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
 import { GetAdminIdForUserActivityMiddleware } from 'src/middlewares/getAdminIdForUserActivity.Middleware';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { GetAdminIdForUserActivityMiddleware } from 'src/middlewares/getAdminIdF
         schema: WebinarSchema,
       },
     ]),
+    NotificationModule
   ],
   providers: [AssignmentService, WebinarService],
   controllers: [AssignmentController],

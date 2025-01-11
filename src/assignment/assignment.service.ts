@@ -25,6 +25,12 @@ import { SubscriptionService } from 'src/subscription/subscription.service';
 import { AttendeesService } from 'src/attendees/attendees.service';
 import { UsersService } from 'src/users/users.service';
 import { User } from 'src/schemas/User.schema';
+import { NotificationService } from 'src/notification/notification.service';
+import { title } from 'process';
+import {
+  notificationActionType,
+  notificationType,
+} from 'src/schemas/notification.schema';
 
 @Injectable()
 export class AssignmentService {
@@ -34,6 +40,7 @@ export class AssignmentService {
     @InjectConnection() private readonly mongoConnection: Connection,
 
     private readonly configService: ConfigService,
+    private readonly notificationService: NotificationService,
     private readonly webinarService: WebinarService,
     private readonly subscriptionService: SubscriptionService,
     private readonly attendeeService: AttendeesService,
@@ -183,7 +190,7 @@ export class AssignmentService {
     const empContactLimit = employee?.dailyContactLimit ?? 0;
     const empContactCount = employee?.dailyContactCount ?? 0;
 
-    if((empContactCount + assignmentDtoLength) > empContactLimit) {
+    if (empContactCount + assignmentDtoLength > empContactLimit) {
       throw new BadRequestException('Daily Contact Limit Exceeded');
     }
 
@@ -217,7 +224,7 @@ export class AssignmentService {
           // assignment to reminder employees
           if (
             String(employee.role) ===
-              this.configService.get('appRoles')['EMPLOYEE_REMINDER']
+            this.configService.get('appRoles')['EMPLOYEE_REMINDER']
           ) {
             // reminder employee assignment logic
             const result = await this.assignmentsModel.create(assignmentDto[i]);
@@ -247,9 +254,7 @@ export class AssignmentService {
                 'Pre-Webinar records can only be assigned to Reminder Employee',
             });
           }
-        } else if (
-          assignmentDto[i].recordType === 'postWebinar'
-        ) {
+        } else if (assignmentDto[i].recordType === 'postWebinar') {
           // assignment to reminder employees
           if (
             String(employee.role) ===
@@ -296,6 +301,23 @@ export class AssignmentService {
         });
       }
     }
+
+    if (assignments.length > 0) {
+      const [assignment] = assignments;
+      const notification = {
+        recipient: assignment?.user,
+        title: 'New Tasks Assigned',
+        message: `You have been assigned ${assignments.length} new tasks. Please check your task list for details.`,
+        type: notificationType.INFO,
+        actionType: notificationActionType.ASSIGNMENT,
+        metadata: {
+          webinarId: assignment?.webinar,
+        },
+      };
+
+      await this.notificationService.createNotification(notification);
+    }
+
     return { assignments, failedAssignments };
   }
 
@@ -436,6 +458,21 @@ export class AssignmentService {
             );
           }
 
+          const notification = {
+            recipient: employee._id.toString(),
+            title: 'New Task Assigned',
+            message: `You have been assigned a new task. Please check your task list for details.`,
+            type: notificationType.INFO,
+            actionType: notificationActionType.ASSIGNMENT,
+            metadata: {
+              webinarId,
+              attendeeId: newAttendee._id.toString(),
+              assignmentId: newAssignment._id.toString(),
+            },
+          };
+    
+          await this.notificationService.createNotification(notification);
+
           return { newAssignment, updatedAttendee };
         }
       }
@@ -496,6 +533,21 @@ export class AssignmentService {
             'Failed to update employee contact count.',
           );
         }
+
+        const notification = {
+          recipient: employee._id.toString(),
+          title: 'New Task Assigned',
+          message: `You have been assigned a new task. Please check your task list for details.`,
+          type: notificationType.INFO,
+          actionType: notificationActionType.ASSIGNMENT,
+          metadata: {
+            webinarId,
+            attendeeId: newAttendee._id.toString(),
+            assignmentId: newAssignment._id.toString(),
+          },
+        };
+  
+        await this.notificationService.createNotification(notification);
 
         return { newAssignment, updatedAttendee };
       } else {
@@ -714,6 +766,22 @@ export class AssignmentService {
       },
       { $set: { status: AssignmentStatus.REASSIGN_REQUESTED } },
     );
+
+    const reassignmentCount = result.modifiedCount;
+
+    if (reassignmentCount > 0) {
+      await this.notificationService.createNotification({
+        recipient: adminId,
+        title: 'Reassignment Requests Submitted',
+        message: `${reassignmentCount} reassignment requests have been submitted.`,
+        type: notificationType.INFO,
+        actionType: notificationActionType.REASSIGNMENT,
+        metadata: {
+          userId,
+          reassignmentCount,
+        },
+      });
+    }
     return result;
   }
 
@@ -809,6 +877,7 @@ export class AssignmentService {
     adminId: string,
     assignments: string[],
     status: string,
+    userId: string,
   ) {
     const assignmentsIds = assignments.map(
       (assignment) => new Types.ObjectId(`${assignment}`),
@@ -856,6 +925,14 @@ export class AssignmentService {
         await session.commitTransaction();
         session.endSession();
 
+        await this.notificationService.createNotification({
+          recipient: userId,
+          title: 'Reassignment Request Approved',
+          message: 'Your reassignment request has been approved.',
+          type: notificationType.SUCCESS,
+          actionType: notificationActionType.REASSIGNMENT,
+        });
+
         return results;
       } catch (error) {
         // Abort the transaction in case of an error
@@ -872,6 +949,13 @@ export class AssignmentService {
         },
         { $set: { status: AssignmentStatus.ACTIVE } },
       );
+      await this.notificationService.createNotification({
+        recipient: userId,
+        title: 'Reassignment Request Rejected',
+        message: 'Your reassignment request has been rejected.',
+        type: notificationType.WARNING,
+        actionType: notificationActionType.REASSIGNMENT,
+      });
       return result;
     } else {
       throw new BadRequestException('Invalid status provided.');
@@ -984,6 +1068,17 @@ export class AssignmentService {
       await session.commitTransaction(); // Commit the transaction if all operations succeed
       session.endSession();
 
+      await this.notificationService.createNotification({
+        recipient: employee._id.toString(),
+        title: 'New Tasks Assigned',
+        message: `You have been assigned ${updatedAssignmentsCount} new tasks ${data.isTemp ? 'temporarily' : ''}. Please check your task list for details.`,
+        type: notificationType.INFO,
+        actionType: notificationActionType.REASSIGNMENT,
+        metadata: {
+          webinarId: data.webinarId,
+        },
+      });
+
       return {
         message: 'Reassignment completed successfully',
         updatedAssignmentsCount,
@@ -1010,7 +1105,7 @@ export class AssignmentService {
     const attendeeIds = attendees.map(
       (attendee) => new Types.ObjectId(`${attendee}`),
     );
-
+    console.log('attendeeIds', employeeId);
     // if employee ID not exists that means user chose the option to pullback all attendees Assignments
     if (!employeeId) {
       const session = await this.attendeeModel.db.startSession();
