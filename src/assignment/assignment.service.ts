@@ -753,6 +753,7 @@ export class AssignmentService {
     userId: string,
     adminId: string,
     assignments: string[],
+    webinarId: string
   ) {
     const assignmentsIds = assignments.map(
       (assignment) => new Types.ObjectId(`${assignment}`),
@@ -779,6 +780,8 @@ export class AssignmentService {
         metadata: {
           userId,
           reassignmentCount,
+          type: 'request',
+          webinarId
         },
       });
     }
@@ -878,6 +881,7 @@ export class AssignmentService {
     assignments: string[],
     status: string,
     userId: string,
+    webinarId: string
   ) {
     const assignmentsIds = assignments.map(
       (assignment) => new Types.ObjectId(`${assignment}`),
@@ -931,6 +935,10 @@ export class AssignmentService {
           message: 'Your reassignment request has been approved.',
           type: notificationType.SUCCESS,
           actionType: notificationActionType.REASSIGNMENT,
+          metadata: {
+            type: 'request',
+            webinarId: webinarId,
+          },
         });
 
         return results;
@@ -955,6 +963,10 @@ export class AssignmentService {
         message: 'Your reassignment request has been rejected.',
         type: notificationType.WARNING,
         actionType: notificationActionType.REASSIGNMENT,
+        metadata: {
+          type: 'request',
+          webinarId: webinarId,
+        },
       });
       return result;
     } else {
