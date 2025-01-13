@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -30,9 +31,9 @@ export class ProductsController {
     @Query() query: { page?: string; limit?: string },
     @AdminId() adminId: string,
   ): Promise<any> {
-    const page = Number(query.page) ? Number(query.page) : 1;
+    const page = Number(query?.page) ? Number(query?.page) : 1;
 
-    const limit = Number(query.limit) ? Number(query.limit) : 25;
+    const limit = Number(query?.limit) ? Number(query?.limit) : 25;
     const products = await this.productsService.getProducts(
       adminId,
       page,
@@ -54,5 +55,15 @@ export class ProductsController {
       updateProductDto,
     );
     return product;
+  }
+
+
+  @Delete(':id')
+  async deleteProduct(
+    @Param('id') id: string,
+    @Id() adminId: string,
+  ):Promise<any> {
+    const result = await this.productsService.deleteProduct(id, adminId)
+    return result
   }
 }
