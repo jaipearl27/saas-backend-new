@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, PipelineStage, Types } from 'mongoose';
 import { Enrollment } from 'src/schemas/Enrollments.schema';
 import { CreateEnrollmentDto, UpdateEnrollmentDto } from './dto/enrollment.dto';
+import { Type } from 'class-transformer';
 
 @Injectable()
 export class EnrollmentsService {
@@ -176,6 +177,13 @@ export class EnrollmentsService {
     const result = await this.enrollmentModel.findOneAndDelete({
       _id: new Types.ObjectId(`${id}`),
       adminId: new Types.ObjectId(`${adminId}`),
+    });
+    return result;
+  }
+
+  async checkProductAssociation(id: string): Promise<any> {
+    const result = await this.enrollmentModel.findOne({
+      product: new Types.ObjectId(`${id}`),
     });
     return result;
   }

@@ -437,4 +437,6 @@ export class AttendeesService {
 
     return lastAssigned;
   }
+
+s
 }
