@@ -203,6 +203,7 @@ export class AssignmentController {
       userId,
       adminId,
       body.assignments,
+      body.webinarId
     );
   }
 
@@ -219,7 +220,8 @@ export class AssignmentController {
       adminId,
       body.assignments,
       body.status,
-      body.userId
+      body.userId,
+      body.webinarId
     );
   }
 

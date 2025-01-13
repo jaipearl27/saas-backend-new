@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { Plans } from './Plans.schema';
 import { User } from './User.schema';
+import { AddOn } from './addon.schema';
 
 @Schema({ timestamps: true })
 export class BillingHistory extends Document {
@@ -30,13 +31,15 @@ export class BillingHistory extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: Plans.name,
+    ref: AddOn.name,
     required: false
   })
   addOn ?: Types.ObjectId | null;
 }
 
 const BillingHistorySchema = SchemaFactory.createForClass(BillingHistory);
+
+BillingHistorySchema.index({ admin: 1, date: 1 }, { unique: true });
 
 // Add pre-save middleware to transform `admin` and `plan` to ObjectId
 BillingHistorySchema.pre('save', function (next) {
