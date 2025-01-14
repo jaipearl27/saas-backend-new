@@ -534,6 +534,10 @@ export class UsersService {
     );
 
     user.documents = filteredDocuments;
+
+    //add logic for deleting file from server here
+
+
     const result = user.save();
 
     return result;
