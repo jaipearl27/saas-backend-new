@@ -30,6 +30,11 @@ import { JwtService } from '@nestjs/jwt';
 import { GetClientsFilterDto } from './dto/filters.dto';
 import { EmployeeFilterDTO } from './dto/employee-filter.dto';
 import { CustomLeadTypeService } from 'src/custom-lead-type/custom-lead-type.service';
+import { NotificationService } from 'src/notification/notification.service';
+import {
+  notificationActionType,
+  notificationType,
+} from 'src/schemas/notification.schema';
 
 @Injectable()
 export class UsersService {
@@ -44,6 +49,7 @@ export class UsersService {
     private readonly subscriptionService: SubscriptionService,
     private readonly jwtService: JwtService,
     private readonly customLeadTypeService: CustomLeadTypeService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   getUsers() {
@@ -355,18 +361,32 @@ export class UsersService {
     );
     console.log(result._id, updateUserInfoDto.isActive);
     if (result && updateUserInfoDto.isActive === false) {
+      await this.notificationService.createNotification({
+        recipient: result._id.toString(),
+        title: 'Account Deactivation Notice',
+        message: `Your account has been deactivated. Please contact the super admin for more details.`,
+        type: notificationType.INFO,
+        actionType: notificationActionType.ACCOUNT_DEACTIVATION,
+      });
 
-      await this.userModel.updateMany(
-        {
-          adminId: result._id,
-          isActive: true,
-        },
-        {
-          $set: {
-            isActive: false,
-          },
-        },
-      );
+      const employees = await this.userModel.find({
+        adminId: result._id,
+        isActive: true,
+      });
+
+      for (const employee of employees) {
+        await this.userModel.findByIdAndUpdate(employee._id, {
+          $set: { isActive: false },
+        });
+
+        await this.notificationService.createNotification({
+          recipient: employee._id.toString(),
+          title: 'Admin Account Deactivation Notice',
+          message: `The admin account you are associated with has been deactivated. Please contact your admin for further instructions.`,
+          type: notificationType.INFO,
+          actionType: notificationActionType.ACCOUNT_DEACTIVATION,
+        });
+      }
     }
 
     return result;
@@ -840,12 +860,21 @@ export class UsersService {
     return false;
   }
 
-  resetDailyContactCount() {
-    return this.userModel.updateMany(
+  async resetDailyContactCount() {
+    return await this.userModel.updateMany(
       {
         dailyContactCount: { $gt: 0 },
       },
       { $set: { dailyContactCount: 0 } },
     );
+  }
+
+  async getSuperAdminDetails() {
+    const role = this.configService.get('appRoles').SUPER_ADMIN;
+    const superAdmin = await this.userModel
+      .findOne({ role: new Types.ObjectId(`${role}`) })
+      .select('companyName email')
+      .exec();
+    return superAdmin;
   }
 }

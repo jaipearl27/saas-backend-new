@@ -24,6 +24,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { CustomLeadTypeService } from 'src/custom-lead-type/custom-lead-type.service';
 import { CustomLeadType, CustomLeadTypeSchema } from 'src/schemas/custom-lead-type.schema';
 import { CustomLeadTypeModule } from 'src/custom-lead-type/custom-lead-type.module';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
   imports: [
@@ -55,7 +56,8 @@ import { CustomLeadTypeModule } from 'src/custom-lead-type/custom-lead-type.modu
         schema: CustomLeadTypeSchema,
       }
     ]),
-    BillingHistoryModule
+    BillingHistoryModule,
+    NotificationModule
   ],
   controllers: [UsersController],
   providers: [UsersService, CustomLeadTypeService],
@@ -75,6 +77,7 @@ export class UsersModule {
       .forRoutes(
         { path: 'users/employee*', method: RequestMethod.ALL },
         { path: 'users/document*', method: RequestMethod.DELETE },
+        { path: 'users/super-admin', method: RequestMethod.GET },
       );
 
     consumer

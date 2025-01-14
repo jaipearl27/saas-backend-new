@@ -162,4 +162,9 @@ export class UsersController {
     const client = await this.usersService.getEmployee(id);
     return client;
   }
+
+  @Get('/super-admin')
+  async getSuperAdminDetails(){
+    return await this.usersService.getSuperAdminDetails();
+  }
 }
