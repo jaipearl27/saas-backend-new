@@ -44,6 +44,13 @@ export class ProductsService {
     return { page, totalPages, result };
   }
 
+  async getAllProductsByAdminId(adminId: string): Promise<any> {
+    const pipeline = { adminId: new Types.ObjectId(`${adminId}`) };
+
+    const result = await this.productsModel.find(pipeline).sort({ name: 1 });
+    return result;
+  }
+
   async updateProduct(
     id: string,
     adminId: string,
@@ -69,6 +76,6 @@ export class ProductsService {
       _id: new Types.ObjectId(`${id}`),
       adminId: new Types.ObjectId(`${adminId}`),
     });
-    return 'Product Deleted Successfully!'
+    return 'Product Deleted Successfully!';
   }
 }

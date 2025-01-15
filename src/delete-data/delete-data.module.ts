@@ -14,6 +14,11 @@ import { Products, ProductsSchema } from 'src/schemas/Products.schema';
 import { StatusDropdown, StatusDropdownSchema } from 'src/schemas/StatusDropdown.schema';
 import { Subscription, SubscriptionSchema } from 'src/schemas/Subscription.schema';
 import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
+import { Alarm, AlarmSchema } from 'src/schemas/Alarm.schema';
+import { NoticeBoard, NoticeBoardSchema } from 'src/schemas/notice-board.schema';
+import { Notification, NotificationSchema } from 'src/schemas/notification.schema';
+import { UserActivity, UserActivitySchema } from 'src/schemas/UserActivity.schema';
+import { FilterPreset, FilterPresetSchema } from 'src/schemas/FilterPreset.schema';
 
 @Module({
   imports: [
@@ -61,8 +66,33 @@ import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middlew
       {
         name: Subscription.name,
         schema: SubscriptionSchema
+      }, 
+
+      {
+        name: Alarm.name,
+        schema: AlarmSchema
       },
-      
+
+      {
+        name: NoticeBoard.name,
+        schema: NoticeBoardSchema
+      },
+
+      {
+        name: Notification.name,
+        schema: NotificationSchema
+      },
+
+      {
+        name: UserActivity.name,
+        schema: UserActivitySchema
+      },
+
+      {
+        name: FilterPreset.name,
+        schema: FilterPresetSchema
+      },
+
     ])
   ],
   controllers: [DeleteDataController],
