@@ -6,8 +6,7 @@ import { AddOn } from './addon.schema';
 
 @Schema({ timestamps: true })
 export class BillingHistory extends Document {
-  @Prop({ type: Types.ObjectId, ref: User.name
-    , required: true })
+  @Prop({ type: Types.ObjectId, ref: User.name, required: true })
   admin: Types.ObjectId; // Admin user
 
   @Prop({
@@ -19,9 +18,9 @@ export class BillingHistory extends Document {
   @Prop({
     type: Types.ObjectId,
     ref: Plans.name,
-    required: false
+    required: false,
   })
-  plan ?: Types.ObjectId | null;
+  plan?: Types.ObjectId | null;
 
   @Prop({
     type: Number,
@@ -30,16 +29,23 @@ export class BillingHistory extends Document {
   amount: number;
 
   @Prop({
+    type: String,
+    required: [true, 'Invoice number is required'],
+  })
+  invoiceNumber: string;
+
+  @Prop({
     type: Types.ObjectId,
     ref: AddOn.name,
-    required: false
+    required: false,
   })
-  addOn ?: Types.ObjectId | null;
+  addOn?: Types.ObjectId | null;
 }
 
 const BillingHistorySchema = SchemaFactory.createForClass(BillingHistory);
 
-BillingHistorySchema.index({ admin: 1, date: 1 }, { unique: true });
+BillingHistorySchema.index({ admin: 1, date: 1 });
+BillingHistorySchema.index({ invoiceNumber: 1 }, { unique: true });
 
 // Add pre-save middleware to transform `admin` and `plan` to ObjectId
 BillingHistorySchema.pre('save', function (next) {

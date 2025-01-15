@@ -130,6 +130,9 @@ export class AssignmentService {
           }),
         },
       },
+      {
+        $sort: { createdAt: -1 },
+      },
     ];
 
     if (usePagination) {
@@ -470,7 +473,7 @@ export class AssignmentService {
               assignmentId: newAssignment._id.toString(),
             },
           };
-    
+
           await this.notificationService.createNotification(notification);
 
           return { newAssignment, updatedAttendee };
@@ -546,7 +549,7 @@ export class AssignmentService {
             assignmentId: newAssignment._id.toString(),
           },
         };
-  
+
         await this.notificationService.createNotification(notification);
 
         return { newAssignment, updatedAttendee };
@@ -601,7 +604,6 @@ export class AssignmentService {
   }
 
   async getActiveInactiveAssignments(id: string): Promise<any> {
-    console.log(id);
     const pipeline: PipelineStage[] = [
       {
         // Step 1: Match active assignments in the given date range (status: 'active')
@@ -753,7 +755,7 @@ export class AssignmentService {
     userId: string,
     adminId: string,
     assignments: string[],
-    webinarId: string
+    webinarId: string,
   ) {
     const assignmentsIds = assignments.map(
       (assignment) => new Types.ObjectId(`${assignment}`),
@@ -781,7 +783,7 @@ export class AssignmentService {
           userId,
           reassignmentCount,
           type: 'request',
-          webinarId
+          webinarId,
         },
       });
     }
@@ -881,7 +883,7 @@ export class AssignmentService {
     assignments: string[],
     status: string,
     userId: string,
-    webinarId: string
+    webinarId: string,
   ) {
     const assignmentsIds = assignments.map(
       (assignment) => new Types.ObjectId(`${assignment}`),
@@ -1117,25 +1119,28 @@ export class AssignmentService {
     const attendeeIds = attendees.map(
       (attendee) => new Types.ObjectId(`${attendee}`),
     );
-    console.log('attendeeIds', employeeId);
-    // if employee ID not exists that means user chose the option to pullback all attendees Assignments
+
+    // if employee ID not exists, meaning user chose the option to pullback all attendees' Assignments
     if (!employeeId) {
-      const session = await this.attendeeModel.db.startSession();
-      session.startTransaction();
+      // const session = await this.mongoConnection.startSession();
+      // session.startTransaction();
+      // console.log(session);
 
       try {
         const updatations = attendeeIds.map(async (attendeeId) => {
           const updatedAttendee = await this.attendeeModel.findOneAndUpdate(
             {
-              adminId: new Types.ObjectId(`${adminId}`),
-              webinar: new Types.ObjectId(`${webinarId}`),
+              adminId: new Types.ObjectId(adminId),
+              webinar: new Types.ObjectId(webinarId),
               isAttended: recordType === RecordType.POST_WEBINAR,
               assignedTo: { $ne: null },
               _id: attendeeId,
             },
             { $set: { isPulledback: true } },
-            { session },
+            { new: true },
+            // { session },
           );
+          console.log('updatedAttendee', updatedAttendee);
 
           if (!updatedAttendee) {
             throw new NotFoundException(
@@ -1147,8 +1152,8 @@ export class AssignmentService {
             await this.assignmentsModel.findOneAndUpdate(
               {
                 attendee: attendeeId,
-                adminId: new Types.ObjectId(`${adminId}`),
-                webinar: new Types.ObjectId(`${webinarId}`),
+                adminId: new Types.ObjectId(adminId),
+                webinar: new Types.ObjectId(webinarId),
                 recordType: recordType,
                 status: AssignmentStatus.ACTIVE,
               },
@@ -1157,10 +1162,18 @@ export class AssignmentService {
                   status: AssignmentStatus.REASSIGN_APPROVED,
                 },
               },
-              { session },
+              // { session },
             );
 
           if (!updatedAssignment) {
+            const againUpdated = await this.attendeeModel.findByIdAndUpdate(
+              attendeeId,
+              {
+                $set: { isPulledback: false },
+              },
+              { new: true },
+            );
+            console.log('againupdated');
             throw new NotFoundException(
               `Assignment for attendee with id ${attendeeId} not found`,
             );
@@ -1170,19 +1183,20 @@ export class AssignmentService {
         });
 
         const results = await Promise.all(updatations);
-        await session.commitTransaction();
-        session.endSession();
+        // await session.commitTransaction();
+        // session.endSession();
         return results;
       } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
+        // await session.abortTransaction();
+        // session.endSession();
         throw error;
       }
     } else {
+      // Handling assignments if employeeId exists
       const assignments = await this.assignmentsModel.find({
-        adminId: new Types.ObjectId(`${adminId}`),
+        adminId: new Types.ObjectId(adminId),
         status: AssignmentStatus.ACTIVE,
-        webinar: new Types.ObjectId(`${webinarId}`),
+        webinar: new Types.ObjectId(webinarId),
         recordType: recordType,
         attendee: { $in: attendeeIds },
       });
