@@ -182,6 +182,7 @@ export class AlarmService {
         const createAlarmDto: CreateAlarmDto = {
           user: alarm.user,
           email: alarm?.email,
+          attendeeId: alarm?.attendeeId,
           date: alarm.date,
           note: alarm.note,
         };
