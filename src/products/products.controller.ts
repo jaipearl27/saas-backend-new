@@ -43,6 +43,15 @@ export class ProductsController {
     return products;
   }
 
+  @Get('all')
+  async getAllProductsByAdminId(@AdminId() adminId: string): Promise<any> {
+    const products = await this.productsService.getAllProductsByAdminId(
+      adminId
+    );
+
+    return products;
+  }
+
   @Patch(':id')
   async updateProduct(
     @Param('id') id: string,
@@ -57,13 +66,12 @@ export class ProductsController {
     return product;
   }
 
-
   @Delete(':id')
   async deleteProduct(
     @Param('id') id: string,
     @Id() adminId: string,
-  ):Promise<any> {
-    const result = await this.productsService.deleteProduct(id, adminId)
-    return result
+  ): Promise<any> {
+    const result = await this.productsService.deleteProduct(id, adminId);
+    return result;
   }
 }

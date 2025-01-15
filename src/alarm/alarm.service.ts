@@ -67,13 +67,15 @@ export class AlarmService {
           `reminder for the alarm was set (${Date.now()}) for job ${reminderId} to run!`,
         );
 
-        const msgData = {
-          phone: alarmDetails.user.phone,
-          attendeeEmail: alarmDetails.email,
-          userName: alarmDetails.user.userName,
-          note: alarmDetails.note,
-        };
-        this.whatsappService.sendReminderMsg(msgData);
+        if (alarmDetails?.user?.phone) {
+          const msgData = {
+            phone: alarmDetails.user.phone,
+            attendeeEmail: alarmDetails.email,
+            userName: alarmDetails.user.userName,
+            note: alarmDetails.note,
+          };
+          this.whatsappService.sendReminderMsg(msgData);
+        }
       });
 
       this.schedulerRegistry.addCronJob(reminderId, reminderAlarm);
@@ -95,13 +97,15 @@ export class AlarmService {
         message: '!!! Alarm played !!!',
         deleteResult,
       });
-      const msgData = {
-        phone: alarmDetails.user.phone,
-        attendeeEmail: alarmDetails.email,
-        userName: alarmDetails.user.userName,
-        note: alarmDetails.note,
-      };
-      this.whatsappService.sendAlarmMsg(msgData);
+      if (alarmDetails?.user?.phone) {
+        const msgData = {
+          phone: alarmDetails.user.phone,
+          attendeeEmail: alarmDetails.email,
+          userName: alarmDetails.user.userName,
+          note: alarmDetails.note,
+        };
+        this.whatsappService.sendAlarmMsg(msgData);
+      }
     });
 
     const alarmId = `alarm-${id}`;
