@@ -33,7 +33,7 @@ import { NotificationModule } from 'src/notification/notification.module';
       },
     ]),
     forwardRef(() => WebinarModule),
-    NotificationModule
+    NotificationModule,
   ],
   controllers: [AttendeesController],
   providers: [AttendeesService],
@@ -45,6 +45,7 @@ export class AttendeesModule {
       .apply(AuthAdminTokenMiddleware)
       .forRoutes(
         { path: 'attendees', method: RequestMethod.POST },
+        { path: 'attendees/swap', method: RequestMethod.PUT },
       );
 
     consumer
@@ -58,8 +59,6 @@ export class AttendeesModule {
 
     consumer
       .apply(AuthTokenMiddleware, GetAdminIdMiddleware, ValidateBodyFilters)
-      .forRoutes(
-        { path: 'attendees/webinar', method: RequestMethod.POST },
-      );
+      .forRoutes({ path: 'attendees/webinar', method: RequestMethod.POST });
   }
 }

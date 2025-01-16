@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   forwardRef,
   Inject,
   Injectable,
@@ -459,5 +460,45 @@ export class AttendeesService {
     return lastAssigned;
   }
 
-  s;
+  async swapFields(
+    attendeesIds: string[],
+    field1: string,
+    field2: string,
+    adminId: string,
+  ): Promise<Attendee[]> {
+    if (!field1 || !field2) {
+      throw new BadRequestException('Both field1 and field2 must be provided.');
+    }
+
+    const attendees = await this.attendeeModel
+      .find({
+        _id: { $in: attendeesIds },
+        adminId: new Types.ObjectId(`${adminId}`),
+      })
+      .exec();
+
+    if (attendees.length !== attendeesIds.length) {
+      throw new BadRequestException('Some attendees were not found.');
+    }
+
+    const updatedAttendees = await Promise.all(
+      attendees.map(async (attendee) => {
+        if (!(field1 in attendee) || !(field2 in attendee)) {
+          throw new BadRequestException(
+            `Fields ${field1} or ${field2} do not exist in attendee.`,
+          );
+        }
+
+        const temp = attendee[field1];
+        attendee[field1] = attendee[field2];
+        attendee[field2] = temp;
+
+        await attendee.save();
+
+        return attendee;
+      }),
+    );
+
+    return updatedAttendees;
+  }
 }
