@@ -142,6 +142,8 @@ export class EnrollmentsService {
       adminId: new Types.ObjectId(`${adminId}`),
     };
 
+    console.log(pipeline)
+
     const totalEnrollments =
       await this.enrollmentModel.countDocuments(pipeline);
 
