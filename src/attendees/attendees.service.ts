@@ -17,6 +17,11 @@ import {
 import { Assignments } from 'src/schemas/Assignments.schema';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from 'src/users/users.service';
+import {
+  notificationActionType,
+  notificationType,
+} from 'src/schemas/notification.schema';
+import { NotificationService } from 'src/notification/notification.service';
 
 @Injectable()
 export class AttendeesService {
@@ -27,6 +32,7 @@ export class AttendeesService {
     private readonly configService: ConfigService,
     @Inject(forwardRef(() => UsersService))
     private readonly userService: UsersService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async addAttendees(attendees: [CreateAttendeeDto]): Promise<any> {
@@ -104,6 +110,21 @@ export class AttendeesService {
                 'Failed to update employee contact count.',
               );
             }
+
+            const notification = {
+              recipient: employee._id.toString(),
+              title: 'New Task Assigned',
+              message: `You have been assigned a new task. Please check your task list for details.`,
+              type: notificationType.INFO,
+              actionType: notificationActionType.ASSIGNMENT,
+              metadata: {
+                webinarId: updatedAttendee.webinar.toString(),
+                attendeeId: updatedAttendee._id.toString(),
+                assignmentId: newAssignment._id.toString(),
+              },
+            };
+
+            await this.notificationService.createNotification(notification);
           }
         }
       }
@@ -438,5 +459,5 @@ export class AttendeesService {
     return lastAssigned;
   }
 
-s
+  s;
 }
