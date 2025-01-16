@@ -12,6 +12,10 @@ export class CreateAlarmDto {
 
   @IsString()
   @IsNotEmpty()
+  attendeeId: string
+
+  @IsString()
+  @IsNotEmpty()
   date: Date;
 
   @IsOptional()
