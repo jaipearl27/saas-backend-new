@@ -25,6 +25,7 @@ export class StatusDropdownService {
     label: string,
     createdBy: string,
     role: string,
+    isWorked: boolean,
   ): Promise<StatusDropdown> {
     // Check if the label exists as a default option
     const existingDefault = await this.statusDropdownModel.findOne({
@@ -57,6 +58,7 @@ export class StatusDropdownService {
       label,
       createdBy: new Types.ObjectId(`${createdBy}`),
       isDefault,
+      isWorked: isWorked ? true : false,
     });
 
     return await newStatus.save();
@@ -79,9 +81,7 @@ export class StatusDropdownService {
       }
       const tableConfig = subscription?.plan?.attendeeTableConfig || {};
 
-      query['$or'] = [
-        { isDefault: true },
-      ];
+      query['$or'] = [{ isDefault: true }];
 
       if (tableConfig.get('isCustomOptionsAllowed'))
         query['$or'].push({ createdBy: new Types.ObjectId(`${adminId}`) });
@@ -113,7 +113,12 @@ export class StatusDropdownService {
 
     const statuses = await this.statusDropdownModel.find(query).exec();
     if (Array.isArray(statuses)) {
-      return statuses.filter((status) => !status?.isDefault || defaultOptions.includes(status.label)).map((status) => ({label: status.label, value: status._id}));
+      return statuses
+        .filter(
+          (status) =>
+            !status?.isDefault || defaultOptions.includes(status.label),
+        )
+        .map((status) => ({ label: status.label, value: status._id }));
     }
     return [];
   }

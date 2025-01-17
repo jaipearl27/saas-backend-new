@@ -8,12 +8,12 @@ import {
 } from 'class-validator';
 
 export class CreateLandingDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   title: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   subTitle: string;
 
   @IsObject()
@@ -26,23 +26,22 @@ export class CreateLandingDto {
   @IsOptional()
   videoControls: string;
 
-  @IsString()
-  @IsNotEmpty()
   @IsOptional()
-  link?: string;
-
-  @ValidateIf((o) => o.link !== undefined)
   @IsString()
-  @IsNotEmpty({ message: 'button name is required when link is provided.' })
   buttonName?: string;
 
-  @ValidateIf((o) => o.link !== undefined)
+  @ValidateIf((o) => o.buttonName)
   @IsString()
-  @IsNotEmpty({ message: 'button height is required when link is provided.' })
+  @IsNotEmpty({ message: 'button name is required when buttonName is provided.' })
+  link?: string;
+
+  @ValidateIf((o) => o.buttonName)
+  @IsString()
+  @IsNotEmpty({ message: 'button height is required when buttonName is provided.' })
   buttonHeight?: number;
 
-  @ValidateIf((o) => o.link !== undefined)
+  @ValidateIf((o) => o.buttonName)
   @IsString()
-  @IsNotEmpty({ message: 'button width is required when link is provided.' })
+  @IsNotEmpty({ message: 'button width is required when buttonName is provided.' })
   buttonWidth?: number;
 }

@@ -20,6 +20,12 @@ export class StatusDropdown extends Document {
     type: Boolean,
     default: false,
   })
+  isWorked: boolean;
+
+  @Prop({
+    type: Boolean,
+    default: false,
+  })
   isDefault: boolean;
 }
 

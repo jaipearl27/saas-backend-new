@@ -6,6 +6,7 @@ import { diskStorage } from 'multer';
 import { MongooseModule } from '@nestjs/mongoose';
 import { LandingPage, LandingPageSchema } from 'src/schemas/LandingPage.schema';
 import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
+import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 
 @Module({
   imports: [
@@ -26,7 +27,7 @@ import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middlew
     ]),
   ],
   controllers: [LandingpageController],
-  providers: [LandingpageService],
+  providers: [LandingpageService, CloudinaryService],
 })
 export class LandingpageModule {
   configure(consumer: MiddlewareConsumer) {
