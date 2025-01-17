@@ -48,10 +48,6 @@ export class NotesController {
       _id: new Types.ObjectId(`${body.attendee}`),
     });
 
-    console.log(body);
-
-    console.log(attendee);
-
     if (
       attendee &&
       [
@@ -64,7 +60,6 @@ export class NotesController {
         const response = await this.cloudinaryService.uploadImage(
           files.image[0].path,
         );
-        if (response) console.log(response);
         body.image = { url: response.url, public_id: response.public_id };
         unlinkSync(files.image[0].path);
       }

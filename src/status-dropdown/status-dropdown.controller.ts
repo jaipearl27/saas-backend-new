@@ -20,12 +20,12 @@ export class StatusDropdownController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
-    @Body() body: { label: string; isDefault: boolean },
+    @Body() body: { label: string; isWorked: boolean; },
     @Id() id: string,
     @Role() role: string,
   ) {
     if (!body.label) throw new Error('Please enter a label');
-    return await this.statusDropdownService.create(body.label, id, role);
+    return await this.statusDropdownService.create(body.label, id, role, body.isWorked);
   }
 
   @Get()

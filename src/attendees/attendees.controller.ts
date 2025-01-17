@@ -125,7 +125,7 @@ export class AttendeesController {
     //CHECK IF CONTACT LIMIT ALLOWS DATA TO BE ADDED:-
 
     const contactsUploaded = await this.attendeesService.getAttendeesCount(
-      body.webinarId,
+      "",
       adminId,
     );
 

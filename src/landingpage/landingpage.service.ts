@@ -1,14 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotAcceptableException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { LandingPage } from 'src/schemas/LandingPage.schema';
 import { CreateLandingDto } from './dto/createLandingPage.dto';
 import * as fs from 'fs';
+import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 
 @Injectable()
 export class LandingpageService {
   constructor(
     @InjectModel(LandingPage.name) private landingPageModel: Model<LandingPage>,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async getLandingPage(): Promise<any> {
@@ -17,26 +19,45 @@ export class LandingpageService {
     return result[0];
   }
 
-  async addLandingPage(createLandingDto: CreateLandingDto): Promise<any> {
-    const existingLandingPage = await this.landingPageModel.findOne();
-    console.log('file exists cheack -----> ', createLandingDto)
-    if (existingLandingPage) {
-      if (createLandingDto.file) {
-        console.log('file exists')
-        try {
-          const oldFilePath = existingLandingPage.file.path;
-          await fs.promises.unlink(oldFilePath);
-          console.log(`File ${oldFilePath} has been successfully removed.`);
-        } catch (error) {
-          console.error(`Error removing file: ${error.message}`);
-          // throw new Error('Failed to remove the old file.');
-        }
-      } else {
-        console.log('file not exists')
+  async addLandingPage(
+    createLandingDto: CreateLandingDto,
+    file: Express.Multer.File,
+  ): Promise<any> {
+    console.log(file);
 
-        delete createLandingDto.file;
+    if (file) {
+      if (file.mimetype.includes('image')) {
+        const response = await this.cloudinaryService.uploadImage(
+          file.path,
+          'landingpage',
+        );
+        fs.unlinkSync(file.path);
+        if (!response) {
+          throw new NotAcceptableException('Failed to upload image');
+        }
+        createLandingDto.file = response;
+      } else {
+        createLandingDto.file = file;
       }
-      console.log('file exists cheack -----> ', createLandingDto)
+    } else {
+      delete createLandingDto.file;
+    }
+    
+
+    const existingLandingPage = await this.landingPageModel.findOne();
+    console.log('file exists cheack -----> ', createLandingDto);
+    if (existingLandingPage) {
+      console.log(existingLandingPage);
+      if (createLandingDto?.file) {
+        if (existingLandingPage?.file?.public_id) {
+          await this.cloudinaryService.deleteFile(
+            existingLandingPage.file.public_id,
+            'landingpage',
+          );
+        } else if (existingLandingPage?.file?.path) {
+          fs.unlinkSync(existingLandingPage.file.path);
+        }
+      }
 
       const updatedData = await this.landingPageModel.findByIdAndUpdate(
         existingLandingPage._id,
@@ -51,6 +72,6 @@ export class LandingpageService {
     }
 
     const newLandingPage = await this.landingPageModel.create(createLandingDto);
-    return newLandingPage;
+    return [];
   }
 }
