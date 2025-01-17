@@ -1,6 +1,6 @@
 import { Injectable, NotAcceptableException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { CreateLocationDto, UpdateLocationDto } from './dto/location.dto';
 import { Location } from 'src/schemas/location.schema';
 
@@ -30,9 +30,18 @@ export class LocationService {
     return result;
   }
 
-  async getLocationRequests(): Promise<any> {
+  async getLocationRequests(
+    isVerified: boolean,
+    admin?: string,
+  ): Promise<any> {
+    const pipeline = { isVerified };
+    if (admin) {
+      pipeline['admin'] = new Types.ObjectId(`${admin}`);
+    }
+
+    console.log(pipeline)
     const result = await this.locationModel
-      .find({ isVerified: false })
+      .find(pipeline)
       .sort({ createdAt: -1 });
     return result;
   }
