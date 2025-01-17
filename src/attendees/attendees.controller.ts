@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
@@ -17,6 +18,7 @@ import {
   AttendeesFilterDto,
   CreateAttendeeDto,
   GetAttendeesDTO,
+  SwapAttendeeFieldsDTO,
   UpdateAttendeeDto,
 } from './dto/attendees.dto';
 import { Types } from 'mongoose';
@@ -31,17 +33,16 @@ export class AttendeesController {
     @Inject(forwardRef(() => SubscriptionService))
     private readonly subscriptionService: SubscriptionService,
     private readonly webinarService: WebinarService,
-  ) { }
+  ) {}
 
   @Get(':email')
   async getAttendee(
-    @Param("email") email: string,
-    @AdminId() adminId: string
+    @Param('email') email: string,
+    @AdminId() adminId: string,
   ): Promise<any> {
-    const result = await this.attendeesService.getAttendee(adminId, email)
-    return result
+    const result = await this.attendeesService.getAttendee(adminId, email);
+    return result;
   }
-
 
   @Post('webinar')
   async getAttendees(
@@ -49,8 +50,6 @@ export class AttendeesController {
     @AdminId() adminId: string,
     @Body() body: GetAttendeesDTO,
   ) {
-
-
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
 
@@ -62,7 +61,7 @@ export class AttendeesController {
       limit,
       body.filters,
       body?.validCall,
-      body?.assignmentType
+      body?.assignmentType,
     );
 
     return result;
@@ -166,4 +165,16 @@ export class AttendeesController {
     return result;
   }
 
+  @Put('/swap')
+  async swapAttendees(
+    @Body() body: SwapAttendeeFieldsDTO,
+    @Id() adminId: string,  
+  ) {
+    return await this.attendeesService.swapFields(
+      body.attendees,
+      body.field1,
+      body.field2,
+      adminId,
+    );
+  }
 }

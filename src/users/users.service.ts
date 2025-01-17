@@ -604,7 +604,7 @@ export class UsersService {
       name: createEmployeeDto?.role,
     });
     if (!role) throw new NotFoundException('No Role Found with the given ID.');
-
+    console.log('creating Employee');
     const user = await this.userModel.create({
       ...createEmployeeDto,
       role: role._id,

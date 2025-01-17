@@ -108,14 +108,6 @@ export class SubscriptionService {
           throw new Error('Failed to create subscription addon');
         });
 
-      const billing = await this.BillingHistoryService.addOneBillingHistory(
-        adminId,
-        addonId,
-        addOn.addOnPrice,
-      ).catch(() => {
-        throw new Error('Failed to create billing history');
-      });
-
       subscription.employeeLimitAddon = Math.max(
         (subscription.employeeLimitAddon || 0) + addOn.employeeLimit,
         0,
@@ -129,6 +121,14 @@ export class SubscriptionService {
       await subscription.save();
       await session.commitTransaction();
       session.endSession();
+
+      const billing = await this.BillingHistoryService.addOneBillingHistory(
+        adminId,
+        addonId,
+        addOn.addOnPrice,
+      ).catch(() => {
+        throw new Error('Failed to create billing history');
+      });
 
       return {
         subscription,

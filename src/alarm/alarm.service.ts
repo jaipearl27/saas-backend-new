@@ -182,6 +182,7 @@ export class AlarmService {
         const createAlarmDto: CreateAlarmDto = {
           user: alarm.user,
           email: alarm?.email,
+          attendeeId: alarm?.attendeeId,
           date: alarm.date,
           note: alarm.note,
         };
@@ -201,7 +202,7 @@ export class AlarmService {
           $lt: endDate,
         },
       })
-      .select('date email note _id')
+      .select('date email note _id attendeeId')
       .exec();
 
     return alarms;
