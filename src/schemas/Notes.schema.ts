@@ -5,24 +5,23 @@ import { User } from './User.schema';
 
 @Schema({ timestamps: true })
 export class Notes extends Document {
-
   @Prop({
     type: Types.ObjectId,
     ref: Attendee.name,
     required: [true, 'Attendee ID is required'],
-  })  
+  })
   attendee: Types.ObjectId;
 
   @Prop({
     type: String,
-    required: [true, 'E-Mail is required'], 
+    required: [true, 'E-Mail is required'],
     trim: true,
   })
   email: string;
 
   @Prop({
     type: String,
-    required: [true, 'Note is required'],
+    required: false,
   })
   note: string;
 
@@ -75,17 +74,20 @@ export class Notes extends Document {
   })
   createdBy: Types.ObjectId;
 
- 
+  @Prop({
+    type: Boolean,
+    default: false,
+  })
+  isWorked: boolean;
 }
 
 export const NotesSchema = SchemaFactory.createForClass(Notes);
-
 
 NotesSchema.pre('save', function (next) {
   if (typeof this.createdBy === 'string') {
     this.createdBy = new Types.ObjectId(`${this.createdBy}`);
   }
-   if (typeof this.attendee === 'string') {
+  if (typeof this.attendee === 'string') {
     this.attendee = new Types.ObjectId(`${this.attendee}`);
   }
   next();

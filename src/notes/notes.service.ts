@@ -42,7 +42,7 @@ export class NotesService {
       }
       await attendee.save();
     }
-    const note = await this.notesModel.create({ ...body, createdBy });
+    const note = await this.notesModel.create({ ...body, createdBy, isWorked: body.isWorked === 'true' ? true : false });
     return note;
   }
 

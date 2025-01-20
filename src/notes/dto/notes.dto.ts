@@ -1,5 +1,10 @@
-import { IsString, IsNotEmpty, IsOptional, IsArray, ValidateNested, IsMongoId } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsArray, ValidateNested, IsMongoId, IsBoolean, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+
+enum BooleanString {
+  True = 'true',
+  False = 'false',
+}
 
 class CallDurationDto {
   @IsOptional()
@@ -25,9 +30,9 @@ export class CreateNoteDto {
   @IsNotEmpty({ message: 'E-Mail is required' })
   email: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Note is required' })
-  note: string;
+  note?: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Phone number is required' })
@@ -41,6 +46,9 @@ export class CreateNoteDto {
   @IsString()
   @IsNotEmpty({ message: 'Status is required' })
   status: string;
+
+  @IsEnum(BooleanString, { message: 'isWorked must be either "true" or "false"' })
+  isWorked: BooleanString;
 
   @IsOptional()
   image: any;
