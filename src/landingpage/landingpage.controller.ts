@@ -17,8 +17,8 @@ export class LandingpageController {
 
   @Get()
   async getLandingPage() {
-    const result = await this.landingPageService.getLandingPage()
-    return result
+    const result = await this.landingPageService.getLandingPage();
+    return result;
   }
 
   @Post()
@@ -27,16 +27,10 @@ export class LandingpageController {
     @UploadedFile() file: Express.Multer.File,
     @Body() createLandingDto: CreateLandingDto,
   ): Promise<any> {
-    if (file) {
-      createLandingDto.file = file;
-    }
-    else{
-      createLandingDto.file = null;
-    }
-    
-
-    const result =
-      await this.landingPageService.addLandingPage(createLandingDto);
+    const result = await this.landingPageService.addLandingPage(
+      createLandingDto,
+      file,
+    );
     return result;
   }
 }
