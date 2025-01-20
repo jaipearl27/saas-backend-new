@@ -17,7 +17,7 @@ export class EnrollmentsController {
 
   @Post()
   async createEnrollment(
-    @Id() adminId: string,
+    @AdminId() adminId: string,
     @Body() createEnrollmentDto: CreateEnrollmentDto,
   ): Promise<any> {
     createEnrollmentDto.adminId = adminId;
