@@ -37,6 +37,10 @@ export class LocationController {
       createLocationDto.isAdminVerified = true;
       createLocationDto.admin = id;
       const result = await this.locationService.addLocation(createLocationDto);
+
+      //create notification
+
+
       return result;
     } else if (
       [
