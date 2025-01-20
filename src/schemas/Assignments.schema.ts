@@ -58,6 +58,12 @@ export class Assignments extends Document {
     default: AssignmentStatus.ACTIVE,
   })
   status: AssignmentStatus;
+
+  @Prop({
+    type: String,
+    maxlength: 1000,
+  })
+  requestReason?: string;
 }
 
 export const AssignmentsSchema = SchemaFactory.createForClass(Assignments);

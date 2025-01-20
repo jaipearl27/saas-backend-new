@@ -88,6 +88,10 @@ export class RequestReAssignmentsDTO {
   @IsOptional()
   @IsMongoId()
   webinarId?: string;
+
+  @IsOptional()
+  @IsString()
+  requestReason?: string;
 }
 
 class AssignmentAttendee {

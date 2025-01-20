@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -167,43 +168,22 @@ export class AssignmentController {
     );
   }
 
-  @Patch('pullback')
-  async pullbackAssignment(
-    @Body('id') id: string,
-    @Id() adminId: string,
-  ): Promise<any> {
-    const result = await this.assignmentService.pullbackAssignment(id, adminId);
-    return result;
-  }
-
-  @Post('pullback')
-  async getPullbacks(
-    @Body() body: { webinar: string; filters: any },
-    @Id() id: string,
-    @Query() query: { page?: string; limit?: string },
-  ): Promise<any> {
-    const page = Number(query?.page) ? Number(query?.page) : 1;
-    const limit = Number(query?.limit) ? Number(query?.limit) : 25;
-    const result = await this.assignmentService.getPullbacks(
-      body.webinar,
-      id,
-      page,
-      limit,
-    );
-    return result;
-  }
-
   @Patch('reassign')
   async reassignAssignment(
     @Body() body: RequestReAssignmentsDTO,
     @AdminId() adminId: string,
     @Id() userId: string,
   ) {
+    if(!body.requestReason){
+      throw new BadRequestException("Reason is Required.")
+    }
+
     return await this.assignmentService.requestReAssignements(
       userId,
       adminId,
       body.assignments,
-      body.webinarId
+      body.webinarId,
+      body.requestReason
     );
   }
 

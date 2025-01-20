@@ -98,9 +98,7 @@ export class UsersService {
         );
       }
     }
-    if (filterData.contactsLimit) {
-      subscriptionFilter['contactLimit'] = filterData.contactsLimit;
-    }
+
     if (filterData.toggleLimit) {
       subscriptionFilter['toggleLimit'] = filterData.toggleLimit;
     }
@@ -118,6 +116,9 @@ export class UsersService {
     if (filterData.employeeReminderCount) {
       employeeCountFilter['employeeReminderCount'] =
         filterData.employeeReminderCount;
+    }
+    if (filterData.contactsLimit) {
+      employeeCountFilter['contactsLimit'] = filterData.contactsLimit;
     }
 
     const clientRoleId = this.configService.get('appRoles').ADMIN;
@@ -145,6 +146,9 @@ export class UsersService {
                 expiryDate: 1,
                 contactLimit: 1,
                 toggleLimit: 1,
+                contactLimitAddon: 1,
+                employeeLimit: 1,
+                employeeLimitAddon: 1,
               },
             },
           ],
@@ -186,7 +190,12 @@ export class UsersService {
           planName: '$plan.name',
           planStartDate: '$subscription.startDate',
           planExpiry: '$subscription.expiryDate',
-          contactsLimit: '$subscription.contactLimit',
+          contactsLimit: {
+            $add: [
+              '$subscription.contactLimit',
+              '$subscription.contactLimitAddon',
+            ],
+          },
           toggleLimit: '$subscription.toggleLimit',
           totalEmployees: { $size: '$employees' },
           employeeSalesCount: {
@@ -217,6 +226,43 @@ export class UsersService {
         $match: employeeCountFilter,
       },
       {
+        $lookup: {
+          from: 'attendees',
+          localField: '_id',
+          foreignField: 'adminId',
+          as: 'attendees',
+        },
+      },
+      {
+        $addFields: {
+          usedContactsCount: { $size: '$attendees' },
+          employeeLimit: {
+            $add: [
+              '$subscription.employeeLimit',
+              '$subscription.employeeLimitAddon',
+            ],
+          },
+          remainingDays: {
+            $max: [
+              {
+                $floor: {
+                  $divide: [
+                    {
+                      $subtract: [
+                        { $toLong: '$subscription.expiryDate' }, // Convert expiry date to milliseconds
+                        { $toLong: new Date() }, // Convert current date to milliseconds
+                      ],
+                    },
+                    1000 * 60 * 60 * 24, // Convert milliseconds to days
+                  ],
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
+      {
         $project: {
           email: 1,
           companyName: 1,
@@ -232,6 +278,9 @@ export class UsersService {
           employeeSalesCount: 1,
           employeeReminderCount: 1,
           contactsCount: 1,
+          employeeLimit: 1,
+          remainingDays: 1,
+          usedContactsCount: 1,
         },
       },
     ];
@@ -556,7 +605,6 @@ export class UsersService {
     user.documents = filteredDocuments;
 
     //add logic for deleting file from server here
-
 
     const result = user.save();
 

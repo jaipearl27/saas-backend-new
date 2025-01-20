@@ -561,48 +561,6 @@ export class AssignmentService {
     }
   }
 
-  async pullbackAssignment(id: string, adminId: string): Promise<any> {
-    try {
-      const assignment = await this.assignmentsModel.findOne({
-        _id: new Types.ObjectId(`${id}`),
-        adminId: new Types.ObjectId(`${adminId}`),
-      });
-      assignment.status = AssignmentStatus.INACTIVE;
-      await assignment.save();
-      const attendee = await this.attendeeModel.findOne({
-        _id: new Types.ObjectId(`${assignment.attendee}`),
-      });
-      attendee.assignedTo = new Types.ObjectId(`${adminId}`);
-      await attendee.save();
-      return { assignment, attendee };
-    } catch (error) {
-      console.log(error);
-      throw new InternalServerErrorException(
-        'Faced an error pulling back the assignment, Please try again later.',
-      );
-    }
-  }
-
-  async getPullbacks(
-    webinar: string,
-    adminId: string,
-    page: number,
-    limit: number,
-  ): Promise<any> {
-    const skip = (page - 1) * limit;
-
-    const result = await this.attendeeModel
-      .find({
-        webinar: new Types.ObjectId(`${webinar}`),
-        assignedTo: new Types.ObjectId(`${adminId}`),
-      })
-      .sort({ updatedAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    return result;
-  }
-
   async getActiveInactiveAssignments(id: string): Promise<any> {
     const pipeline: PipelineStage[] = [
       {
@@ -756,6 +714,7 @@ export class AssignmentService {
     adminId: string,
     assignments: string[],
     webinarId: string,
+    requestReason: string
   ) {
     const assignmentsIds = assignments.map(
       (assignment) => new Types.ObjectId(`${assignment}`),
@@ -767,7 +726,7 @@ export class AssignmentService {
         status: AssignmentStatus.ACTIVE,
         _id: { $in: assignmentsIds },
       },
-      { $set: { status: AssignmentStatus.REASSIGN_REQUESTED } },
+      { $set: { status: AssignmentStatus.REASSIGN_REQUESTED, requestReason } },
     );
 
     const reassignmentCount = result.modifiedCount;
