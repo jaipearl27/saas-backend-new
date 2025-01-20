@@ -40,7 +40,6 @@ export class LocationController {
 
       //create notification
 
-
       return result;
     } else if (
       [
