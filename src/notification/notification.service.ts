@@ -18,7 +18,6 @@ export class NotificationService {
   ): Promise<Notification> {
     const newNotification = new this.notificationModel(createNotificationDto);
     await newNotification.save();
-    console.log(newNotification);
 
     const socketId = this.websocketGateway.activeUsers.get(
       newNotification.recipient.toString(),
