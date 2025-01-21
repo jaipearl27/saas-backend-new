@@ -145,7 +145,7 @@ export class AttendeesController {
       data[i].adminId = new Types.ObjectId(`${adminId}`);
     }
 
-    const result = await this.attendeesService.addPostAttendees(data, webinar);
+    const result = await this.attendeesService.addPostAttendees(data, webinar, body.isAttended, adminId);
     return result;
   }
 

@@ -43,7 +43,9 @@ export class AttendeesService {
 
   async addPostAttendees(
     attendees: [CreateAttendeeDto],
-    webinar?: any,
+    webinar: any,
+    isAttended: boolean,
+    adminId: string,
   ): Promise<any> {
     const result = await this.attendeeModel.insertMany(attendees);
 
@@ -51,10 +53,13 @@ export class AttendeesService {
 
     const assignments = [];
 
+    if(!isAttended) return {result, assignments};
+
     for (let i = 0; i < resultLen; i++) {
       // Check if the attendee was previously assigned to an employee
       const lastAssigned = await this.checkPreviousPostAssignment(
         result[i].email,
+        adminId,
       );
 
       if (lastAssigned && lastAssigned.assignedTo) {
@@ -125,7 +130,7 @@ export class AttendeesService {
               },
             };
 
-            await this.notificationService.createNotification(notification);
+            this.notificationService.createNotification(notification);
           }
         }
       }
@@ -450,9 +455,9 @@ export class AttendeesService {
     return lastAssigned;
   }
 
-  async checkPreviousPostAssignment(email: string): Promise<Attendee | null> {
+  async checkPreviousPostAssignment(email: string, adminId: string): Promise<Attendee | null> {
     const lastAssigned = await this.attendeeModel
-      .findOne({ email, isAttended: true })
+      .findOne({ email, isAttended: true, adminId: new Types.ObjectId(`${adminId}`) })
       .sort({ createdAt: -1 })
       .skip(1)
       .exec();
