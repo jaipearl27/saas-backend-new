@@ -25,7 +25,6 @@ export class AuthActiveUserMiddleware implements NestMiddleware {
         throw new BadRequestException('User is Inactive, kindly recharge or contact the administrator.');
       }
     } catch (error) {
-      console.log()
       throw error;
     }
   }
