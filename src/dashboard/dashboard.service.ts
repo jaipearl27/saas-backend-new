@@ -319,7 +319,44 @@ export class DashboardService {
       },
     });
 
-    return { ...result, totalContactsLimit: totalContactsLimit ? totalContactsLimit : 0, totalContactsUsed };
+    const adminCount = result.find((e) => e.userType === 'admin');
+    const employeeCount = result.find((e) => e.userType === 'employee');
+
+    //total revenue
+
+    const totalRevenuePipeline = [
+      {
+        $match: {
+          createdAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalAmount: {
+            $sum: '$amount',
+          },
+        },
+      },
+    ];
+    const totalRevenue =
+      await this.billingHistoryModel.aggregate(totalRevenuePipeline);
+
+    return [
+      {
+        adminCount,
+        employeeCount,
+        totalContactsLimit: totalContactsLimit ? totalContactsLimit : 0,
+        totalContactsUsed,
+        totalRevenue:
+          Array.isArray(totalRevenue) &&
+          totalRevenue?.length > 0 &&
+          totalRevenue[0].totalAmount,
+      },
+    ];
   }
 
   async plansMetric(startDate: string, endDate: string): Promise<any> {
