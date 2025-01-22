@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import mongoose, { Model, PipelineStage, Types } from 'mongoose';
+import mongoose, { ClientSession, Model, PipelineStage, Types } from 'mongoose';
 import { User } from 'src/schemas/User.schema';
 import { ConfigService } from '@nestjs/config';
 import { CreateEmployeeDto } from 'src/auth/dto/createEmployee.dto';
@@ -901,16 +901,17 @@ export class UsersService {
   async incrementCount(
     id: string,
     incrementValue: number = 1,
+    session?: ClientSession, 
   ): Promise<boolean> {
-    const user = await this.userModel.findById(id).exec();
+    const user = await this.userModel.findById(id).session(session).exec(); 
     if (user) {
-      // Increment dailyContactCount by the given value
       user.dailyContactCount = (user.dailyContactCount || 0) + incrementValue;
-      await user.save();
+      await user.save({ session });
       return true;
     }
     return false;
   }
+  
 
   async resetDailyContactCount() {
     return await this.userModel.updateMany(

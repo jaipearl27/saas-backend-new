@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, PipelineStage, Types } from 'mongoose';
 import { Webinar } from 'src/schemas/Webinar.schema';
@@ -17,6 +17,7 @@ export class WebinarService {
   constructor(
     @InjectModel(Webinar.name) private webinarModel: Model<Webinar>,
     private readonly configService: ConfigService,
+    @Inject(forwardRef(() => AttendeesService))
     private readonly attendeesService: AttendeesService,
     private readonly notificationService: NotificationService,
   ) {}
@@ -245,11 +246,11 @@ export class WebinarService {
   }
 
   async getAssignedEmployees(webinarId: string): Promise<any> {
+
     const result: any = await this.webinarModel
       .findById(webinarId)
       .populate('assignedEmployees')
       .lean();
-    console.log();
 
     if (!result || !Array.isArray(result.assignedEmployees)) return [];
 
