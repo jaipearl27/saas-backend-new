@@ -4,7 +4,6 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, PipelineStage, Types } from 'mongoose';
@@ -24,9 +23,7 @@ import { WebinarService } from 'src/webinar/webinar.service';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 import { AttendeesService } from 'src/attendees/attendees.service';
 import { UsersService } from 'src/users/users.service';
-import { User } from 'src/schemas/User.schema';
 import { NotificationService } from 'src/notification/notification.service';
-import { title } from 'process';
 import {
   notificationActionType,
   notificationType,
@@ -790,7 +787,6 @@ export class AssignmentService {
     ];
 
     const result = await this.assignmentsModel.aggregate(pipeline);
-    console.log(result);
     return Array.isArray(result) && result.length > 0
       ? result[0]
       : { requests: 0, pullbacks: 0 };
@@ -804,7 +800,6 @@ export class AssignmentService {
     page: number,
     limit: number,
   ) {
-    console.log(adminId);
     const skip = (page - 1) * limit;
     const pipeline: PipelineStage[] = [
       {
@@ -813,6 +808,11 @@ export class AssignmentService {
           recordType: recordType,
           status: status,
           webinar: new Types.ObjectId(`${webinarId}`),
+        },
+      },
+      {
+        $sort: {
+          updatedAt: -1,
         },
       },
       {
@@ -879,7 +879,6 @@ export class AssignmentService {
     ];
 
     const result = await this.assignmentsModel.aggregate(pipeline);
-    console.log(result);
     return Array.isArray(result) && result.length > 0
       ? result[0]
       : { result: [], page, totalPages: 0 };
@@ -901,40 +900,46 @@ export class AssignmentService {
       session.startTransaction();
 
       try {
-        const updates = assignmentsIds.map(async (assignmentId) => {
-          const updatedAssignment =
-            await this.assignmentsModel.findOneAndUpdate(
-              {
-                adminId: new Types.ObjectId(`${adminId}`),
-                _id: assignmentId,
-              },
-              { $set: { status: AssignmentStatus.REASSIGN_APPROVED } },
-              { session }, // Add session to ensure transaction
-            );
+        const updatedAssignmentsResult = await this.assignmentsModel.updateMany(
+          {
+            adminId: new Types.ObjectId(`${adminId}`),
+            _id: { $in: assignmentsIds },
+          },
+          { $set: { status: AssignmentStatus.REASSIGN_APPROVED } },
+          { session },
+        );
 
-          if (!updatedAssignment) {
-            throw new NotFoundException('Assignment not found');
-          }
+        if (updatedAssignmentsResult.matchedCount !== assignmentsIds.length) {
+          throw new NotFoundException('Some assignments were not found');
+        }
 
-          const updatedAttendee = await this.attendeeModel.findOneAndUpdate(
+        const updatedAssignments = await this.assignmentsModel
+          .find(
             {
               adminId: new Types.ObjectId(`${adminId}`),
-              _id: updatedAssignment.attendee,
+              _id: { $in: assignmentsIds },
             },
-            { $set: { isPulledback: true } },
-            { session }, // Add session to ensure transaction
-          );
+            { attendee: 1 },
+          )
+          .session(session);
 
-          if (!updatedAttendee) {
-            throw new NotFoundException('Attendee not found');
-          }
+        const attendeeIds = updatedAssignments.map(
+          (assignment) => assignment.attendee,
+        );
 
-          return updatedAssignment;
-        });
+        const updatedAttendeesResult = await this.attendeeModel.updateMany(
+          {
+            adminId: new Types.ObjectId(`${adminId}`),
+            _id: { $in: attendeeIds },
+          },
+          { $set: { isPulledback: true } },
+          { session },
+        );
 
-        const results = await Promise.all(updates);
+        if (updatedAttendeesResult.matchedCount !== attendeeIds.length) {
+          throw new NotFoundException('Some attendees were not found');
+        }
 
-        // Commit the transaction if everything succeeds
         await session.commitTransaction();
         session.endSession();
 
@@ -950,7 +955,10 @@ export class AssignmentService {
           },
         });
 
-        return results;
+        return {
+          updatedAssignments: updatedAssignmentsResult,
+          updatedAttendees: updatedAttendeesResult,
+        };
       } catch (error) {
         // Abort the transaction in case of an error
         await session.abortTransaction();
@@ -958,7 +966,6 @@ export class AssignmentService {
         throw error;
       }
     } else if (status === 'rejected') {
-      // Using updateMany for rejected
       const result = await this.assignmentsModel.updateMany(
         {
           adminId: new Types.ObjectId(`${adminId}`),
@@ -984,8 +991,8 @@ export class AssignmentService {
   }
 
   async changeAssignment(data: ReAssignmentDTO, adminId: string) {
-    const session = await this.mongoConnection.startSession(); // Start a session
-    session.startTransaction(); // Begin transaction
+    const session = await this.mongoConnection.startSession();
+    session.startTransaction();
 
     try {
       const employee = await this.userService.getEmployee(data.employeeId);
@@ -994,105 +1001,101 @@ export class AssignmentService {
           'Employee not found or unauthorized access',
         );
       }
-      if (employee.isActive === false) {
+      if (!employee.isActive) {
         throw new BadRequestException('Employee is inactive');
       }
-
-      if (employee.adminId.toString() !== `${adminId}`) {
-        throw new BadRequestException('Unauthorized access');
-      }
-
       if (employee.dailyContactCount >= employee.dailyContactLimit) {
         throw new BadRequestException(
           'Employee has reached daily contact limit',
         );
       }
 
+      const assignmentIds = data.assignments.map(
+        (a) => new Types.ObjectId(a.assignmentId),
+      );
+      const attendeeIds = data.assignments.map(
+        (a) => new Types.ObjectId(a.attendeeId),
+      );
+
+      // Bulk delete assignments
+      const deletedAssignmentsResult = await this.assignmentsModel.deleteMany(
+        {
+          _id: { $in: assignmentIds },
+          adminId: new Types.ObjectId(`${adminId}`),
+          webinar: new Types.ObjectId(data.webinarId),
+          attendee: { $in: attendeeIds },
+          recordType: data.recordType,
+        },
+        { session }, // Include session in the operation
+      );
+
+      if (deletedAssignmentsResult.deletedCount !== data.assignments.length) {
+        throw new NotFoundException(
+          'Some assignments were not found or unauthorized access',
+        );
+      }
+
+      // Bulk update attendees
       const query = data.isTemp
         ? { tempAssignedTo: employee._id }
         : { assignedTo: employee._id, tempAssignedTo: null };
 
-      let updatedAssignmentsCount = 0;
-      let updatedAttendeesCount = 0;
-      const newAssignments = [];
+      const updatedAttendeesResult = await this.attendeeModel.updateMany(
+        {
+          _id: { $in: attendeeIds },
+          adminId: new Types.ObjectId(`${adminId}`),
+          webinar: new Types.ObjectId(data.webinarId),
+          isAttended:
+            data.recordType === RecordType.POST_WEBINAR ? true : false,
+        },
+        { $set: { isPulledback: false, ...query } },
+        { session }, // Include session in the operation
+      );
 
-      for (const assignment of data.assignments) {
-        const assignmentId = new Types.ObjectId(assignment.assignmentId);
-        const attendeeId = new Types.ObjectId(assignment.attendeeId);
-
-        // Update assignment status to INACTIVE
-        const updateAssignment = await this.assignmentsModel.updateOne(
-          {
-            _id: assignmentId,
-            adminId: new Types.ObjectId(`${adminId}`),
-            webinar: new Types.ObjectId(data.webinarId),
-            attendee: attendeeId,
-            recordType: data.recordType,
-          },
-          { $set: { status: AssignmentStatus.INACTIVE } },
-          { session }, // Include session in the operation
+      if (updatedAttendeesResult.matchedCount !== data.assignments.length) {
+        throw new NotFoundException(
+          'Some attendees were not found or unauthorized access',
         );
-        if (updateAssignment.matchedCount === 0) {
-          throw new NotFoundException(
-            `Assignment with ID ${assignment.assignmentId} not found or unauthorized access`,
-          );
-        }
-        updatedAssignmentsCount++;
-
-        // Update attendee with the new assignment
-        const updateAttendee = await this.attendeeModel.updateOne(
-          {
-            _id: attendeeId,
-            adminId: new Types.ObjectId(`${adminId}`),
-            webinar: new Types.ObjectId(data.webinarId),
-            isAttended:
-              data.recordType === RecordType.POST_WEBINAR ? true : false,
-          },
-          { $set: { isPulledback: false, ...query } },
-          { session }, // Include session in the operation
-        );
-        if (updateAttendee.matchedCount === 0) {
-          throw new NotFoundException(
-            `Attendee with ID ${assignment.attendeeId} not found or unauthorized access`,
-          );
-        }
-        updatedAttendeesCount++;
-
-        // Create new assignment
-        const createdAssignment = await this.assignmentsModel.create(
-          [
-            {
-              adminId: new Types.ObjectId(`${adminId}`),
-              user: employee._id,
-              webinar: new Types.ObjectId(data.webinarId),
-              attendee: attendeeId,
-              recordType: data.recordType,
-              status: AssignmentStatus.ACTIVE,
-            },
-          ],
-          { session }, // Include session in the operation
-        );
-
-        if (!createdAssignment) {
-          throw new InternalServerErrorException(
-            'Failed to create a new assignment',
-          );
-        }
-        newAssignments.push(createdAssignment);
       }
 
+      // Bulk create new assignments
+      const newAssignmentsData = data.assignments.map((assignment) => ({
+        adminId: new Types.ObjectId(`${adminId}`),
+        user: employee._id,
+        webinar: new Types.ObjectId(data.webinarId),
+        attendee: new Types.ObjectId(assignment.attendeeId),
+        recordType: data.recordType,
+        status: AssignmentStatus.ACTIVE,
+      }));
+
+      const createdAssignments = await this.assignmentsModel.insertMany(
+        newAssignmentsData,
+        { session }, // Include session in the operation
+      );
+
+      if (
+        !createdAssignments ||
+        createdAssignments.length !== data.assignments.length
+      ) {
+        throw new InternalServerErrorException(
+          'Failed to create all new assignments',
+        );
+      }
+
+      // Increment employee's daily contact count
       await this.userService.incrementCount(
         employee._id.toString(),
-        updatedAssignmentsCount,
+        createdAssignments.length,
       );
 
       await session.commitTransaction(); // Commit the transaction if all operations succeed
       session.endSession();
 
+      // Send notification
       await this.notificationService.createNotification({
         recipient: employee._id.toString(),
         title: 'New Tasks Assigned',
-        message: `You have been assigned ${updatedAssignmentsCount} new tasks ${data.isTemp ? 'temporarily' : ''}. Please check your task list for details.`,
+        message: `You have been assigned ${createdAssignments.length} new tasks ${data.isTemp ? 'temporarily' : ''}. Please check your task list for details.`,
         type: notificationType.INFO,
         actionType: notificationActionType.REASSIGNMENT,
         metadata: {
@@ -1102,9 +1105,9 @@ export class AssignmentService {
 
       return {
         message: 'Reassignment completed successfully',
-        updatedAssignmentsCount,
-        updatedAttendeesCount,
-        newAssignments,
+        updatedAssignmentsCount: deletedAssignmentsResult.deletedCount,
+        updatedAttendeesCount: updatedAttendeesResult.matchedCount,
+        newAssignments: createdAssignments,
       };
     } catch (error) {
       await session.abortTransaction(); // Roll back all changes if any operation fails
@@ -1127,82 +1130,59 @@ export class AssignmentService {
       (attendee) => new Types.ObjectId(`${attendee}`),
     );
 
-    // if employee ID not exists, meaning user chose the option to pullback all attendees' Assignments
     if (!employeeId) {
-      // const session = await this.mongoConnection.startSession();
-      // session.startTransaction();
-      // console.log(session);
-
       try {
-        const updatations = attendeeIds.map(async (attendeeId) => {
-          const updatedAttendee = await this.attendeeModel.findOneAndUpdate(
-            {
-              adminId: new Types.ObjectId(adminId),
-              webinar: new Types.ObjectId(webinarId),
-              isAttended: recordType === RecordType.POST_WEBINAR,
-              assignedTo: { $ne: null },
-              _id: attendeeId,
-            },
-            { $set: { isPulledback: true } },
-            { new: true },
-            // { session },
+
+        console.log('pullin back')
+        const updatedAttendeesResult = await this.attendeeModel.updateMany(
+          {
+            adminId: new Types.ObjectId(adminId),
+            webinar: new Types.ObjectId(webinarId),
+            isAttended: recordType === RecordType.POST_WEBINAR,
+            assignedTo: { $ne: null },
+            _id: { $in: attendeeIds },
+          },
+          { $set: { isPulledback: true } },
+          { new: true },
+        );
+
+        if (updatedAttendeesResult.matchedCount !== attendeeIds.length) {
+          throw new NotFoundException(
+            'Some attendees were not found or unauthorized access',
           );
-          console.log('updatedAttendee', updatedAttendee);
+        }
 
-          if (!updatedAttendee) {
-            throw new NotFoundException(
-              `Attendee with id ${attendeeId} not found`,
-            );
-          }
+        const updatedAssignmentsResult = await this.assignmentsModel.updateMany(
+          {
+            attendee: { $in: attendeeIds },
+            adminId: new Types.ObjectId(adminId),
+            webinar: new Types.ObjectId(webinarId),
+            recordType: recordType,
+          },
+          { $set: { status: AssignmentStatus.REASSIGN_APPROVED } },
+        );
 
-          const updatedAssignment =
-            await this.assignmentsModel.findOneAndUpdate(
-              {
-                attendee: attendeeId,
-                adminId: new Types.ObjectId(adminId),
-                webinar: new Types.ObjectId(webinarId),
-                recordType: recordType,
-                status: AssignmentStatus.ACTIVE,
-              },
-              {
-                $set: {
-                  status: AssignmentStatus.REASSIGN_APPROVED,
-                },
-              },
-              // { session },
-            );
+        if (updatedAssignmentsResult.matchedCount !== attendeeIds.length) {
+          await this.attendeeModel.updateMany(
+            { _id: { $in: attendeeIds } },
+            { $set: { isPulledback: false } },
+          );
+          throw new NotFoundException(
+            'Some assignments were not found for the attendees',
+          );
+        }
 
-          if (!updatedAssignment) {
-            const againUpdated = await this.attendeeModel.findByIdAndUpdate(
-              attendeeId,
-              {
-                $set: { isPulledback: false },
-              },
-              { new: true },
-            );
-            console.log('againupdated');
-            throw new NotFoundException(
-              `Assignment for attendee with id ${attendeeId} not found`,
-            );
-          }
-
-          return updatedAssignment;
-        });
-
-        const results = await Promise.all(updatations);
-        // await session.commitTransaction();
-        // session.endSession();
-        return results;
+        return {
+          message: 'Attendees and assignments updated successfully',
+          updatedAttendeesCount: updatedAttendeesResult.modifiedCount,
+          updatedAssignmentsCount: updatedAssignmentsResult.modifiedCount,
+        };
       } catch (error) {
-        // await session.abortTransaction();
-        // session.endSession();
         throw error;
       }
     } else {
-      // Handling assignments if employeeId exists
       const assignments = await this.assignmentsModel.find({
         adminId: new Types.ObjectId(adminId),
-        status: AssignmentStatus.ACTIVE,
         webinar: new Types.ObjectId(webinarId),
         recordType: recordType,
         attendee: { $in: attendeeIds },

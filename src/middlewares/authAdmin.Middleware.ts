@@ -15,7 +15,6 @@ export class AuthAdminTokenMiddleware implements NestMiddleware {
   ) {}
 
   async use(req, res: Response, next: NextFunction) {
-    // console.log('auth admin Middleware applied', req.cookies); // <-- This will confirm middleware execution
     const access_token =
       req.cookies[this.configService.get('ACCESS_TOKEN_NAME')];
 
@@ -50,7 +49,6 @@ export class AuthAdminTokenMiddleware implements NestMiddleware {
           );
         }
       } else if (access_token) {
-        console.log('admin token')
         const decodeOptions = {
           secret: this.configService.get('ACCESS_TOKEN_SECRET'),
         };
