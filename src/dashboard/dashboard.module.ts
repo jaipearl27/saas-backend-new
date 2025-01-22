@@ -11,6 +11,7 @@ import {
 } from 'src/schemas/Subscription.schema';
 import { Plans, PlansSchema } from 'src/schemas/Plans.schema';
 import { BillingHistory, BillingHistorySchema } from 'src/schemas/BillingHistory.schema';
+import { Attendee, AttendeeSchema } from 'src/schemas/Attendee.schema';
 
 @Module({
   imports: [
@@ -27,6 +28,10 @@ import { BillingHistory, BillingHistorySchema } from 'src/schemas/BillingHistory
       {
         name: BillingHistory.name,
         schema: BillingHistorySchema,
+      },
+      {
+        name: Attendee.name,
+        schema: AttendeeSchema,
       },
     ]),
   ],
