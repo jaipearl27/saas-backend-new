@@ -22,8 +22,9 @@ import {
 } from './dto/Assignment.dto';
 import { UsersService } from 'src/users/users.service';
 import { AssignmentService } from './assignment.service';
-import { AdminId, Id } from 'src/decorators/custom.decorator';
+import { AdminId, Id, Role } from 'src/decorators/custom.decorator';
 import { AssignmentStatus } from 'src/schemas/Assignments.schema';
+import { Types } from 'mongoose';
 
 @Controller('assignment')
 export class AssignmentController {
@@ -173,6 +174,7 @@ export class AssignmentController {
     @Body() body: RequestReAssignmentsDTO,
     @AdminId() adminId: string,
     @Id() userId: string,
+    @Role() role: string
   ) {
     if(!body.requestReason){
       throw new BadRequestException("Reason is Required.")
@@ -183,7 +185,8 @@ export class AssignmentController {
       adminId,
       body.assignments,
       body.webinarId,
-      body.requestReason
+      body.requestReason,
+      role
     );
   }
 
@@ -243,6 +246,18 @@ export class AssignmentController {
       body.status,
       page,
       limit,
+    );
+  }
+
+  @Get('reassign/fetch')
+  async fetchPullbackRequestsCount(
+    @Id() adminId: string,
+    @Query() query: FetchReAssignmentsDTO,
+  ) {
+    return await this.assignmentService.getPullbackRequestsCount(
+      query.recordType,
+      new Types.ObjectId(`${adminId}`),
+      new Types.ObjectId(`${query.webinarId}`),
     );
   }
 }

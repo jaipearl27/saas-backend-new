@@ -123,15 +123,10 @@ export class AttendeesService {
             { session },
           );
 
-          const updatedEmployee = await this.userService.incrementCount(
+           await this.userService.incrementCount(
             empId,
             empData.contactCount,
             session,
-          );
-          console.log(
-            newAssignments.length,
-            updatedAttendees.modifiedCount,
-            empData.contactCount,
           );
           if (
             newAssignments.length !== updatedAttendees.modifiedCount ||
