@@ -714,8 +714,14 @@ export class AssignmentService {
     adminId: string,
     assignments: string[],
     webinarId: string,
-    requestReason: string
+    requestReason: string,
+    role: string,
   ) {
+    const recordType =
+      this.configService.get('appRoles')['EMPLOYEE_REMINDER'] === role
+        ? 'preWebinar'
+        : 'postWebinar';
+
     const assignmentsIds = assignments.map(
       (assignment) => new Types.ObjectId(`${assignment}`),
     );
@@ -743,10 +749,51 @@ export class AssignmentService {
           reassignmentCount,
           type: 'request',
           webinarId,
+          recordType,
         },
       });
     }
     return result;
+  }
+
+  async getPullbackRequestsCount(
+    recordType: string,
+    adminId: Types.ObjectId,
+    webinar: Types.ObjectId,
+  ) {
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          adminId,
+          recordType,
+          webinar,
+        },
+      },
+      {
+        $facet: {
+          requests: [
+            { $match: { status: 'reassignrequested' } },
+            { $group: { _id: null, count: { $sum: 1 } } },
+          ],
+          pullbacks: [
+            { $match: { status: 'reassignapproved' } },
+            { $group: { _id: null, count: { $sum: 1 } } },
+          ],
+        },
+      },
+      {
+        $project: {
+          requests: { $arrayElemAt: ['$requests.count', 0] },
+          pullbacks: { $arrayElemAt: ['$pullbacks.count', 0] },
+        },
+      },
+    ];
+
+    const result = await this.assignmentsModel.aggregate(pipeline);
+    console.log(result);
+    return Array.isArray(result) && result.length > 0
+      ? result[0]
+      : { requests: 0, pullbacks: 0 };
   }
 
   async getReAssignments(
@@ -757,6 +804,7 @@ export class AssignmentService {
     page: number,
     limit: number,
   ) {
+    console.log(adminId);
     const skip = (page - 1) * limit;
     const pipeline: PipelineStage[] = [
       {
