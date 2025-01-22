@@ -23,6 +23,7 @@ import {
   notificationType,
 } from 'src/schemas/notification.schema';
 import { NotificationService } from 'src/notification/notification.service';
+import { WebinarService } from 'src/webinar/webinar.service';
 
 @Injectable()
 export class AttendeesService {
@@ -34,6 +35,8 @@ export class AttendeesService {
     @Inject(forwardRef(() => UsersService))
     private readonly userService: UsersService,
     private readonly notificationService: NotificationService,
+    @Inject(forwardRef(() => WebinarService))
+    private readonly webinarService: WebinarService,
   ) {}
 
   async addAttendees(attendees: [CreateAttendeeDto]): Promise<any> {
@@ -43,95 +46,121 @@ export class AttendeesService {
 
   async addPostAttendees(
     attendees: [CreateAttendeeDto],
-    webinar?: any,
+    webinar: string,
+    isAttended: boolean,
+    adminId: string,
   ): Promise<any> {
-    const result = await this.attendeeModel.insertMany(attendees);
+    const session = await this.attendeeModel.startSession();
 
-    const resultLen = result?.length || 0;
+    try {
+      await session.withTransaction(async () => {
+        const newAttendees = await this.attendeeModel.insertMany(attendees, {
+          session,
+        });
+        const assignedEmployees =
+          await this.webinarService.getAssignedEmployees(webinar);
 
-    const assignments = [];
+        const role = isAttended
+          ? this.configService.get('appRoles')['EMPLOYEE_SALES']
+          : this.configService.get('appRoles')['EMPLOYEE_REMINDER'];
 
-    for (let i = 0; i < resultLen; i++) {
-      // Check if the attendee was previously assigned to an employee
-      const lastAssigned = await this.checkPreviousPostAssignment(
-        result[i].email,
-      );
+        const empData: {
+          id: Types.ObjectId;
+          contactLimit: number;
+          attendees: any[];
+          assignMents: any[];
+          contactCount: number;
+        }[] = assignedEmployees
+          .filter((emp) => emp.role.toString() === role)
+          .map((emp) => ({
+            id: emp._id,
+            contactLimit: emp.dailyContactLimit - emp.dailyContactCount || 0,
+            attendees: [],
+            assignMents: [],
+            contactCount: 0,
+          }));
 
-      if (lastAssigned && lastAssigned.assignedTo) {
-        const isEmployeeAssignedToWebinar = webinar.assignedEmployees.some(
-          (employee) => {
-            return (
-              employee._id.toString() === lastAssigned.assignedTo.toString() &&
-              employee.role.toString() ===
-                this.configService.get('appRoles')['EMPLOYEE_SALES']
-            );
-          },
+        const previousAssignments = await this.checkPreviousAssignmentInBulk(
+          newAttendees.map((a) => a.email),
+          adminId,
+          isAttended,
+          empData.map((a) => a.id),
         );
 
-        // If the same employee is assigned to this webinar
-        if (isEmployeeAssignedToWebinar) {
-          const employee = await this.userService.getEmployee(
-            lastAssigned.assignedTo.toString(),
+        const empDataMap = new Map(empData.map((a) => [a.id.toString(), a]));
+
+        newAttendees.forEach((attendee, index) => {
+          if (previousAssignments.has(attendee.email)) {
+            const prevAssign = previousAssignments.get(attendee.email);
+
+            if (empDataMap.has(prevAssign.assignedTo.toString())) {
+              const emp = empDataMap.get(prevAssign.assignedTo.toString());
+              if (emp.contactCount < emp.contactLimit) {
+                emp.attendees.push(attendee);
+                emp.contactCount += 1;
+                const newAssignment = {
+                  adminId: new Types.ObjectId(`${adminId}`),
+                  webinar: new Types.ObjectId(`${webinar}`),
+                  attendee: attendee._id,
+                  user: emp.id,
+                  recordType: isAttended ? 'postWebinar' : 'preWebinar',
+                };
+                emp.assignMents.push(newAssignment);
+                empDataMap.set(prevAssign.assignedTo.toString(), emp);
+              }
+            }
+          }
+        });
+
+        for (const [empId, empData] of empDataMap) {
+          const newAssignments = await this.assignmentsModel.insertMany(
+            empData.assignMents,
+            { session },
+          );
+          const updatedAttendees = await this.attendeeModel.updateMany(
+            { _id: { $in: empData.attendees.map((a) => a._id) } },
+            { $set: { assignedTo: new Types.ObjectId(`${empId}`) } },
+            { session },
           );
 
-          // Validate employee's daily contact limit
+          const updatedEmployee = await this.userService.incrementCount(
+            empId,
+            empData.contactCount,
+            session,
+          );
+          console.log(
+            newAssignments.length,
+            updatedAttendees.modifiedCount,
+            empData.contactCount,
+          );
           if (
-            employee &&
-            employee.dailyContactLimit > employee.dailyContactCount
+            newAssignments.length !== updatedAttendees.modifiedCount ||
+            newAssignments.length !== empData.contactCount
           ) {
-            // Create a new assignment
-            const newAssignment = await this.assignmentsModel.create({
-              adminId: new Types.ObjectId(`${webinar?.adminId}`),
-              webinar: new Types.ObjectId(`${webinar._id}`),
-              attendee: result[i]._id,
-              user: employee._id,
-              recordType: 'postWebinar',
-            });
-
-            assignments.push(newAssignment);
-
-            // Decrement the employee's daily contact count
-            const isDecremented = await this.userService.incrementCount(
-              employee._id.toString(),
-            );
-
-            if (!isDecremented) {
-              throw new InternalServerErrorException(
-                'Failed to update employee contact count.',
-              );
-            }
-
-            const updatedAttendee = await this.updateAttendeeAssign(
-              result[i]._id.toString(),
-              employee._id.toString(),
-            );
-
-            if (!updatedAttendee) {
-              throw new InternalServerErrorException(
-                'Failed to update employee contact count.',
-              );
-            }
-
-            const notification = {
-              recipient: employee._id.toString(),
-              title: 'New Task Assigned',
-              message: `You have been assigned a new task. Please check your task list for details.`,
-              type: notificationType.INFO,
-              actionType: notificationActionType.ASSIGNMENT,
-              metadata: {
-                webinarId: updatedAttendee.webinar.toString(),
-                attendeeId: updatedAttendee._id.toString(),
-                assignmentId: newAssignment._id.toString(),
-              },
-            };
-
-            await this.notificationService.createNotification(notification);
+            throw new Error('Consistency check failed: mismatch in counts.');
           }
-        }
-      }
-    }
 
-    return { result, assignments };
+          const notification = {
+            recipient: empId,
+            title: 'New Tasks Assigned',
+            message: `You have been assigned ${empData.contactCount} new tasks. Please check your task list for details.`,
+            type: notificationType.INFO,
+            actionType: notificationActionType.ASSIGNMENT,
+            metadata: {
+              webinarId: webinar,
+            },
+          };
+
+          this.notificationService.createNotification(notification);
+        }
+      });
+
+      session.endSession();
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
   }
 
   async getAttendee(adminId: string, email: string): Promise<any> {
@@ -215,7 +244,6 @@ export class AttendeesService {
     const hasFilters = Object.keys(filters).some(
       (key) => filters[key] !== null && filters[key] !== undefined,
     );
-    console.log('hassFilts ===> ', hasFilters, filters);
 
     const pipeline: PipelineStage[] = [
       // Step 1: Match key fields to reduce dataset size
@@ -450,14 +478,90 @@ export class AttendeesService {
     return lastAssigned;
   }
 
-  async checkPreviousPostAssignment(email: string): Promise<Attendee | null> {
-    const lastAssigned = await this.attendeeModel
-      .findOne({ email, isAttended: true })
-      .sort({ createdAt: -1 })
-      .skip(1)
-      .exec();
+  async checkPreviousAssignmentInBulk(
+    emails: string[],
+    adminId: string,
+    isAttended: boolean,
+    empIds: Types.ObjectId[],
+  ): Promise<
+    Map<
+      string,
+      {
+        _id: string;
+        assignedTo: Types.ObjectId;
+      }
+    >
+  > {
+    if (emails.length === 0 || empIds.length === 0) return new Map();
 
-    return lastAssigned;
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          adminId: new Types.ObjectId(`${adminId}`),
+          assignedTo: { $ne: null },
+          isAttended: isAttended,
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $group: {
+          _id: '$email',
+          firstDetail: { $first: '$$ROOT' },
+        },
+      },
+      {
+        $addFields: {
+          assignedTo: '$firstDetail.assignedTo',
+        },
+      },
+      {
+        $project: {
+          firstDetail: 0,
+        },
+      },
+      {
+        $match: {
+          assignedTo: { $in: empIds },
+        },
+      },
+    ];
+
+    const lastAssigned: {
+      _id: string;
+      assignedTo: Types.ObjectId;
+    }[] = await this.attendeeModel.aggregate(pipeline).exec();
+
+    const lastAssignMap = new Map();
+    lastAssigned.forEach((attendee) => {
+      lastAssignMap.set(attendee._id, attendee);
+    });
+
+    // const result = {
+    //   assignData: [],
+    // };
+    // emails.forEach((email) => {
+    //   if (lastAssignMap.has(email)) {
+    //     const attendee = lastAssignMap.get(email);
+    //     result.assignData.push(attendee);
+    //     if (attendee.assignedTo in result) {
+    //       result[attendee.assignedTo] = result[attendee.assignedTo] + 1;
+    //     } else {
+    //       result[attendee.assignedTo] = 1;
+    //     }
+    //   }
+    // });
+
+    const result = new Map();
+    emails.forEach((email) => {
+      if (lastAssignMap.has(email)) {
+        const attendee = lastAssignMap.get(email);
+        result.set(email, attendee);
+      }
+    });
+
+    return result;
   }
 
   async swapFields(
@@ -502,3 +606,90 @@ export class AttendeesService {
     return updatedAttendees;
   }
 }
+
+// throw new BadRequestException('Invalid webinar id');
+
+// if (!isAttended) return { result };
+
+// for (let i = 0; i < resultLen; i++) {
+//   // Check if the attendee was previously assigned to an employee
+//   const lastAssigned = await this.checkPreviousPostAssignment(
+//     result[i].email,
+//     adminId,
+//   );
+
+//   if (lastAssigned && lastAssigned.assignedTo) {
+//     const isEmployeeAssignedToWebinar = webinar.assignedEmployees.some(
+//       (employee) => {
+//         return (
+//           employee._id.toString() === lastAssigned.assignedTo.toString() &&
+//           employee.role.toString() ===
+//             this.configService.get('appRoles')['EMPLOYEE_SALES']
+//         );
+//       },
+//     );
+
+//     // If the same employee is assigned to this webinar
+//     if (isEmployeeAssignedToWebinar) {
+//       const employee = await this.userService.getEmployee(
+//         lastAssigned.assignedTo.toString(),
+//       );
+
+//       // Validate employee's daily contact limit
+//       if (
+//         employee &&
+//         employee.dailyContactLimit > employee.dailyContactCount
+//       ) {
+//         // Create a new assignment
+//         const newAssignment = await this.assignmentsModel.create({
+//           adminId: new Types.ObjectId(`${webinar?.adminId}`),
+//           webinar: new Types.ObjectId(`${webinar._id}`),
+//           attendee: result[i]._id,
+//           user: employee._id,
+//           recordType: 'postWebinar',
+//         });
+
+//         assignments.push(newAssignment);
+
+//         // Decrement the employee's daily contact count
+//         const isDecremented = await this.userService.incrementCount(
+//           employee._id.toString(),
+//         );
+
+//         if (!isDecremented) {
+//           throw new InternalServerErrorException(
+//             'Failed to update employee contact count.',
+//           );
+//         }
+
+//         const updatedAttendee = await this.updateAttendeeAssign(
+//           result[i]._id.toString(),
+//           employee._id.toString(),
+//         );
+
+//         if (!updatedAttendee) {
+//           throw new InternalServerErrorException(
+//             'Failed to update employee contact count.',
+//           );
+//         }
+
+//         const notification = {
+//           recipient: employee._id.toString(),
+//           title: 'New Task Assigned',
+//           message: `You have been assigned a new task. Please check your task list for details.`,
+//           type: notificationType.INFO,
+//           actionType: notificationActionType.ASSIGNMENT,
+//           metadata: {
+//             webinarId: updatedAttendee.webinar.toString(),
+//             attendeeId: updatedAttendee._id.toString(),
+//             assignmentId: newAssignment._id.toString(),
+//           },
+//         };
+
+//         this.notificationService.createNotification(notification);
+//       }
+//     }
+//   }
+// }
+
+// return { result };

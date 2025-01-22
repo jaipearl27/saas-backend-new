@@ -38,10 +38,10 @@ export class WebsocketGateway {
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { user: string },
   ) {
-    console.log(data);
+    // console.log(data);
     if (data?.user) {
       this.activeUsers.set(data.user, client.id);
-      console.log('active users', this.activeUsers);
+      // console.log('active users', this.activeUsers);
       this.logger.log(`User ${data.user} connected with socketId ${client.id}`);
     } else {
       client.disconnect(); // Disconnect if userId is invalid
@@ -55,7 +55,7 @@ export class WebsocketGateway {
 
     if (userId) {
       this.activeUsers.delete(userId);
-      console.log('active users', this.activeUsers);
+      // console.log('active users', this.activeUsers);
       this.logger.log(`User ${userId} disconnected`);
     }
   }

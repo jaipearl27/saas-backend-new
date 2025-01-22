@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import mongoose, { Model, PipelineStage, Types } from 'mongoose';
+import mongoose, { ClientSession, Model, PipelineStage, Types } from 'mongoose';
 import { User } from 'src/schemas/User.schema';
 import { ConfigService } from '@nestjs/config';
 import { CreateEmployeeDto } from 'src/auth/dto/createEmployee.dto';
@@ -98,9 +98,7 @@ export class UsersService {
         );
       }
     }
-    if (filterData.contactsLimit) {
-      subscriptionFilter['contactLimit'] = filterData.contactsLimit;
-    }
+
     if (filterData.toggleLimit) {
       subscriptionFilter['toggleLimit'] = filterData.toggleLimit;
     }
@@ -118,6 +116,9 @@ export class UsersService {
     if (filterData.employeeReminderCount) {
       employeeCountFilter['employeeReminderCount'] =
         filterData.employeeReminderCount;
+    }
+    if (filterData.contactsLimit) {
+      employeeCountFilter['contactsLimit'] = filterData.contactsLimit;
     }
 
     const clientRoleId = this.configService.get('appRoles').ADMIN;
@@ -145,6 +146,9 @@ export class UsersService {
                 expiryDate: 1,
                 contactLimit: 1,
                 toggleLimit: 1,
+                contactLimitAddon: 1,
+                employeeLimit: 1,
+                employeeLimitAddon: 1,
               },
             },
           ],
@@ -186,7 +190,12 @@ export class UsersService {
           planName: '$plan.name',
           planStartDate: '$subscription.startDate',
           planExpiry: '$subscription.expiryDate',
-          contactsLimit: '$subscription.contactLimit',
+          contactsLimit: {
+            $add: [
+              '$subscription.contactLimit',
+              '$subscription.contactLimitAddon',
+            ],
+          },
           toggleLimit: '$subscription.toggleLimit',
           totalEmployees: { $size: '$employees' },
           employeeSalesCount: {
@@ -217,6 +226,43 @@ export class UsersService {
         $match: employeeCountFilter,
       },
       {
+        $lookup: {
+          from: 'attendees',
+          localField: '_id',
+          foreignField: 'adminId',
+          as: 'attendees',
+        },
+      },
+      {
+        $addFields: {
+          usedContactsCount: { $size: '$attendees' },
+          employeeLimit: {
+            $add: [
+              '$subscription.employeeLimit',
+              '$subscription.employeeLimitAddon',
+            ],
+          },
+          remainingDays: {
+            $max: [
+              {
+                $floor: {
+                  $divide: [
+                    {
+                      $subtract: [
+                        { $toLong: '$subscription.expiryDate' }, // Convert expiry date to milliseconds
+                        { $toLong: new Date() }, // Convert current date to milliseconds
+                      ],
+                    },
+                    1000 * 60 * 60 * 24, // Convert milliseconds to days
+                  ],
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
+      {
         $project: {
           email: 1,
           companyName: 1,
@@ -232,6 +278,9 @@ export class UsersService {
           employeeSalesCount: 1,
           employeeReminderCount: 1,
           contactsCount: 1,
+          employeeLimit: 1,
+          remainingDays: 1,
+          usedContactsCount: 1,
         },
       },
     ];
@@ -557,7 +606,6 @@ export class UsersService {
 
     //add logic for deleting file from server here
 
-
     const result = user.save();
 
     return result;
@@ -853,16 +901,17 @@ export class UsersService {
   async incrementCount(
     id: string,
     incrementValue: number = 1,
+    session?: ClientSession, 
   ): Promise<boolean> {
-    const user = await this.userModel.findById(id).exec();
+    const user = await this.userModel.findById(id).session(session).exec(); 
     if (user) {
-      // Increment dailyContactCount by the given value
       user.dailyContactCount = (user.dailyContactCount || 0) + incrementValue;
-      await user.save();
+      await user.save({ session });
       return true;
     }
     return false;
   }
+  
 
   async resetDailyContactCount() {
     return await this.userModel.updateMany(

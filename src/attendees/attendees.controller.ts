@@ -32,6 +32,7 @@ export class AttendeesController {
     private readonly attendeesService: AttendeesService,
     @Inject(forwardRef(() => SubscriptionService))
     private readonly subscriptionService: SubscriptionService,
+    @Inject(forwardRef(() => WebinarService))
     private readonly webinarService: WebinarService,
   ) {}
 
@@ -145,7 +146,7 @@ export class AttendeesController {
       data[i].adminId = new Types.ObjectId(`${adminId}`);
     }
 
-    const result = await this.attendeesService.addPostAttendees(data, webinar);
+    const result = await this.attendeesService.addPostAttendees(data, body.webinarId, body.isAttended, adminId);
     return result;
   }
 
