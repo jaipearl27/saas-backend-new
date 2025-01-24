@@ -42,15 +42,20 @@ export class NotesService {
       }
       await attendee.save();
     }
-    const note = await this.notesModel.create({ ...body, createdBy, isWorked: body.isWorked === 'true' ? true : false });
+    const note = await this.notesModel.create({
+      ...body,
+      createdBy,
+      isWorked: body.isWorked === 'true' ? true : false,
+    });
     return note;
   }
 
   async getNotesByEmail(email: string): Promise<Notes[]> {
-    const notes = await this.notesModel.find({ email })
-    .populate('createdBy', 'userName')
-    .sort({ createdAt: -1 })
-    .exec();
+    const notes = await this.notesModel
+      .find({ email })
+      .populate('createdBy', 'userName')
+      .sort({ createdAt: -1 })
+      .exec();
     return notes;
   }
 
@@ -97,7 +102,7 @@ export class NotesService {
       {
         $addFields: {
           webinarName: '$webinar.webinarName',
-          webinarId: '$webinar._id'
+          webinarId: '$webinar._id',
         },
       },
       {
@@ -151,7 +156,7 @@ export class NotesService {
       },
     ]);
 
-    const totalWorkedAggregation = await this.notesModel.aggregate([
+    const totalWorkedPipeline: PipelineStage[] = [
       {
         $match: {
           createdBy: new Types.ObjectId(`${employeeId}`),
@@ -190,9 +195,16 @@ export class NotesService {
       },
       {
         $match: {
-          totalSeconds: {
-            $gte: 10,
-          },
+          $or: [
+            {
+              isWorked: true,
+            },
+            {
+              totalSeconds: {
+                $gte: 10,
+              },
+            },
+          ],
         },
       },
       {
@@ -208,7 +220,10 @@ export class NotesService {
           },
         },
       },
-    ]);
+    ];
+
+    const totalWorkedAggregation =
+      await this.notesModel.aggregate(totalWorkedPipeline);
 
     return {
       metrics: notes,
@@ -322,7 +337,7 @@ export class NotesService {
             },
           ]);
 
-        const totalWorkedAggregation = await this.notesModel.aggregate([
+        const totalWorkedPipeline: PipelineStage[] = [
           {
             $match: {
               createdBy: new Types.ObjectId(`${employee._id}`),
@@ -361,9 +376,16 @@ export class NotesService {
           },
           {
             $match: {
-              totalSeconds: {
-                $gte: 10,
-              },
+              $or: [
+                {
+                  isWorked: true,
+                },
+                {
+                  totalSeconds: {
+                    $gte: 10,
+                  },
+                },
+              ],
             },
           },
           {
@@ -379,7 +401,10 @@ export class NotesService {
               },
             },
           },
-        ]);
+        ];
+
+        const totalWorkedAggregation =
+          await this.notesModel.aggregate(totalWorkedPipeline);
 
         return {
           email: employee.email, // Add employee name
