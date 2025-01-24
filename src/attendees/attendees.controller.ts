@@ -101,10 +101,11 @@ export class AttendeesController {
     }
 
     const data = body.data;
+    let postWebinarExists = null;
     //add reminder type attendees
     if (!body.isAttended) {
       // !!!! test if any data exists in postWebinar here !!!!
-      const postWebinarExists =
+       postWebinarExists =
         await this.attendeesService.getPostWebinarAttendee(
           body.webinarId,
           adminId,
@@ -115,14 +116,20 @@ export class AttendeesController {
           'Cannot add Pre-Webinar data as it already exists in Post-Webinar.',
         );
     }
-    
+
     for (let i = 0; i < data.length; i++) {
       data[i].webinar = new Types.ObjectId(`${body.webinarId}`);
       data[i].isAttended = body.isAttended;
       data[i].adminId = new Types.ObjectId(`${adminId}`);
     }
 
-    const result = await this.attendeesService.addPostAttendees(data, body.webinarId, body.isAttended, adminId);
+    const result = await this.attendeesService.addPostAttendees(
+      data,
+      body.webinarId,
+      body.isAttended,
+      adminId,
+      postWebinarExists ? true : false,
+    );
     return result;
   }
 
@@ -145,7 +152,7 @@ export class AttendeesController {
   @Put('/swap')
   async swapAttendees(
     @Body() body: SwapAttendeeFieldsDTO,
-    @Id() adminId: string,  
+    @Id() adminId: string,
   ) {
     return await this.attendeesService.swapFields(
       body.attendees,

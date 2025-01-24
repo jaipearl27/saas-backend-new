@@ -165,7 +165,6 @@ export class AuthService {
       id: user?._id,
       role: user?.role,
       adminId: user?.adminId,
-      plan: user?.plan,
     };
 
     //create jwt with payload here

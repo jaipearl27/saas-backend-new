@@ -33,7 +33,6 @@ export class PlansService {
   }
 
   async addPlan(createPlanDto: CreatePlansDto): Promise<any> {
-    // Check if a plan with the same name already exists
     const existingPlan = await this.plansModel.findOne({
       $or: [{ name: createPlanDto.name }, { amount: createPlanDto.amount }],
     });

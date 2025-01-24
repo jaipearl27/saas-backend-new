@@ -18,22 +18,17 @@ import {
 import { AssignmentStatus, RecordType } from 'src/schemas/Assignments.schema';
 
 export class AssignmentDto {
-  @IsOptional()
-  @IsString()
-  adminId: string;
 
-  @IsOptional()
-  @IsString()
+  @IsMongoId()
   user: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @IsOptional()
+  @IsMongoId()
   webinar: string;
 
-  @IsString()
+  @IsArray()
   @IsNotEmpty()
-  attendee: string;
+  @IsMongoId({ each: true }) 
+  attendees: string[];
 
   @IsString()
   @IsNotEmpty()

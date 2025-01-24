@@ -48,10 +48,11 @@ export class AttendeesService {
   }
 
   async addPostAttendees(
-    attendees: [CreateAttendeeDto],
+    attendees: CreateAttendeeDto[],
     webinar: string,
     isAttended: boolean,
     adminId: string,
+    postWebinarExists: boolean,
   ): Promise<any> {
     const subscription =
       await this.subscriptionService.getSubscription(adminId);
@@ -64,6 +65,19 @@ export class AttendeesService {
     }
     let tempAttendees = attendees;
 
+    if (isAttended && !postWebinarExists) {
+      const unattendedAttendees: CreateAttendeeDto[] = await this.getPreWebinarUnattendedData(
+        new Types.ObjectId(`${adminId}`),
+        new Types.ObjectId(`${webinar}`),
+        attendees.map((a) => a.email),
+      );
+
+      if (unattendedAttendees.length > 0) {
+        tempAttendees = [...tempAttendees, ...unattendedAttendees];
+      }
+
+    }
+
     const nonUniqueEmailCount = await this.getNonUniqueAttendeesCount(
       tempAttendees.map((a) => a.email),
       new Types.ObjectId(`${adminId}`),
@@ -73,24 +87,17 @@ export class AttendeesService {
     if (uniqueEmailsCount > contactCountDiff) {
       throw new BadRequestException('Contact Limit Exceeded');
     }
-    console.log(
-      ' --------------- > ',
-      uniqueEmailsCount,
-      contactCountDiff,
-      nonUniqueEmailCount,
-      tempAttendees.length,
-    );
-
-
-
 
     const session = await this.attendeeModel.startSession();
 
     try {
       await session.withTransaction(async () => {
-        const newAttendees = await this.attendeeModel.insertMany(tempAttendees, {
-          session,
-        });
+        const newAttendees = await this.attendeeModel.insertMany(
+          tempAttendees,
+          {
+            session,
+          },
+        );
         const assignedEmployees =
           await this.webinarService.getAssignedEmployees(webinar);
 
@@ -570,21 +577,6 @@ export class AttendeesService {
       lastAssignMap.set(attendee._id, attendee);
     });
 
-    // const result = {
-    //   assignData: [],
-    // };
-    // emails.forEach((email) => {
-    //   if (lastAssignMap.has(email)) {
-    //     const attendee = lastAssignMap.get(email);
-    //     result.assignData.push(attendee);
-    //     if (attendee.assignedTo in result) {
-    //       result[attendee.assignedTo] = result[attendee.assignedTo] + 1;
-    //     } else {
-    //       result[attendee.assignedTo] = 1;
-    //     }
-    //   }
-    // });
-
     const result = new Map();
     emails.forEach((email) => {
       if (lastAssignMap.has(email)) {
@@ -684,9 +676,35 @@ export class AttendeesService {
     return 0;
   }
 
-  async fillPhoneNumbers(attendees: [CreateAttendeeDto], adminId: Types.ObjectId) {
-    
-    const filteredAttendees = attendees.filter((attendee) => !attendee.phone)
+  async fillPhoneNumbers(
+    attendees: [CreateAttendeeDto],
+    adminId: Types.ObjectId,
+  ) {
+    const filteredAttendees = attendees.filter((attendee) => !attendee.phone);
+  }
 
+  async getPreWebinarUnattendedData(
+    adminId: Types.ObjectId,
+    webinarId: Types.ObjectId,
+    emails: string[],
+  ) {
+    const result = await this.attendeeModel.find({
+      adminId,
+      webinar: webinarId,
+      email: { $nin: emails },
+      isAttended: false,
+    });
+    return result.map((attendee) => ({
+      email: attendee.email,
+      firstName: attendee.firstName,
+      lastName: attendee.lastName,
+      phone: attendee.phone,
+      timeInSession: 0,
+      gender: attendee.gender,
+      location: attendee.location,
+      webinar: attendee.webinar,
+      isAttended: true,
+      adminId: attendee.adminId,
+    }));
   }
 }
