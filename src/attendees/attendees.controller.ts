@@ -22,16 +22,12 @@ import {
   UpdateAttendeeDto,
 } from './dto/attendees.dto';
 import { Types } from 'mongoose';
-import { SubscriptionService } from 'src/subscription/subscription.service';
-
 import { WebinarService } from 'src/webinar/webinar.service';
 
 @Controller('attendees')
 export class AttendeesController {
   constructor(
     private readonly attendeesService: AttendeesService,
-    @Inject(forwardRef(() => SubscriptionService))
-    private readonly subscriptionService: SubscriptionService,
     @Inject(forwardRef(() => WebinarService))
     private readonly webinarService: WebinarService,
   ) {}
@@ -119,28 +115,8 @@ export class AttendeesController {
           'Cannot add Pre-Webinar data as it already exists in Post-Webinar.',
         );
     }
-
-    //Inserting data here:
-    const dataLen = data.length;
-
-    //CHECK IF CONTACT LIMIT ALLOWS DATA TO BE ADDED:-
-
-    const contactsUploaded = await this.attendeesService.getAttendeesCount(
-      "",
-      adminId,
-    );
-
-    const subscription =
-      await this.subscriptionService.getSubscription(adminId);
-
-    const contactsLimit = subscription?.contactLimit || 1;
-
-    if (contactsUploaded + dataLen > contactsLimit)
-      throw new NotAcceptableException(
-        `${dataLen} contacts being uploaded exceed the contact limit of ${contactsLimit}, Please upgrade your plan or upload within the limit.`,
-      );
-
-    for (let i = 0; i < dataLen; i++) {
+    
+    for (let i = 0; i < data.length; i++) {
       data[i].webinar = new Types.ObjectId(`${body.webinarId}`);
       data[i].isAttended = body.isAttended;
       data[i].adminId = new Types.ObjectId(`${adminId}`);

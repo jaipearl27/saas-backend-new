@@ -24,6 +24,7 @@ import {
 } from 'src/schemas/notification.schema';
 import { NotificationService } from 'src/notification/notification.service';
 import { WebinarService } from 'src/webinar/webinar.service';
+import { SubscriptionService } from 'src/subscription/subscription.service';
 
 @Injectable()
 export class AttendeesService {
@@ -37,6 +38,8 @@ export class AttendeesService {
     private readonly notificationService: NotificationService,
     @Inject(forwardRef(() => WebinarService))
     private readonly webinarService: WebinarService,
+    @Inject(forwardRef(() => SubscriptionService))
+    private readonly subscriptionService: SubscriptionService,
   ) {}
 
   async addAttendees(attendees: [CreateAttendeeDto]): Promise<any> {
@@ -50,11 +53,42 @@ export class AttendeesService {
     isAttended: boolean,
     adminId: string,
   ): Promise<any> {
+    const subscription =
+      await this.subscriptionService.getSubscription(adminId);
+
+    const contactCountDiff =
+      subscription.contactLimit - subscription.contactCount;
+
+    if (contactCountDiff <= 0) {
+      throw new BadRequestException('Contact Limit Exceeded');
+    }
+    let tempAttendees = attendees;
+
+    const nonUniqueEmailCount = await this.getNonUniqueAttendeesCount(
+      tempAttendees.map((a) => a.email),
+      new Types.ObjectId(`${adminId}`),
+    );
+    const uniqueEmailsCount = tempAttendees.length - nonUniqueEmailCount;
+
+    if (uniqueEmailsCount > contactCountDiff) {
+      throw new BadRequestException('Contact Limit Exceeded');
+    }
+    console.log(
+      ' --------------- > ',
+      uniqueEmailsCount,
+      contactCountDiff,
+      nonUniqueEmailCount,
+      tempAttendees.length,
+    );
+
+
+
+
     const session = await this.attendeeModel.startSession();
 
     try {
       await session.withTransaction(async () => {
-        const newAttendees = await this.attendeeModel.insertMany(attendees, {
+        const newAttendees = await this.attendeeModel.insertMany(tempAttendees, {
           session,
         });
         const assignedEmployees =
@@ -123,7 +157,7 @@ export class AttendeesService {
             { session },
           );
 
-           await this.userService.incrementCount(
+          await this.userService.incrementCount(
             empId,
             empData.contactCount,
             session,
@@ -148,13 +182,16 @@ export class AttendeesService {
 
           this.notificationService.createNotification(notification);
         }
-      });
 
-      session.endSession();
+        await this.subscriptionService.incrementContactCount(
+          subscription._id.toString(),
+          uniqueEmailsCount,
+        );
+      });
     } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
       throw error;
+    } finally {
+      session.endSession();
     }
   }
 
@@ -600,91 +637,56 @@ export class AttendeesService {
 
     return updatedAttendees;
   }
+
+  async getNonUniqueAttendeesCount(
+    emails: string[],
+    adminId: Types.ObjectId,
+  ): Promise<number> {
+    const pipiline: PipelineStage[] = [
+      {
+        $match: {
+          adminId: adminId,
+        },
+      },
+      {
+        $match: {
+          email: { $in: emails },
+        },
+      },
+      {
+        $group: {
+          _id: '$email',
+        },
+      },
+      {
+        $count: 'emailCount',
+      },
+    ];
+
+    const result = await this.attendeeModel.aggregate(pipiline);
+
+    if (Array.isArray(result) && result.length > 0) {
+      return result[0]?.emailCount || 0;
+    }
+    return 0;
+  }
+
+  async getDynamicAttendeeCount(adminId: Types.ObjectId) {
+    const pipiline: PipelineStage[] = [
+      { $match: { adminId } },
+      { $group: { _id: '$email' } },
+      { $count: 'emailCount' },
+    ];
+    const result = await this.attendeeModel.aggregate(pipiline);
+    if (Array.isArray(result) && result.length > 0) {
+      return result[0]?.emailCount || 0;
+    }
+    return 0;
+  }
+
+  async fillPhoneNumbers(attendees: [CreateAttendeeDto], adminId: Types.ObjectId) {
+    
+    const filteredAttendees = attendees.filter((attendee) => !attendee.phone)
+
+  }
 }
-
-// throw new BadRequestException('Invalid webinar id');
-
-// if (!isAttended) return { result };
-
-// for (let i = 0; i < resultLen; i++) {
-//   // Check if the attendee was previously assigned to an employee
-//   const lastAssigned = await this.checkPreviousPostAssignment(
-//     result[i].email,
-//     adminId,
-//   );
-
-//   if (lastAssigned && lastAssigned.assignedTo) {
-//     const isEmployeeAssignedToWebinar = webinar.assignedEmployees.some(
-//       (employee) => {
-//         return (
-//           employee._id.toString() === lastAssigned.assignedTo.toString() &&
-//           employee.role.toString() ===
-//             this.configService.get('appRoles')['EMPLOYEE_SALES']
-//         );
-//       },
-//     );
-
-//     // If the same employee is assigned to this webinar
-//     if (isEmployeeAssignedToWebinar) {
-//       const employee = await this.userService.getEmployee(
-//         lastAssigned.assignedTo.toString(),
-//       );
-
-//       // Validate employee's daily contact limit
-//       if (
-//         employee &&
-//         employee.dailyContactLimit > employee.dailyContactCount
-//       ) {
-//         // Create a new assignment
-//         const newAssignment = await this.assignmentsModel.create({
-//           adminId: new Types.ObjectId(`${webinar?.adminId}`),
-//           webinar: new Types.ObjectId(`${webinar._id}`),
-//           attendee: result[i]._id,
-//           user: employee._id,
-//           recordType: 'postWebinar',
-//         });
-
-//         assignments.push(newAssignment);
-
-//         // Decrement the employee's daily contact count
-//         const isDecremented = await this.userService.incrementCount(
-//           employee._id.toString(),
-//         );
-
-//         if (!isDecremented) {
-//           throw new InternalServerErrorException(
-//             'Failed to update employee contact count.',
-//           );
-//         }
-
-//         const updatedAttendee = await this.updateAttendeeAssign(
-//           result[i]._id.toString(),
-//           employee._id.toString(),
-//         );
-
-//         if (!updatedAttendee) {
-//           throw new InternalServerErrorException(
-//             'Failed to update employee contact count.',
-//           );
-//         }
-
-//         const notification = {
-//           recipient: employee._id.toString(),
-//           title: 'New Task Assigned',
-//           message: `You have been assigned a new task. Please check your task list for details.`,
-//           type: notificationType.INFO,
-//           actionType: notificationActionType.ASSIGNMENT,
-//           metadata: {
-//             webinarId: updatedAttendee.webinar.toString(),
-//             attendeeId: updatedAttendee._id.toString(),
-//             assignmentId: newAssignment._id.toString(),
-//           },
-//         };
-
-//         this.notificationService.createNotification(notification);
-//       }
-//     }
-//   }
-// }
-
-// return { result };

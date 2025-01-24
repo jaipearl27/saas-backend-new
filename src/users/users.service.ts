@@ -149,6 +149,7 @@ export class UsersService {
                 contactLimitAddon: 1,
                 employeeLimit: 1,
                 employeeLimitAddon: 1,
+                contactCount: 1,
               },
             },
           ],
@@ -190,6 +191,7 @@ export class UsersService {
           planName: '$plan.name',
           planStartDate: '$subscription.startDate',
           planExpiry: '$subscription.expiryDate',
+          usedContactsCount: "$subscription.contactCount",
           contactsLimit: {
             $add: [
               '$subscription.contactLimit',
@@ -226,16 +228,7 @@ export class UsersService {
         $match: employeeCountFilter,
       },
       {
-        $lookup: {
-          from: 'attendees',
-          localField: '_id',
-          foreignField: 'adminId',
-          as: 'attendees',
-        },
-      },
-      {
         $addFields: {
-          usedContactsCount: { $size: '$attendees' },
           employeeLimit: {
             $add: [
               '$subscription.employeeLimit',
@@ -249,11 +242,11 @@ export class UsersService {
                   $divide: [
                     {
                       $subtract: [
-                        { $toLong: '$subscription.expiryDate' }, // Convert expiry date to milliseconds
-                        { $toLong: new Date() }, // Convert current date to milliseconds
+                        { $toLong: '$subscription.expiryDate' }, 
+                        { $toLong: new Date() }, 
                       ],
                     },
-                    1000 * 60 * 60 * 24, // Convert milliseconds to days
+                    1000 * 60 * 60 * 24,
                   ],
                 },
               },

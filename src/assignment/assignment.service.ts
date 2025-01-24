@@ -345,12 +345,6 @@ export class AssignmentService {
       );
     }
 
-    // Get the current count of attendees added by the admin
-    const attendeesCount = await this.attendeeService.getAttendeesCount(
-      '',
-      adminId,
-    );
-
     // Fetch the subscription details for the admin
     const subscription =
       await this.subscriptionService.getSubscription(adminId);
@@ -359,12 +353,17 @@ export class AssignmentService {
     if (
       !subscription ||
       subscription.expiryDate < new Date() || // Subscription expired
-      subscription.contactLimit <= attendeesCount // Contact limit reached
+      subscription.contactLimit <= subscription.contactCount // Contact limit reached
     ) {
       throw new ForbiddenException(
         'Contact limit reached or subscription expired.',
       );
     }
+
+    const attendeeCount = await this.attendeeService.getNonUniqueAttendeesCount(
+      [attendee.email],
+      new Types.ObjectId(`${adminId}`),
+    );
 
     // Add the attendee to the database
     const newAttendees: Attendee[] | null =
@@ -372,8 +371,8 @@ export class AssignmentService {
         {
           ...attendee,
           isAttended: false,
-          webinar: new Types.ObjectId(webinarId),
-          adminId: new Types.ObjectId(adminId),
+          webinar: new Types.ObjectId(`${webinarId}`),
+          adminId: new Types.ObjectId(`${adminId}`),
         },
       ]);
 
@@ -383,6 +382,12 @@ export class AssignmentService {
       newAttendees.length === 0
     ) {
       throw new InternalServerErrorException('Failed to add attendee.');
+    }
+
+    if (attendeeCount === 0) {
+      await this.subscriptionService.incrementContactCount(
+        subscription._id.toString(),
+      );
     }
 
     const newAttendee = newAttendees[0];
@@ -1132,8 +1137,6 @@ export class AssignmentService {
 
     if (!employeeId) {
       try {
-
-        console.log('pullin back')
         const updatedAttendeesResult = await this.attendeeModel.updateMany(
           {
             adminId: new Types.ObjectId(adminId),
