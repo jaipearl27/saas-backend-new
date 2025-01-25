@@ -28,23 +28,18 @@ export class PlansService {
   }
 
   async getPlans(userId: Types.ObjectId, role: string): Promise<any> {
-    console.log(
-      userId,
-      role,
-      this.configService.get('appRoles')['SUPER_ADMIN'],
-    );
-    if (role === this.configService.get('appRoles')['SUPER_ADMIN']) {
-      return await this.plansModel.find().sort({ sortOrder: 1 });
-    }
-    const plans = await this.plansModel
-      .find({
+    let query = {};
+
+    if (role !== this.configService.get('appRoles')['SUPER_ADMIN']) {
+      query = {
         isActive: true,
         $or: [
           { planType: PlanType.NORMAL },
           { assignedUsers: { $in: [userId] } },
         ],
-      })
-      .sort({ sortOrder: 1 });
+      };
+    }
+    const plans = await this.plansModel.find(query).sort({ sortOrder: 1 });
     return plans;
   }
 
