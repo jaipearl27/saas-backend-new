@@ -34,6 +34,7 @@ export class PlansModule {
       .forRoutes(
         { path: 'plans', method: RequestMethod.POST },
         { path: 'plans/:id', method: RequestMethod.PATCH },
+        { path: 'plans/order', method: RequestMethod.PUT },
         { path: 'plans', method: RequestMethod.PUT },
         { path: 'plans', method: RequestMethod.DELETE },
       );

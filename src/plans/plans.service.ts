@@ -5,9 +5,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Plans } from 'src/schemas/Plans.schema';
-import { CreatePlansDto } from './dto/createPlans.dto';
+import { Model, Types } from 'mongoose';
+import { Plans, PlanType } from 'src/schemas/Plans.schema';
+import { CreatePlansDto, PlanOrderDTO } from './dto/createPlans.dto';
 import { UpdatePlansDto } from './dto/updatePlans.dto';
 
 @Injectable()
@@ -27,8 +27,24 @@ export class PlansService {
     return plans;
   }
 
-  async getPlans(): Promise<any> {
-    const plans = await this.plansModel.find();
+  async getPlans(userId: Types.ObjectId, role: string): Promise<any> {
+    console.log(
+      userId,
+      role,
+      this.configService.get('appRoles')['SUPER_ADMIN'],
+    );
+    if (role === this.configService.get('appRoles')['SUPER_ADMIN']) {
+      return await this.plansModel.find().sort({ sortOrder: 1 });
+    }
+    const plans = await this.plansModel
+      .find({
+        isActive: true,
+        $or: [
+          { planType: PlanType.NORMAL },
+          { assignedUsers: { $in: [userId] } },
+        ],
+      })
+      .sort({ sortOrder: 1 });
     return plans;
   }
 
@@ -59,5 +75,28 @@ export class PlansService {
   async deletePlan(id: string): Promise<any> {
     const plan = this.plansModel.findByIdAndDelete(id);
     return plan;
+  }
+
+  async updatePlansOrder(data: PlanOrderDTO): Promise<any> {
+    const { plans } = data;
+
+    const ids = plans.map((plan) => plan.id);
+    if (new Set(ids).size !== ids.length) {
+      throw new BadRequestException('Duplicate IDs in the input data.');
+    }
+
+    const updatePromises = plans.map(async (plan) => {
+      return this.plansModel.updateOne(
+        { _id: plan.id },
+        { $set: { sortOrder: plan.sortOrder } },
+      );
+    });
+
+    await Promise.all(updatePromises);
+
+    return {
+      message: 'Plans order updated successfully.',
+      updatedPlans: plans,
+    };
   }
 }

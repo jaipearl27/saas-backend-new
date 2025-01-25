@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -9,6 +10,7 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { PlanType } from 'src/schemas/Plans.schema';
 
@@ -16,7 +18,7 @@ export class CreatePlansDto {
   @IsString()
   @IsNotEmpty()
   name: string;
-    
+
   @IsNumber()
   @IsNotEmpty()
   amount: number;
@@ -44,4 +46,24 @@ export class CreatePlansDto {
   @IsArray()
   @IsMongoId({ each: true })
   assignedUsers: string[];
+}
+
+class PlanDTO {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsNumber()
+  @Min(0, { message: 'Minimum value is 0' })
+  sortOrder: number;
+
+  @IsMongoId()
+  id: string;
+}
+
+export class PlanOrderDTO {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PlanDTO)
+  plans: PlanDTO[];
 }
