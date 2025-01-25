@@ -25,6 +25,8 @@ import {
 } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { EmployeeFilterDTO } from './dto/employee-filter.dto';
+import { User } from 'src/schemas/User.schema';
+import { Types } from 'mongoose';
 
 @Controller('users') // @route => /users
 export class UsersController {
@@ -164,7 +166,12 @@ export class UsersController {
   }
 
   @Get('/super-admin')
-  async getSuperAdminDetails(){
+  async getSuperAdminDetails() {
     return await this.usersService.getSuperAdminDetails();
+  }
+
+  @Get('/dropdown/clients')
+  async getClientsforDropdown() {
+    return await this.usersService.getClientsForDropdown();
   }
 }

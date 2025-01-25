@@ -41,13 +41,6 @@ export class Attendee extends Document {
   @Prop({ type: Number, default: 0 })
   timeInSession: number; //Time in session
 
-  // @Prop({
-  //   type: Types.ObjectId,
-  //   ref: CustomLeadType.name,
-  //   required: true,
-  // })
-  // leadType: Types.ObjectId; //Lead Type
-
   @Prop({
     type: Types.ObjectId,
     ref: Webinar.name,

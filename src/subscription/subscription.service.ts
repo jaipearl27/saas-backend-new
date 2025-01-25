@@ -219,4 +219,14 @@ export class SubscriptionService {
     await subscription.save();
     return { subscription, billing };
   }
+
+  async incrementContactCount(id: string, count: number = 1) {
+    const subscription = await this.SubscriptionModel.findById(id);
+    if (!subscription) {
+      throw new NotFoundException('Subscription not found');
+    }
+    subscription.contactCount = subscription.contactCount + count;
+    await subscription.save();
+    return subscription;
+  }
 }

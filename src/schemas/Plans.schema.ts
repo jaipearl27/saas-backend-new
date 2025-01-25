@@ -1,5 +1,18 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types, Schema as MongooseSchema } from 'mongoose';
+import mongoose, { Document, Types, Schema as MongooseSchema } from 'mongoose';
+import { User } from './User.schema';
+
+export enum PlanDuration {
+  ONE_MONTH = 30,
+  QUARTER = 90,
+  HALF_YEAR = 180,
+  ONE_YEAR = 365,
+}
+
+export enum PlanType {
+  CUSTOM = 'custom',
+  NORMAL = 'normal',
+}
 
 @Schema({ timestamps: true })
 export class Plans extends Document {
@@ -30,21 +43,7 @@ export class Plans extends Document {
     min: 1,
     required: [true, 'Contact Limit is required'],
   })
-  contactLimit: number; //Employee Count
-
-  @Prop({
-    type: Boolean,
-    min: 1,
-    default: false,
-  })
-  incrementContact: boolean; //Employee Count
-
-  @Prop({
-    type: Number,
-    min: 1,
-    required: [true, 'Plan Duration(in days) is required'],
-  })
-  planDuration: number; //Plan duration
+  contactLimit: number;
 
   @Prop({
     type: Number,
@@ -56,12 +55,110 @@ export class Plans extends Document {
 
   @Prop({ type: Map, of: MongooseSchema.Types.Mixed, required: true })
   attendeeTableConfig: Map<string, any>;
+
+  @Prop({
+    type: String,
+    default: PlanType.NORMAL,
+  })
+  planType: PlanType;
+
+  @Prop({
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: User.name }],
+    required: false,
+  })
+  assignedUsers: Types.ObjectId[];
+
+  @Prop({
+    type: Boolean,
+    default: true,
+  })
+  isActive: boolean;
+
+  @Prop({
+    type: Number,
+    default: 0,
+    min: 0,
+  })
+  sortOrder: number;
+
+  @Prop({
+    type: Map,
+    of: new mongoose.Schema({
+      duration: { type: Number, required: true },
+      discountType: {
+        type: String,
+        enum: ['flat', 'percent'],
+        required: true,
+      },
+      discountValue: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+    }),
+    required: true,
+  })
+  planDurationConfig: Map<
+    string,
+    { duration: number; discountType: string; discountValue: number }
+  >;
+
+  static async validatePlanDurationConfig(this: Plans) {
+    const requiredDurations = ['monthly', 'quarterly', 'halfyearly', 'yearly'];
+    const durationDays = {
+      monthly: 30,
+      quarterly: 90,
+      halfyearly: 180,
+      yearly: 365,
+    };
+
+    for (const key of requiredDurations) {
+      if (!this.planDurationConfig.has(key)) {
+        throw new Error(`Plan must include a "${key}" duration.`);
+      }
+
+      const durationConfig = this.planDurationConfig.get(key);
+
+      if (durationConfig.duration !== durationDays[key]) {
+        throw new Error(
+          `The "${key}" duration must be ${durationDays[key]} days.`,
+        );
+      }
+
+      const { discountType, discountValue } = durationConfig;
+
+      if (discountType === 'percent' && discountValue > 100) {
+        throw new Error(
+          `The discount value for "${key}" cannot exceed 100% if the discount type is "percent".`,
+        );
+      }
+
+      if (discountType === 'flat' && discountValue > this.amount) {
+        throw new Error(
+          `The discount value for "${key}" cannot exceed the plan amount (${this.amount}) if the discount type is "flat".`,
+        );
+      }
+
+      if (discountType !== 'flat' && discountType !== 'percent') {
+        throw new Error(
+          `The discount type for "${key}" must be either "flat" or "percent".`,
+        );
+      }
+    }
+  }
 }
 
 export const PlansSchema = SchemaFactory.createForClass(Plans);
 
-// Create unique index on name
+PlansSchema.pre('save', async function (next) {
+  try {
+    await Plans.validatePlanDurationConfig.call(this);
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 PlansSchema.index({ name: 1 }, { unique: true });
 
-// Create unique index on amount
 PlansSchema.index({ amount: 1 }, { unique: true });

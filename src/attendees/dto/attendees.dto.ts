@@ -66,15 +66,6 @@ export class CreateAttendeeDto {
   @IsNotEmpty({ message: 'Admin ID is required' })
   adminId: Types.ObjectId;
 
-  @IsOptional()
-  @IsMongoId({ message: 'assignedTo must be a valid MongoId' })
-  @IsNotEmpty({ message: 'assignedTo is required' })
-  assignedTo: Types.ObjectId;
-
-  // @IsOptional()
-  // @IsArray({ message: 'Products must be an array' })
-  // @IsMongoId({ each: true, message: 'Each product ID must be a valid MongoId' })
-  // products?: string[];
 }
 
 export class UpdateAttendeeDto {

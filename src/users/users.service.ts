@@ -149,6 +149,7 @@ export class UsersService {
                 contactLimitAddon: 1,
                 employeeLimit: 1,
                 employeeLimitAddon: 1,
+                contactCount: 1,
               },
             },
           ],
@@ -190,6 +191,7 @@ export class UsersService {
           planName: '$plan.name',
           planStartDate: '$subscription.startDate',
           planExpiry: '$subscription.expiryDate',
+          usedContactsCount: '$subscription.contactCount',
           contactsLimit: {
             $add: [
               '$subscription.contactLimit',
@@ -226,16 +228,7 @@ export class UsersService {
         $match: employeeCountFilter,
       },
       {
-        $lookup: {
-          from: 'attendees',
-          localField: '_id',
-          foreignField: 'adminId',
-          as: 'attendees',
-        },
-      },
-      {
         $addFields: {
-          usedContactsCount: { $size: '$attendees' },
           employeeLimit: {
             $add: [
               '$subscription.employeeLimit',
@@ -249,11 +242,11 @@ export class UsersService {
                   $divide: [
                     {
                       $subtract: [
-                        { $toLong: '$subscription.expiryDate' }, // Convert expiry date to milliseconds
-                        { $toLong: new Date() }, // Convert current date to milliseconds
+                        { $toLong: '$subscription.expiryDate' },
+                        { $toLong: new Date() },
                       ],
                     },
-                    1000 * 60 * 60 * 24, // Convert milliseconds to days
+                    1000 * 60 * 60 * 24,
                   ],
                 },
               },
@@ -765,7 +758,9 @@ export class UsersService {
     if (!plan) throw new NotFoundException('No Plans Found with the given ID.');
 
     let date = new Date();
-    let currentPlanExpiry = date.setDate(date.getDate() + plan.planDuration);
+    let currentPlanExpiry = date.setDate(
+      date.getDate() + createClientDto.planDuration,
+    );
     createClientDto.currentPlanExpiry = currentPlanExpiry;
 
     /**
@@ -788,7 +783,13 @@ export class UsersService {
     }
 
     const userData = await this.userModel.create({
-      ...createClientDto,
+      email: createClientDto.email,
+      userName: createClientDto.email,
+      password: createClientDto.password,
+      phone: createClientDto.phone,
+      role: createClientDto.role,
+      companyName: createClientDto.companyName,
+
       adminId: creatorDetailsDto.id,
     });
     console.log(userData);
@@ -797,10 +798,8 @@ export class UsersService {
       id: userData?._id,
       role: userData?.role,
       adminId: userData?.adminId,
-      plan: userData?.plan,
     };
 
-    //create jwt with payload here
     const token = await this.jwtService.signAsync(payload, {
       secret: this.configService.get('PABBLY_CLIENT_ACCESS_TOKEN_SECRET'),
     });
@@ -812,8 +811,6 @@ export class UsersService {
         { new: true },
       )
       .select('-password');
-
-    //creating subscription and billing history initial entry
 
     let subscriptionPayload: SubscriptionDto = {
       admin: String(user._id),
@@ -827,10 +824,13 @@ export class UsersService {
     const subscription =
       await this.subscriptionService.addSubscription(subscriptionPayload);
 
-    let billingHistoryPayload: BillingHistoryDto = {
+    let billingHistoryPayload = {
       admin: String(user._id),
       plan: String(plan._id),
-      amount: plan.amount,
+      itemAmount: createClientDto.itemAmount,
+      taxPercent: createClientDto.taxPercent,
+      taxAmount: createClientDto.taxAmount,
+      amount: createClientDto.totalAmount,
     };
     const billingHistory = await this.billingHistoryService.addBillingHistory(
       billingHistoryPayload,
@@ -856,7 +856,11 @@ export class UsersService {
           role: new Types.ObjectId(`${adminRole}`),
         },
         {
-          $set: { isActive: false },
+          $set: {
+            isActive: false,
+            statusChangeNote:
+              'Account automatically deactivated due to plan expiration.',
+          },
         },
       );
       //TODO: send email to super admin
@@ -901,9 +905,9 @@ export class UsersService {
   async incrementCount(
     id: string,
     incrementValue: number = 1,
-    session?: ClientSession, 
+    session?: ClientSession,
   ): Promise<boolean> {
-    const user = await this.userModel.findById(id).session(session).exec(); 
+    const user = await this.userModel.findById(id).session(session).exec();
     if (user) {
       user.dailyContactCount = (user.dailyContactCount || 0) + incrementValue;
       await user.save({ session });
@@ -911,7 +915,6 @@ export class UsersService {
     }
     return false;
   }
-  
 
   async resetDailyContactCount() {
     return await this.userModel.updateMany(
@@ -929,5 +932,19 @@ export class UsersService {
       .select('companyName email')
       .exec();
     return superAdmin;
+  }
+
+  async getClientsForDropdown() {
+    const clients = await this.userModel.find({
+      role: new Types.ObjectId(`${this.configService.get('appRoles').ADMIN}`),
+    })
+
+    if(Array.isArray(clients)){
+      return clients.map((client) => ({
+        label: client.email,
+        value: client._id,
+      }));
+    }
+    return [];
   }
 }

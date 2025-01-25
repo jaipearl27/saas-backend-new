@@ -24,7 +24,32 @@ export class BillingHistory extends Document {
 
   @Prop({
     type: Number,
+    required: false,
+    min: 0,
+    default: 0
+  })
+  itemAmount: number;
+
+  @Prop({
+    type: Number,
+    required: false,
+    min: 0,
+    default: 0
+  })
+  taxPercent: number;
+
+  @Prop({
+    type: Number,
+    required: false,
+    min: 0,
+    default: 0
+  })
+  taxAmount: number;
+
+  @Prop({
+    type: Number,
     required: [true, 'Billing amount is required'],
+    min: 0,
   })
   amount: number;
 
