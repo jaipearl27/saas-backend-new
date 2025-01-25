@@ -14,7 +14,8 @@ export enum notificationActionType {
   ASSIGNMENT = 'assignment',
   USER_ACTIVITY = 'user_activity',
   WEBINAR_ASSIGNMENT = 'webinar_assignment',
-  ACCOUNT_DEACTIVATION = 'account_deactivation' 
+  ACCOUNT_DEACTIVATION = 'account_deactivation',
+  EXPIRY_REMINDER = 'expiry_reminder', 
 }
 
 @Schema({ timestamps: true })

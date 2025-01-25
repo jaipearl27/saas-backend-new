@@ -35,6 +35,7 @@ import {
   notificationActionType,
   notificationType,
 } from 'src/schemas/notification.schema';
+import exp from 'constants';
 
 @Injectable()
 export class UsersService {
@@ -379,15 +380,12 @@ export class UsersService {
   ): Promise<any> {
     if (updateUserInfoDto.userName || updateUserInfoDto.email) {
       const isExisting = await this.userModel.findOne({
-        $or: [
-          { userName: updateUserInfoDto.userName },
-          { email: updateUserInfoDto.email },
-        ],
+        email: updateUserInfoDto.email,
         _id: { $ne: id },
       });
 
       if (isExisting) {
-        throw new NotAcceptableException('UserName/E-Mail already exists');
+        throw new NotAcceptableException('E-Mail already exists');
       }
     }
 
@@ -541,18 +539,15 @@ export class UsersService {
     id: string,
     updateUserInfoDto: UpdateUserInfoDto,
   ): Promise<any> {
-    console.log(updateUserInfoDto);
-    if (updateUserInfoDto.userName || updateUserInfoDto.email) {
+    // console.log(updateUserInfoDto);
+    if (updateUserInfoDto.email) {
       const isExisting = await this.userModel.findOne({
-        $or: [
-          { userName: updateUserInfoDto.userName },
-          { email: updateUserInfoDto.email },
-        ],
+        email: updateUserInfoDto.email,
         _id: { $ne: id },
       });
 
       if (isExisting) {
-        throw new NotAcceptableException('UserName/E-Mail already exists');
+        throw new NotAcceptableException('E-Mail already exists');
       }
     }
 
@@ -610,7 +605,7 @@ export class UsersService {
   ): Promise<any> {
     const user = await this.userModel.findById(id);
 
-    console.log(user);
+    // console.log(user);
 
     const verifyOldPassword = await bcrypt.compare(
       updatePasswordDto.oldPassword,
@@ -658,17 +653,14 @@ export class UsersService {
     id: string,
     updateEmployeeDto: UpdateEmployeeDto,
   ): Promise<any> {
-    if (updateEmployeeDto.userName || updateEmployeeDto.email) {
+    if (updateEmployeeDto.email) {
       const isExisting = await this.userModel.findOne({
-        $or: [
-          { userName: updateEmployeeDto.userName },
-          { email: updateEmployeeDto.email },
-        ],
+        email: updateEmployeeDto.email,
         _id: { $ne: id },
       });
 
       if (isExisting) {
-        throw new NotAcceptableException('UserName/E-Mail already exists');
+        throw new NotAcceptableException('E-Mail already exists');
       }
     }
 
@@ -771,28 +763,22 @@ export class UsersService {
 
     // Check if a user already exists
     const existingUser = await this.userModel.findOne({
-      $or: [
-        { userName: createClientDto.userName },
-        { email: createClientDto.email },
-      ],
+      email: createClientDto.email,
     });
     if (existingUser) {
-      throw new BadRequestException(
-        'User with this UserName/E-Mail already exists.',
-      );
+      throw new BadRequestException('User with this E-Mail already exists.');
     }
 
     const userData = await this.userModel.create({
       email: createClientDto.email,
-      userName: createClientDto.email,
+      userName: createClientDto.userName,
       password: createClientDto.password,
       phone: createClientDto.phone,
       role: createClientDto.role,
       companyName: createClientDto.companyName,
-
       adminId: creatorDetailsDto.id,
     });
-    console.log(userData);
+    // console.log(userData);
 
     const payload = {
       id: userData?._id,
@@ -846,7 +832,7 @@ export class UsersService {
     const now = new Date();
     const adminRole = this.configService.get('appRoles').ADMIN;
     const expiredAdminIds =
-      await this.subscriptionService.getExpiredSubscriptions();
+    await this.subscriptionService.getExpiredSubscriptions();
     if (!Array.isArray(expiredAdminIds) || expiredAdminIds.length == 0) return;
     try {
       const result = await this.userModel.updateMany(
@@ -902,6 +888,37 @@ export class UsersService {
     }
   }
 
+  async alertAdminsForExpiry(): Promise<any> {
+    const expiredAdminIds =
+    await this.subscriptionService.getUpcomingExpiry();
+    if (!Array.isArray(expiredAdminIds) || expiredAdminIds.length == 0) return;
+    try {
+      
+      for(let i=0; i<expiredAdminIds.length; i++){
+        let admin = await this.userModel.findById(expiredAdminIds[i].admin.toString());
+        console.log(admin)
+        if(admin){
+          await this.notificationService.createNotification({
+            recipient: admin._id.toString(),
+            title: 'Plan Expiry Alert',
+            message: `Your subscription plan is about to expire in 15 days. Please renew your subscription on or before ${new Date(expiredAdminIds[i].expiryDate).toDateString()} to continue using the services.`,
+            type: notificationType.WARNING,
+            actionType: notificationActionType.EXPIRY_REMINDER,
+          })
+        }
+      }
+
+      this.logger.log(
+        `Notification sent to users with upcoming expiry dates.`,
+      );
+
+    } catch (error) {
+      this.logger.error('Error during plan deactivation:', error.message);
+    }
+
+
+  }
+
   async incrementCount(
     id: string,
     incrementValue: number = 1,
@@ -937,9 +954,9 @@ export class UsersService {
   async getClientsForDropdown() {
     const clients = await this.userModel.find({
       role: new Types.ObjectId(`${this.configService.get('appRoles').ADMIN}`),
-    })
+    });
 
-    if(Array.isArray(clients)){
+    if (Array.isArray(clients)) {
       return clients.map((client) => ({
         label: client.email,
         value: client._id,

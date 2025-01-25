@@ -257,7 +257,6 @@ export class NotesService {
               },
             },
           },
-
           {
             $lookup: {
               from: 'attendees',

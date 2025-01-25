@@ -56,6 +56,24 @@ export class SubscriptionService {
     return result;
   }
 
+  async getUpcomingExpiry(): Promise<Subscription[]> {
+    const today = new Date();
+    const date15DaysLater = new Date();
+    date15DaysLater.setDate(today.getDate() + 15);
+    
+    console.log(date15DaysLater)
+    const startOfDay15DaysLater = new Date(date15DaysLater.setHours(0, 0, 0, 0));
+
+    const endOfDay15DaysLater = new Date(date15DaysLater.setHours(23, 59, 59, 999));
+  
+    const result = await this.SubscriptionModel.find({
+      expiryDate: { $gte: startOfDay15DaysLater, $lte: endOfDay15DaysLater },
+    });
+    
+    return result;
+  }
+
+
   async getExpiredSubscriptions(): Promise<Types.ObjectId[]> {
     const result = await this.SubscriptionModel.find({
       expiryDate: { $lt: new Date() },
