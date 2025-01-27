@@ -818,6 +818,7 @@ export class UsersService {
       taxPercent: createClientDto.taxPercent,
       taxAmount: createClientDto.taxAmount,
       amount: createClientDto.totalAmount,
+      durationType: createClientDto.durationType,
     };
     const billingHistory = await this.billingHistoryService.addBillingHistory(
       billingHistoryPayload,

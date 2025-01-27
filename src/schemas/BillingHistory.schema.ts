@@ -4,6 +4,13 @@ import { Plans } from './Plans.schema';
 import { User } from './User.schema';
 import { AddOn } from './addon.schema';
 
+export enum DurationType {
+  ONE_MONTH = 'monthly',
+  QUARTER = 'quarterly',
+  HALF_YEAR = 'halfyearly',
+  ONE_YEAR = 'yearly',
+}
+
 @Schema({ timestamps: true })
 export class BillingHistory extends Document {
   @Prop({ type: Types.ObjectId, ref: User.name, required: true })
@@ -26,7 +33,7 @@ export class BillingHistory extends Document {
     type: Number,
     required: false,
     min: 0,
-    default: 0
+    default: 0,
   })
   itemAmount: number;
 
@@ -34,15 +41,21 @@ export class BillingHistory extends Document {
     type: Number,
     required: false,
     min: 0,
-    default: 0
+    default: 0,
   })
   discountAmount: number;
-  
+
+  @Prop({
+    type: String,
+    default: null,
+  })
+  durationType: DurationType | null;
+
   @Prop({
     type: Number,
     required: false,
     min: 0,
-    default: 0
+    default: 0,
   })
   taxPercent: number;
 
@@ -50,7 +63,7 @@ export class BillingHistory extends Document {
     type: Number,
     required: false,
     min: 0,
-    default: 0
+    default: 0,
   })
   taxAmount: number;
 

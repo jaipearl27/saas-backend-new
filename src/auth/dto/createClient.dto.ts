@@ -7,6 +7,7 @@ import {
   IsString,
   Min,
 } from 'class-validator';
+import { DurationType } from 'src/schemas/BillingHistory.schema';
 import { PlanDuration } from 'src/schemas/Plans.schema';
 
 export class CreateClientDto {
@@ -67,4 +68,9 @@ export class CreateClientDto {
   @IsNumber()
   @Min(0, { message: 'Amount must be a positive number.' })
   totalAmount: number;
+
+  @IsEnum(DurationType, {
+    message: 'Duration type must be one of the allowed values.',
+  })
+  durationType: DurationType;
 }
