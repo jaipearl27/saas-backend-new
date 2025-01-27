@@ -906,6 +906,9 @@ export class UsersService {
             type: notificationType.WARNING,
             actionType: notificationActionType.EXPIRY_REMINDER,
           })
+
+          //add whatsapp notification here
+
         }
       }
 
