@@ -11,6 +11,8 @@ import { RazorpayService } from './razorpay.service';
 import { PlansService } from 'src/plans/plans.service';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 import { AddOnService } from 'src/addon/addon.service';
+import { RazorPayAddOnDTO, RazorPayUpdatePlanDTO } from './dto/razorpay.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('razorpay')
 export class RazorpayController {
@@ -19,6 +21,7 @@ export class RazorpayController {
     private plansService: PlansService,
     private addonService: AddOnService,
     private subscriptionService: SubscriptionService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Post('/checkout')
@@ -35,15 +38,22 @@ export class RazorpayController {
   @Redirect()
   async paymentSuccess(
     @Body() body: any,
-    @Query() query: { planId: string; adminId: string },
+    @Query() query: RazorPayUpdatePlanDTO,
   ): Promise<any> {
     //validate payment success here
     const planUpdate = await this.subscriptionService.updateClientPlan(
       query.adminId,
       query.planId,
+      query.durationType,
     );
+    const env = this.configService.get('NEST_ENV');
     if (planUpdate) {
-      return { url: 'http://localhost:5173/plans' };
+      return {
+        url:
+          env === 'development'
+            ? 'http://localhost:5173/plans'
+            : 'https://saas.rittikbansal.com/plans',
+      };
     } else {
       return { url: 'http://localhost:5173/failed' };
     }
@@ -51,7 +61,6 @@ export class RazorpayController {
 
   @Post('/addon/checkout')
   async createAddonOrder(@Body('addon') addon: string): Promise<any> {
-    console.log(addon)
     const addonData = await this.addonService.getAddOnById(addon);
 
     if (!addonData) throw new NotAcceptableException('Addon not found.');
@@ -64,14 +73,21 @@ export class RazorpayController {
   @Redirect()
   async addonSuccess(
     @Body() body: any,
-    @Query() query: { addonId: string; adminId: string },
+    @Query() query: RazorPayAddOnDTO,
   ): Promise<any> {
     const addonUpdate = await this.subscriptionService.addAddonToSubscription(
       query.adminId,
       query.addonId,
     );
+
+    const env = this.configService.get('NEST_ENV');
     if (addonUpdate) {
-      return { url: 'http://localhost:5173/plans' };
+      return {
+        url:
+          env === 'development'
+            ? `http://localhost:5173/addons/${query.adminId}`
+            : `https://saas.rittikbansal.com/addons/${query.adminId}`,
+      };
     } else {
       return { url: 'http://localhost:5173/failed' };
     }

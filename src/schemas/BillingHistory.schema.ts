@@ -11,6 +11,13 @@ export enum DurationType {
   ONE_YEAR = 'yearly',
 }
 
+export const monthMultiplier = {
+  monthly: 1,
+  quarterly: 3,
+  halfyearly: 6,
+  yearly: 12,
+};
+
 @Schema({ timestamps: true })
 export class BillingHistory extends Document {
   @Prop({ type: Types.ObjectId, ref: User.name, required: true })

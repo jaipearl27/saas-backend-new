@@ -17,7 +17,7 @@ export class PlansService {
     private readonly configService: ConfigService,
   ) {}
 
-  async getPlan(id: string): Promise<any> {
+  async getPlan(id: string): Promise<Plans> {
     const plans = await this.plansModel.findById(id);
 
     if (!plans) {

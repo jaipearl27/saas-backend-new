@@ -9,7 +9,6 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PlansService } from './plans.service';
 import { CreatePlansDto, PlanOrderDTO } from './dto/createPlans.dto';
 import { UpdatePlansDto } from './dto/updatePlans.dto';
@@ -19,7 +18,6 @@ import { Types } from 'mongoose';
 @Controller('plans')
 export class PlansController {
   constructor(
-    private readonly configService: ConfigService,
     private readonly plansService: PlansService,
   ) {}
 

@@ -36,6 +36,7 @@ import {
   notificationType,
 } from 'src/schemas/notification.schema';
 import exp from 'constants';
+import { monthMultiplier } from 'src/schemas/BillingHistory.schema';
 
 @Injectable()
 export class UsersService {
@@ -100,12 +101,11 @@ export class UsersService {
       }
     }
 
+    if (filterData.planName) subscriptionFilter['plan'] = filterData.planName;
+
     if (filterData.toggleLimit) {
       subscriptionFilter['toggleLimit'] = filterData.toggleLimit;
     }
-
-    const planFilter = {};
-    if (filterData.planName) planFilter['name'] = filterData.planName;
 
     const employeeCountFilter = {};
     if (filterData.totalEmployees) {
@@ -129,6 +129,10 @@ export class UsersService {
       {
         $match: {
           role: new Types.ObjectId(`${clientRoleId}`),
+        },
+      },
+      {
+        $match: {
           ...matchFilters,
         },
       },
@@ -141,6 +145,22 @@ export class UsersService {
             {
               $match: subscriptionFilter,
             },
+            {
+              $lookup: {
+                from: 'plans',
+                localField: 'plan',
+                foreignField: '_id',
+                pipeline: [
+                  {
+                    $project: {
+                      name: 1,
+                    },
+                  },
+                ],
+                as: 'plan',
+              },
+            },
+            { $unwind: { path: '$plan', preserveNullAndEmptyArrays: true } },
             {
               $project: {
                 startDate: 1,
@@ -160,25 +180,6 @@ export class UsersService {
       {
         $unwind: { path: '$subscription', preserveNullAndEmptyArrays: false },
       },
-      {
-        $lookup: {
-          from: 'plans',
-          localField: 'plan',
-          foreignField: '_id',
-          pipeline: [
-            {
-              $match: planFilter,
-            },
-            {
-              $project: {
-                name: 1,
-              },
-            },
-          ],
-          as: 'plan',
-        },
-      },
-      { $unwind: { path: '$plan', preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
           from: 'users',
@@ -748,10 +749,19 @@ export class UsersService {
     });
 
     if (!plan) throw new NotFoundException('No Plans Found with the given ID.');
+    const isDurationConfig = plan.planDurationConfig.has(
+      createClientDto.durationType,
+    );
+    if (!isDurationConfig) {
+      throw new NotFoundException('Duration type not found');
+    }
 
+    const durationConfig = plan.planDurationConfig.get(
+      createClientDto.durationType,
+    );
     let date = new Date();
     let currentPlanExpiry = date.setDate(
-      date.getDate() + createClientDto.planDuration,
+      date.getDate() + durationConfig.duration,
     );
     createClientDto.currentPlanExpiry = currentPlanExpiry;
 
@@ -810,19 +820,30 @@ export class UsersService {
     const subscription =
       await this.subscriptionService.addSubscription(subscriptionPayload);
 
-    let billingHistoryPayload = {
+    const itemAmount =
+      plan.amount * monthMultiplier[createClientDto.durationType];
+    const discountAmount =
+      durationConfig.discountType === 'flat'
+        ? durationConfig.discountValue
+        : (plan.amount *
+            monthMultiplier[createClientDto.durationType] *
+            durationConfig.discountValue) /
+          100;
+
+    const subTotal = itemAmount - discountAmount;
+    const gst = subTotal * 0.18; // 18% GST
+    const totalWithGST = subTotal + gst;
+
+    const billingHistory = await this.billingHistoryService.addBillingHistory({
       admin: String(user._id),
       plan: String(plan._id),
-      itemAmount: createClientDto.itemAmount,
-      discountAmount: createClientDto.discountAmount,
-      taxPercent: createClientDto.taxPercent,
-      taxAmount: createClientDto.taxAmount,
-      amount: createClientDto.totalAmount,
+      amount: totalWithGST,
+      itemAmount: itemAmount,
+      discountAmount: discountAmount,
+      taxPercent: 18,
+      taxAmount: gst,
       durationType: createClientDto.durationType,
-    };
-    const billingHistory = await this.billingHistoryService.addBillingHistory(
-      billingHistoryPayload,
-    );
+    });
 
     await this.customLeadTypeService.createDefaultLeadTypes(`${user._id}`);
 
@@ -834,7 +855,7 @@ export class UsersService {
     const now = new Date();
     const adminRole = this.configService.get('appRoles').ADMIN;
     const expiredAdminIds =
-    await this.subscriptionService.getExpiredSubscriptions();
+      await this.subscriptionService.getExpiredSubscriptions();
     if (!Array.isArray(expiredAdminIds) || expiredAdminIds.length == 0) return;
     try {
       const result = await this.userModel.updateMany(
@@ -891,37 +912,31 @@ export class UsersService {
   }
 
   async alertAdminsForExpiry(): Promise<any> {
-    const expiredAdminIds =
-    await this.subscriptionService.getUpcomingExpiry();
+    const expiredAdminIds = await this.subscriptionService.getUpcomingExpiry();
     if (!Array.isArray(expiredAdminIds) || expiredAdminIds.length == 0) return;
     try {
-      
-      for(let i=0; i<expiredAdminIds.length; i++){
-        let admin = await this.userModel.findById(expiredAdminIds[i].admin.toString());
-        console.log(admin)
-        if(admin){
+      for (let i = 0; i < expiredAdminIds.length; i++) {
+        let admin = await this.userModel.findById(
+          expiredAdminIds[i].admin.toString(),
+        );
+        console.log(admin);
+        if (admin) {
           await this.notificationService.createNotification({
             recipient: admin._id.toString(),
             title: 'Plan Expiry Alert',
             message: `Your subscription plan is about to expire in 15 days. Please renew your subscription on or before ${new Date(expiredAdminIds[i].expiryDate).toDateString()} to continue using the services.`,
             type: notificationType.WARNING,
             actionType: notificationActionType.EXPIRY_REMINDER,
-          })
+          });
 
           //add whatsapp notification here
-
         }
       }
 
-      this.logger.log(
-        `Notification sent to users with upcoming expiry dates.`,
-      );
-
+      this.logger.log(`Notification sent to users with upcoming expiry dates.`);
     } catch (error) {
       this.logger.error('Error during plan deactivation:', error.message);
     }
-
-
   }
 
   async incrementCount(
