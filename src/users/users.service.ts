@@ -814,6 +814,7 @@ export class UsersService {
       admin: String(user._id),
       plan: String(plan._id),
       itemAmount: createClientDto.itemAmount,
+      discountAmount: createClientDto.discountAmount,
       taxPercent: createClientDto.taxPercent,
       taxAmount: createClientDto.taxAmount,
       amount: createClientDto.totalAmount,
