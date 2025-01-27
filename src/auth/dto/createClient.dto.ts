@@ -53,6 +53,10 @@ export class CreateClientDto {
   itemAmount: number;
 
   @IsNumber()
+  @Min(0, { message: 'Billing amount must be a positive number.' })
+  discountAmount: number;
+
+  @IsNumber()
   @Min(0, { message: 'Tax Percent must be a positive number.' })
   taxPercent: number;
 

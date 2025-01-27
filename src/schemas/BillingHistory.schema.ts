@@ -36,6 +36,14 @@ export class BillingHistory extends Document {
     min: 0,
     default: 0
   })
+  discountAmount: number;
+  
+  @Prop({
+    type: Number,
+    required: false,
+    min: 0,
+    default: 0
+  })
   taxPercent: number;
 
   @Prop({
