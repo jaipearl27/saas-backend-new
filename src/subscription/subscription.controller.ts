@@ -25,6 +25,7 @@ export class SubscriptionController {
     return await this.subscriptionService.updateClientPlan(
       body.adminId,
       body.planId,
+      body.durationType
     );
   }
 }

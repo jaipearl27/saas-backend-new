@@ -22,5 +22,14 @@ export class CronService {
 
     this.logger.log('Checking for expired addons...');
     await this.subscriptionAddonService.getExpiredSubscriptionAddons();
+
+    this.logger.log('Checking for upcoming expiry for plans...');
+    await this.userService.alertAdminsForExpiry();
   }
+
+
+  // @Cron(CronExpression.EVERY_10_SECONDS)
+  // async handleExpiry(): Promise<void> {
+    
+  // }
 }
