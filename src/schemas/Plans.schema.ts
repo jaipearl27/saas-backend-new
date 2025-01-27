@@ -80,12 +80,85 @@ export class Plans extends Document {
     min: 0,
   })
   sortOrder: number;
+
+  @Prop({
+    type: Map,
+    of: new mongoose.Schema({
+      duration: { type: Number, required: true },
+      discountType: {
+        type: String,
+        enum: ['flat', 'percent'],
+        required: true,
+      },
+      discountValue: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+    }),
+    required: true,
+  })
+  planDurationConfig: Map<
+    string,
+    { duration: number; discountType: string; discountValue: number }
+  >;
+
+  static async validatePlanDurationConfig(this: Plans) {
+    const requiredDurations = ['monthly', 'quarterly', 'halfyearly', 'yearly'];
+    const durationDays = {
+      monthly: 30,
+      quarterly: 90,
+      halfyearly: 180,
+      yearly: 365,
+    };
+
+    for (const key of requiredDurations) {
+      if (!this.planDurationConfig.has(key)) {
+        throw new Error(`Plan must include a "${key}" duration.`);
+      }
+
+      const durationConfig = this.planDurationConfig.get(key);
+
+      if (durationConfig.duration !== durationDays[key]) {
+        throw new Error(
+          `The "${key}" duration must be ${durationDays[key]} days.`,
+        );
+      }
+
+      const { discountType, discountValue } = durationConfig;
+
+      if (discountType === 'percent' && discountValue > 100) {
+        throw new Error(
+          `The discount value for "${key}" cannot exceed 100% if the discount type is "percent".`,
+        );
+      }
+
+      if (discountType === 'flat' && discountValue > this.amount) {
+        throw new Error(
+          `The discount value for "${key}" cannot exceed the plan amount (${this.amount}) if the discount type is "flat".`,
+        );
+      }
+
+      if (discountType !== 'flat' && discountType !== 'percent') {
+        throw new Error(
+          `The discount type for "${key}" must be either "flat" or "percent".`,
+        );
+      }
+    }
+  }
 }
 
 export const PlansSchema = SchemaFactory.createForClass(Plans);
 
-// Create unique index on name
+PlansSchema.pre('save', async function (next) {
+  try {
+    await Plans.validatePlanDurationConfig.call(this);
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 PlansSchema.index({ name: 1 }, { unique: true });
 
-// Create unique index on amount
 PlansSchema.index({ amount: 1 }, { unique: true });
