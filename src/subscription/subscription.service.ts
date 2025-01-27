@@ -221,8 +221,11 @@ export class SubscriptionService {
     subscription.toggleLimit = plan.toggleLimit;
     subscription.startDate = new Date();
 
+
+    console.log(plan)
+
     subscription.expiryDate = new Date(
-      Date.now() + plan.planDuration * 24 * 60 * 60 * 1000,
+      Date.now() + (plan.planDuration * 24 * 60 * 60 * 1000),
     );
 
     const billing = await this.BillingHistoryService.addBillingHistory({
@@ -235,6 +238,8 @@ export class SubscriptionService {
       await this.userService.updateClient(adminId, { isActive: true });
 
     await subscription.save();
+
+    console.log('successss')
     return { subscription, billing };
   }
 
