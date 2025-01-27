@@ -31,8 +31,9 @@ export class CreateEmployeeDto {
   role: EmployeeRole;
 
   @IsOptional()
-  @Matches(/^\d{10}$/, {
-    message: 'Phone number must be exactly 10 numeric digits.',
+  @Matches(/^\+\d{1,3}\d{9}$/, {
+    message:
+      '10 Digit Phone number with Country Code is required, eg: +911234567890',
   })
   phone?: string;
 
@@ -45,4 +46,9 @@ export class CreateEmployeeDto {
   @IsNumber({ allowNaN: false, allowInfinity: false })
   @Min(1, { message: 'Daily contact limit must be at least 1.' })
   contactLimit?: number;
+
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(1, { message: 'Inactivity Time must be at least 1.' })
+  inactivityTime?: number;
 }

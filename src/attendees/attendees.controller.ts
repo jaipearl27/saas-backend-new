@@ -1,12 +1,15 @@
 import {
   Body,
   Controller,
+  forwardRef,
   Get,
+  Inject,
   NotAcceptableException,
   NotFoundException,
   Param,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
@@ -15,30 +18,28 @@ import {
   AttendeesFilterDto,
   CreateAttendeeDto,
   GetAttendeesDTO,
+  SwapAttendeeFieldsDTO,
   UpdateAttendeeDto,
 } from './dto/attendees.dto';
 import { Types } from 'mongoose';
-import { SubscriptionService } from 'src/subscription/subscription.service';
-
 import { WebinarService } from 'src/webinar/webinar.service';
 
 @Controller('attendees')
 export class AttendeesController {
   constructor(
     private readonly attendeesService: AttendeesService,
-    private readonly subscriptionService: SubscriptionService,
+    @Inject(forwardRef(() => WebinarService))
     private readonly webinarService: WebinarService,
-  ) { }
+  ) {}
 
   @Get(':email')
   async getAttendee(
-    @Param("email") email: string,
-    @AdminId() adminId: string
+    @Param('email') email: string,
+    @AdminId() adminId: string,
   ): Promise<any> {
-    const result = await this.attendeesService.getAttendee(adminId, email)
-    return result
+    const result = await this.attendeesService.getAttendee(adminId, email);
+    return result;
   }
-
 
   @Post('webinar')
   async getAttendees(
@@ -46,8 +47,6 @@ export class AttendeesController {
     @AdminId() adminId: string,
     @Body() body: GetAttendeesDTO,
   ) {
-
-
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
 
@@ -59,7 +58,7 @@ export class AttendeesController {
       limit,
       body.filters,
       body?.validCall,
-      body?.assignmentType
+      body?.assignmentType,
     );
 
     return result;
@@ -102,10 +101,11 @@ export class AttendeesController {
     }
 
     const data = body.data;
+    let postWebinarExists = null;
     //add reminder type attendees
     if (!body.isAttended) {
       // !!!! test if any data exists in postWebinar here !!!!
-      const postWebinarExists =
+       postWebinarExists =
         await this.attendeesService.getPostWebinarAttendee(
           body.webinarId,
           adminId,
@@ -117,33 +117,19 @@ export class AttendeesController {
         );
     }
 
-    //Inserting data here:
-    const dataLen = data.length;
-
-    //CHECK IF CONTACT LIMIT ALLOWS DATA TO BE ADDED:-
-
-    const contactsUploaded = await this.attendeesService.getAttendeesCount(
-      body.webinarId,
-      adminId,
-    );
-
-    const subscription =
-      await this.subscriptionService.getSubscription(adminId);
-
-    const contactsLimit = subscription?.contactLimit || 1;
-
-    if (contactsUploaded + dataLen > contactsLimit)
-      throw new NotAcceptableException(
-        `${dataLen} contacts being uploaded exceed the contact limit of ${contactsLimit}, Please upgrade your plan or upload within the limit.`,
-      );
-
-    for (let i = 0; i < dataLen; i++) {
+    for (let i = 0; i < data.length; i++) {
       data[i].webinar = new Types.ObjectId(`${body.webinarId}`);
       data[i].isAttended = body.isAttended;
       data[i].adminId = new Types.ObjectId(`${adminId}`);
     }
 
-    const result = await this.attendeesService.addPostAttendees(data, webinar);
+    const result = await this.attendeesService.addPostAttendees(
+      data,
+      body.webinarId,
+      body.isAttended,
+      adminId,
+      postWebinarExists ? true : false,
+    );
     return result;
   }
 
@@ -163,4 +149,16 @@ export class AttendeesController {
     return result;
   }
 
+  @Put('/swap')
+  async swapAttendees(
+    @Body() body: SwapAttendeeFieldsDTO,
+    @Id() adminId: string,
+  ) {
+    return await this.attendeesService.swapFields(
+      body.attendees,
+      body.field1,
+      body.field2,
+      adminId,
+    );
+  }
 }

@@ -1,13 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  NotAcceptableException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Products } from 'src/schemas/Products.schema';
 import { CreateProductsDto, UpdateProductsDto } from './dto/products.dto';
+import { EnrollmentsService } from 'src/enrollments/enrollments.service';
 
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectModel(Products.name) private readonly productsModel: Model<Products>,
+    @Inject(forwardRef(() => EnrollmentsService))
+    private enrollmentsService: EnrollmentsService,
   ) {}
 
   async createProduct(createProductsDto: CreateProductsDto): Promise<any> {
@@ -36,6 +44,13 @@ export class ProductsService {
     return { page, totalPages, result };
   }
 
+  async getAllProductsByAdminId(adminId: string): Promise<any> {
+    const pipeline = { adminId: new Types.ObjectId(`${adminId}`) };
+
+    const result = await this.productsModel.find(pipeline).sort({ name: 1 });
+    return result;
+  }
+
   async updateProduct(
     id: string,
     adminId: string,
@@ -50,5 +65,17 @@ export class ProductsService {
       { new: true },
     );
     return result;
+  }
+
+  async deleteProduct(id: string, adminId: string): Promise<any> {
+    const isExisting =
+      await this.enrollmentsService.checkProductAssociation(id);
+    if (isExisting)
+      throw new NotAcceptableException('Enrolled products cannot be deleted.');
+    const result = await this.productsModel.findOneAndDelete({
+      _id: new Types.ObjectId(`${id}`),
+      adminId: new Types.ObjectId(`${adminId}`),
+    });
+    return 'Product Deleted Successfully!';
   }
 }

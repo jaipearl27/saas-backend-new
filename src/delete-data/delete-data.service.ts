@@ -2,15 +2,24 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Subscription } from 'rxjs';
+import { AddOn } from 'src/schemas/addon.schema';
+import { Alarm } from 'src/schemas/Alarm.schema';
 import { AttendeeAssociation } from 'src/schemas/attendee-association.schema';
 import { Attendee } from 'src/schemas/Attendee.schema';
 import { BillingHistory } from 'src/schemas/BillingHistory.schema';
 import { CustomLeadType } from 'src/schemas/custom-lead-type.schema';
 import { Enrollment } from 'src/schemas/Enrollments.schema';
+import { FilterPreset } from 'src/schemas/FilterPreset.schema';
+import { LandingPage } from 'src/schemas/LandingPage.schema';
+import { Location } from 'src/schemas/location.schema';
 import { Notes } from 'src/schemas/Notes.schema';
+import { NoticeBoard } from 'src/schemas/notice-board.schema';
+import { Notification } from 'src/schemas/notification.schema';
+import { Plans } from 'src/schemas/Plans.schema';
 import { Products } from 'src/schemas/Products.schema';
 import { StatusDropdown } from 'src/schemas/StatusDropdown.schema';
 import { User } from 'src/schemas/User.schema';
+import { UserActivity } from 'src/schemas/UserActivity.schema';
 import { Webinar } from 'src/schemas/Webinar.schema';
 
 @Injectable()
@@ -27,6 +36,13 @@ export class DeleteDataService {
         @InjectModel(Products.name) private readonly productsModel: Model<Products>,
         @InjectModel(StatusDropdown.name) private readonly statusDropdownModel: Model<StatusDropdown>,
         @InjectModel(Subscription.name) private readonly subscriptionModel: Model<Subscription>,
+
+        @InjectModel(Alarm.name) private readonly alarmModel: Model<Alarm>,
+        @InjectModel(NoticeBoard.name) private readonly noticeBoardModel: Model<NoticeBoard>,
+        @InjectModel(Notification.name) private readonly notificationModel: Model<Notification>,
+        @InjectModel(UserActivity.name) private readonly userActivityModel: Model<UserActivity>,
+        @InjectModel(FilterPreset.name) private readonly filterPresetModel: Model<FilterPreset>,
+        
     ) { }
 
     async deleteData(id: string): Promise<any> {
@@ -43,6 +59,12 @@ export class DeleteDataService {
                 this.enrollmentModel.deleteMany({}),
                 this.productsModel.deleteMany({}),
                 this.subscriptionModel.deleteMany({}),
+                this.alarmModel.deleteMany({}),
+                this.noticeBoardModel.deleteMany({}),
+                this.notificationModel.deleteMany({}),
+                this.userActivityModel.deleteMany({}),
+                this.filterPresetModel.deleteMany({}),
+                
 
                 // Delete records in User and StatusDropdown but exclude those with adminId equal to provided id
                 this.userModel.deleteMany({ _id: { $ne: new Types.ObjectId(`${id}`) } }), // Do not delete users with adminId == id

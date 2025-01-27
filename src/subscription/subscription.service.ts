@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   forwardRef,
   Inject,
   Injectable,
@@ -12,6 +13,12 @@ import { AddOnService } from 'src/addon/addon.service';
 import { BillingHistoryService } from 'src/billing-history/billing-history.service';
 import { SubscriptionAddonService } from 'src/subscription-addon/subscription-addon.service';
 import { PlansService } from 'src/plans/plans.service';
+import { AttendeesService } from 'src/attendees/attendees.service';
+import { UsersService } from 'src/users/users.service';
+import {
+  DurationType,
+  monthMultiplier,
+} from 'src/schemas/BillingHistory.schema';
 
 @Injectable()
 export class SubscriptionService {
@@ -22,6 +29,10 @@ export class SubscriptionService {
     private readonly addOnService: AddOnService,
     @Inject(forwardRef(() => SubscriptionAddonService))
     private readonly subscriptionAddonService: SubscriptionAddonService,
+    @Inject(forwardRef(() => AttendeesService))
+    private readonly attendeesService: AttendeesService,
+    @Inject(forwardRef(() => UsersService))
+    private readonly userService: UsersService,
     private readonly BillingHistoryService: BillingHistoryService,
     private readonly plansService: PlansService,
   ) {}
@@ -46,6 +57,27 @@ export class SubscriptionService {
     const result = await this.SubscriptionModel.findOne({
       admin: new Types.ObjectId(`${adminId}`),
     }).populate('plan');
+    return result;
+  }
+
+  async getUpcomingExpiry(): Promise<Subscription[]> {
+    const today = new Date();
+    const date15DaysLater = new Date();
+    date15DaysLater.setDate(today.getDate() + 15);
+
+    console.log(date15DaysLater);
+    const startOfDay15DaysLater = new Date(
+      date15DaysLater.setHours(0, 0, 0, 0),
+    );
+
+    const endOfDay15DaysLater = new Date(
+      date15DaysLater.setHours(23, 59, 59, 999),
+    );
+
+    const result = await this.SubscriptionModel.find({
+      expiryDate: { $gte: startOfDay15DaysLater, $lte: endOfDay15DaysLater },
+    });
+
     return result;
   }
 
@@ -101,14 +133,6 @@ export class SubscriptionService {
           throw new Error('Failed to create subscription addon');
         });
 
-      const billing = await this.BillingHistoryService.addOneBillingHistory(
-        adminId,
-        addonId,
-        addOn.addOnPrice,
-      ).catch(() => {
-        throw new Error('Failed to create billing history');
-      });
-
       subscription.employeeLimitAddon = Math.max(
         (subscription.employeeLimitAddon || 0) + addOn.employeeLimit,
         0,
@@ -122,6 +146,14 @@ export class SubscriptionService {
       await subscription.save();
       await session.commitTransaction();
       session.endSession();
+
+      const billing = await this.BillingHistoryService.addOneBillingHistory(
+        adminId,
+        addonId,
+        addOn.addOnPrice,
+      ).catch(() => {
+        throw new Error('Failed to create billing history');
+      });
 
       return {
         subscription,
@@ -161,20 +193,96 @@ export class SubscriptionService {
     return result;
   }
 
-  async updateClientPlan(adminId: string, planId: string) {
+  async updateClientPlan(
+    adminId: string,
+    planId: string,
+    durationType: DurationType,
+  ) {
     const subscription = await this.SubscriptionModel.findOne({
       admin: new Types.ObjectId(`${adminId}`),
     });
+
     if (!subscription) {
       throw new NotFoundException(
         `Subscription with admin ID ${adminId} not found`,
       );
     }
 
+    const isPlanExpired = new Date() > new Date(subscription.expiryDate);
+
+    const usedContacts = await this.attendeesService.getAttendeesCount(
+      '',
+      adminId,
+    );
+    const usedEmployees = await this.userService.getEmployeesCount(adminId);
+
     const plan = await this.plansService.getPlan(planId);
 
-    if (subscription.plan === plan._id) {
-      console.log('plan is same');
+    const isDurationConfig = plan.planDurationConfig.has(durationType);
+    if (!isDurationConfig) {
+      throw new NotFoundException('Duration type not found');
     }
+
+    if (usedContacts > plan.contactLimit) {
+      throw new BadRequestException('You cannot downgrade the plan');
+    }
+
+    if (usedEmployees > plan.employeeCount) {
+      throw new BadRequestException('You cannot downgrade the plan');
+    }
+
+    subscription.plan = new Types.ObjectId(`${planId}`);
+    subscription.contactLimit = plan.contactLimit;
+    subscription.employeeLimit = plan.employeeCount;
+    subscription.toggleLimit = plan.toggleLimit;
+    subscription.startDate = new Date();
+
+    const durationConfig = plan.planDurationConfig.get(durationType);
+
+    subscription.expiryDate = new Date(
+      Date.now() + durationConfig.duration * 24 * 60 * 60 * 1000,
+    );
+
+    const itemAmount = plan.amount * monthMultiplier[durationType];
+    const discountAmount =
+      durationConfig.discountType === 'flat'
+        ? durationConfig.discountValue
+        : (plan.amount *
+            monthMultiplier[durationType] *
+            durationConfig.discountValue) /
+          100;
+
+    const subTotal = itemAmount - discountAmount;
+    const gst = subTotal * 0.18; // 18% GST
+    const totalWithGST = subTotal + gst;
+
+    const billing = await this.BillingHistoryService.addBillingHistory({
+      admin: adminId,
+      plan: planId,
+      amount: totalWithGST,
+      itemAmount: itemAmount,
+      discountAmount: discountAmount,
+      taxPercent: 18,
+      taxAmount: gst,
+      durationType: durationType,
+    });
+
+    if (isPlanExpired)
+      await this.userService.updateClient(adminId, { isActive: true });
+
+    await subscription.save();
+
+    console.log('successss');
+    return { subscription, billing };
+  }
+
+  async incrementContactCount(id: string, count: number = 1) {
+    const subscription = await this.SubscriptionModel.findById(id);
+    if (!subscription) {
+      throw new NotFoundException('Subscription not found');
+    }
+    subscription.contactCount = subscription.contactCount + count;
+    await subscription.save();
+    return subscription;
   }
 }

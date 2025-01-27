@@ -1,4 +1,10 @@
-import { MiddlewareConsumer, Module, Req, RequestMethod } from '@nestjs/common';
+import {
+  forwardRef,
+  MiddlewareConsumer,
+  Module,
+  Req,
+  RequestMethod,
+} from '@nestjs/common';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
@@ -8,12 +14,15 @@ import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
 import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
 import { UsersModule } from 'src/users/users.module';
 
+import { EnrollmentsModule } from 'src/enrollments/enrollments.module';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Products.name, schema: ProductsSchema },
     ]),
-    UsersModule
+    UsersModule,
+    forwardRef(() => EnrollmentsModule),
   ],
   controllers: [ProductsController],
   providers: [ProductsService],
@@ -23,11 +32,17 @@ export class ProductsModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthAdminTokenMiddleware)
-      .exclude({ path: 'products', method: RequestMethod.GET })
+      .exclude(
+        { path: 'products', method: RequestMethod.GET },
+        { path: 'products/all', method: RequestMethod.GET },
+      )
       .forRoutes({ path: 'products*', method: RequestMethod.ALL });
 
     consumer
       .apply(AuthTokenMiddleware, GetAdminIdMiddleware)
-      .forRoutes({ path: 'products', method: RequestMethod.GET });
+      .forRoutes(
+        { path: 'products', method: RequestMethod.GET },
+        { path: 'products/all', method: RequestMethod.GET },
+      );
   }
 }

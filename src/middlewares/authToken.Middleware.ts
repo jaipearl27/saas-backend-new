@@ -15,7 +15,6 @@ export class AuthTokenMiddleware implements NestMiddleware {
   ) {}
 
   async use(req /*:  Request */, res: Response, next: NextFunction) {
-    console.log('authToken middleware');
     const access_token =
       req.cookies[this.configService.get('ACCESS_TOKEN_NAME')];
 

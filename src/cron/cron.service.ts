@@ -16,11 +16,20 @@ export class CronService {
   async handleExpiredPlans(): Promise<void> {
     this.logger.log('Checking for expired plans...');
     await this.userService.deactivateExpiredPlans();
+
+    this.logger.log('Resetting daily contact count...');
+    await this.userService.resetDailyContactCount();
+
+    this.logger.log('Checking for expired addons...');
+    await this.subscriptionAddonService.getExpiredSubscriptionAddons();
+
+    this.logger.log('Checking for upcoming expiry for plans...');
+    await this.userService.alertAdminsForExpiry();
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async handleExpiredAddons(): Promise<void> {
-    this.logger.log('Checking for expired plans...');
-    await this.subscriptionAddonService.getExpiredSubscriptionAddons();
-  }
+
+  // @Cron(CronExpression.EVERY_10_SECONDS)
+  // async handleExpiry(): Promise<void> {
+    
+  // }
 }

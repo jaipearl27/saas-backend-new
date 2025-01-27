@@ -17,7 +17,7 @@ export class EnrollmentsController {
 
   @Post()
   async createEnrollment(
-    @Id() adminId: string,
+    @AdminId() adminId: string,
     @Body() createEnrollmentDto: CreateEnrollmentDto,
   ): Promise<any> {
     createEnrollmentDto.adminId = adminId;
@@ -66,7 +66,7 @@ export class EnrollmentsController {
   @Patch(':id')
   async updateEnrollment(
     @Param('id') id: string,
-    @Id() adminId: string,
+    @AdminId() adminId: string,
     @Body() updateEnrollmentDto: UpdateEnrollmentDto,
   ): Promise<any> {
     const enrollment = await this.enrollmentsService.updateEnrollment(

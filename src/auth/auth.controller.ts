@@ -38,10 +38,10 @@ export class AuthController {
 
   @Post('refresh')
   async refreshToken(
-    @Body() body: { userName: string },
+    @Body() body: { email: string },
     @Res({ passthrough: true }) response: Response,
   ) {
-    const result = await this.authService.refreshToken(body.userName);
+    const result = await this.authService.refreshToken(body.email);
     console.log(this.configService.get('NODE_ENV') === 'production', "--- log ---", this.configService.get('NODE_ENV'))
     if (result.access_token) {
       response.cookie(

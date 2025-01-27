@@ -21,7 +21,6 @@ export class GetAdminIdMiddleware implements NestMiddleware {
     const access_token =
       req.cookies[this.configService.get('ACCESS_TOKEN_NAME')];
 
-    console.log('id');
 
     if (!access_token) {
       throw new UnauthorizedException('Access token not found.');

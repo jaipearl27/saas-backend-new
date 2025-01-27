@@ -1,5 +1,15 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { IsInt, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsMongoId,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
+import { DurationType } from 'src/schemas/BillingHistory.schema';
 
 export class SubscriptionDto {
   @IsString()
@@ -13,6 +23,10 @@ export class SubscriptionDto {
   @IsNumber()
   @IsOptional()
   contactLimit?: number;
+
+  @IsNumber()
+  @IsOptional()
+  employeeLimit?: number;
 
   @IsInt({ message: 'Toggle limit must be an integer value.' })
   @Min(0, { message: 'Toggle limit cannot be less than 0.' })
@@ -42,11 +56,10 @@ export class UpdateSubscriptionDto {
 
   @IsOptional()
   @IsNumber()
-  expiryDate?: number; 
+  expiryDate?: number;
 }
 
-
-export class UpdatePlanDTO{
+export class UpdatePlanDTO {
   @IsNotEmpty()
   @IsMongoId()
   adminId: string;
@@ -54,9 +67,14 @@ export class UpdatePlanDTO{
   @IsNotEmpty()
   @IsMongoId()
   planId: string;
+
+  @IsEnum(DurationType, {
+    message: 'Duration type must be one of the allowed values.',
+  })
+  durationType: DurationType;
 }
 
-export class AddAddOnDTO{
+export class AddAddOnDTO {
   @IsNotEmpty()
   @IsMongoId()
   adminId: string;

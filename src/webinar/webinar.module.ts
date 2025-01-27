@@ -12,10 +12,11 @@ import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
 import { AttendeesModule } from 'src/attendees/attendees.module';
 import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
 import { UsersModule } from 'src/users/users.module';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
   imports: [
-    UsersModule,
+    forwardRef(() => UsersModule),
     MongooseModule.forFeature([
       {
         name: Webinar.name,
@@ -23,6 +24,7 @@ import { UsersModule } from 'src/users/users.module';
       },
     ]),
     forwardRef(() => AttendeesModule),
+    NotificationModule
   ],
   providers: [WebinarService],
   controllers: [WebinarController],

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, PipelineStage, Types } from 'mongoose';
 import { Webinar } from 'src/schemas/Webinar.schema';
@@ -6,19 +6,45 @@ import { CreateWebinarDto, UpdateWebinarDto } from './dto/createWebinar.dto';
 import { ConfigService } from '@nestjs/config';
 import { AttendeesService } from 'src/attendees/attendees.service';
 import { WebinarFilterDTO } from './dto/webinar-filter.dto';
+import { NotificationService } from 'src/notification/notification.service';
+import {
+  notificationActionType,
+  notificationType,
+} from 'src/schemas/notification.schema';
 
 @Injectable()
 export class WebinarService {
   constructor(
     @InjectModel(Webinar.name) private webinarModel: Model<Webinar>,
     private readonly configService: ConfigService,
+    @Inject(forwardRef(() => AttendeesService))
     private readonly attendeesService: AttendeesService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async createWebiar(createWebinarDto: CreateWebinarDto): Promise<any> {
-    //create webinar
+    // Create webinar
     console.log(createWebinarDto);
+
     const result = await this.webinarModel.create(createWebinarDto);
+
+    if (result) {
+      createWebinarDto.assignedEmployees.forEach(async (employeeId) => {
+        // Create a notification for each assigned employee
+        await this.notificationService.createNotification({
+          recipient: `${employeeId}`,
+          title: 'New Webinar Assigned',
+          message: `You have been assigned to a new webinar: ${createWebinarDto.webinarName}`,
+          type: notificationType.INFO,
+          actionType: notificationActionType.WEBINAR_ASSIGNMENT,
+          metadata: {
+            webinarId: result._id,
+            webinarTitle: createWebinarDto.webinarName,
+          },
+        });
+      });
+    }
+
     return result;
   }
 
@@ -29,7 +55,6 @@ export class WebinarService {
     filters: WebinarFilterDTO = {},
     usePagination: boolean = true, // Flag to enable/disable pagination
   ): Promise<any> {
-    console.log(filters);
     const skip = (page - 1) * limit;
 
     const query = { adminId: new Types.ObjectId(`${adminId}`) };
@@ -114,6 +139,11 @@ export class WebinarService {
           ...(filters.totalParticipants && {
             totalParticipants: filters.totalParticipants,
           }),
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1, // Sort by createdAt in descending order
         },
       },
     ];
@@ -206,14 +236,17 @@ export class WebinarService {
     employeeId: string,
     adminId: string,
   ): Promise<Webinar[]> {
-    const result = await this.webinarModel.find({
-      assignedEmployees: { $in: [new Types.ObjectId(`${employeeId}`)] },
-      adminId: new Types.ObjectId(`${adminId}`),
-    });
+    const result = await this.webinarModel
+      .find({
+        assignedEmployees: { $in: [new Types.ObjectId(`${employeeId}`)] },
+        adminId: new Types.ObjectId(`${adminId}`),
+      })
+      .sort({ createdAt: -1 });
     return result;
   }
 
   async getAssignedEmployees(webinarId: string): Promise<any> {
+
     const result: any = await this.webinarModel
       .findById(webinarId)
       .populate('assignedEmployees')
@@ -221,6 +254,8 @@ export class WebinarService {
 
     if (!result || !Array.isArray(result.assignedEmployees)) return [];
 
-    return result.assignedEmployees.filter(employee => employee?.isActive) || [];
+    return (
+      result.assignedEmployees.filter((employee) => employee?.isActive) || []
+    );
   }
 }

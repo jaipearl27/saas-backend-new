@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -21,14 +22,17 @@ import {
 } from './dto/Assignment.dto';
 import { UsersService } from 'src/users/users.service';
 import { AssignmentService } from './assignment.service';
-import { AdminId, Id } from 'src/decorators/custom.decorator';
+import { AdminId, Id, Role } from 'src/decorators/custom.decorator';
 import { AssignmentStatus } from 'src/schemas/Assignments.schema';
+import { Types } from 'mongoose';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('assignment')
 export class AssignmentController {
   constructor(
     private readonly usersService: UsersService,
     private readonly assignmentService: AssignmentService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Post('data/:empId')
@@ -59,7 +63,6 @@ export class AssignmentController {
       }
       employeeId = employee;
       adminId = id;
-
     }
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
@@ -109,48 +112,43 @@ export class AssignmentController {
     return result;
   }
 
-  // @Get(':id')
-  // async getAssignments(
-  //   @Id() adminId: string,
-  //   @Param('id') id: string,
-  //   @Query() query: { page?: string; limit?: string },
-  // ): Promise<any> {
-  //   let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
-  //   let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
-  //   const result = await this.assignmentService.getAssignments(
-  //     adminId,
-  //     id,
-  //     page,
-  //     limit,
-  //   );
-
-  //   return result;
-  // }
-
   @Post()
   async addAssignment(
     @Body()
-    body: { webinar: string; employee: string; assignments: [AssignmentDto] },
+    body: AssignmentDto,
     @Id() adminId: string,
   ): Promise<any> {
     // check if employee is of this admin
-    const employee = await this.usersService.getUserById(body.employee);
+    const employee = await this.usersService.getUserById(body.user);
 
     if (!employee)
       throw new NotFoundException('No Employee found with this ID');
 
     if (String(employee.adminId) !== String(adminId)) {
-      throw new UnauthorizedException(
+      throw new BadRequestException(
         'Admin can only assign to their employees.',
       );
     }
+    let role = '';
+    if (body.recordType === 'preWebinar') {
+      role = this.configService.get('appRoles')['EMPLOYEE_REMINDER'];
+    } else {
+      role = this.configService.get('appRoles')['EMPLOYEE_SALES'];
+    }
 
-    //continue assignment
-    const result = await this.assignmentService.addAssignment(
-      body.assignments,
-      employee,
-      body.webinar,
-    );
+    if (String(employee.role) !== String(role)) {
+      throw new BadRequestException('Invalid Employee Role.');
+    }
+
+    const empContactLimit = employee?.dailyContactLimit ?? 0;
+    const empContactCount = employee?.dailyContactCount ?? 0;
+    const attendeeCount = body.attendees.length;
+
+    if (empContactCount + attendeeCount > empContactLimit) {
+      throw new BadRequestException('Daily Contact Limit Exceeded');
+    }
+
+    const result = await this.assignmentService.addAssignment(body, adminId);
 
     return result;
   }
@@ -167,42 +165,24 @@ export class AssignmentController {
     );
   }
 
-  @Patch('pullback')
-  async pullbackAssignment(
-    @Body('id') id: string,
-    @Id() adminId: string,
-  ): Promise<any> {
-    const result = await this.assignmentService.pullbackAssignment(id, adminId);
-    return result;
-  }
-
-  @Post('pullback')
-  async getPullbacks(
-    @Body() body: { webinar: string; filters: any },
-    @Id() id: string,
-    @Query() query: { page?: string; limit?: string },
-  ): Promise<any> {
-    const page = Number(query?.page) ? Number(query?.page) : 1;
-    const limit = Number(query?.limit) ? Number(query?.limit) : 25;
-    const result = await this.assignmentService.getPullbacks(
-      body.webinar,
-      id,
-      page,
-      limit,
-    );
-    return result;
-  }
-
   @Patch('reassign')
   async reassignAssignment(
     @Body() body: RequestReAssignmentsDTO,
     @AdminId() adminId: string,
     @Id() userId: string,
+    @Role() role: string,
   ) {
+    if (!body.requestReason) {
+      throw new BadRequestException('Reason is Required.');
+    }
+
     return await this.assignmentService.requestReAssignements(
       userId,
       adminId,
       body.assignments,
+      body.webinarId,
+      body.requestReason,
+      role,
     );
   }
 
@@ -219,6 +199,8 @@ export class AssignmentController {
       adminId,
       body.assignments,
       body.status,
+      body.userId,
+      body.webinarId,
     );
   }
 
@@ -241,7 +223,7 @@ export class AssignmentController {
       body.webinarId,
       body.recordType,
       body.employeeId,
-      body.isTemp
+      body.isTemp,
     );
   }
 
@@ -260,6 +242,18 @@ export class AssignmentController {
       body.status,
       page,
       limit,
+    );
+  }
+
+  @Get('reassign/fetch')
+  async fetchPullbackRequestsCount(
+    @Id() adminId: string,
+    @Query() query: FetchReAssignmentsDTO,
+  ) {
+    return await this.assignmentService.getPullbackRequestsCount(
+      query.recordType,
+      new Types.ObjectId(`${adminId}`),
+      new Types.ObjectId(`${query.webinarId}`),
     );
   }
 }

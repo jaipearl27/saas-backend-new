@@ -40,6 +40,10 @@ import { AttendeeAssociationModule } from './attendee-association/attendee-assoc
 import { CalendarService } from './calendar/calendar.service';
 import { AddonModule } from './addon/addon.module';
 import { SubscriptionAddonModule } from './subscription-addon/subscription-addon.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { RazorpayModule } from './razorpay/razorpay.module';
+import { NotificationModule } from './notification/notification.module';
+import { LocationModule } from './location/location.module';
 
 @Module({
   imports: [
@@ -94,6 +98,10 @@ import { SubscriptionAddonModule } from './subscription-addon/subscription-addon
     CustomLeadTypeModule,
      AddonModule,
      SubscriptionAddonModule,
+     WhatsappModule,
+     RazorpayModule,
+     NotificationModule,
+     LocationModule,
   ],
   controllers: [AppController],
   providers: [AppService, CalendarService],

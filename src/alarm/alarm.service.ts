@@ -12,6 +12,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Alarm } from 'src/schemas/Alarm.schema';
 import { Model, Types } from 'mongoose';
 import { WebsocketGateway } from 'src/websocket/websocket.gateway';
+import { WhatsappService } from 'src/whatsapp/whatsapp.service';
 @Injectable()
 export class AlarmService {
   constructor(
@@ -19,6 +20,8 @@ export class AlarmService {
     private schedulerRegistry: SchedulerRegistry,
     @Inject(forwardRef(() => WebsocketGateway)) // Lazy inject AlarmGateway
     private readonly websocketGateway: WebsocketGateway,
+    @Inject(forwardRef(() => WhatsappService))
+    private readonly whatsappService: WhatsappService,
   ) {}
 
   private readonly logger = new Logger(AlarmService.name);
@@ -29,7 +32,6 @@ export class AlarmService {
     startup?: boolean,
   ): Promise<any> {
     //perform check here
-
     const alarmExists = await this.getAttendeeAlarm(
       createAlarmDto.user,
       createAlarmDto.email,
@@ -53,15 +55,27 @@ export class AlarmService {
       id = alarmData._id;
     }
 
-    console.log('id in db', id);
-
     // reminder alarm
     if (reminderAlarmDate.getTime() - Date.now() > 0) {
-      const reminderId = `reminder${Date.now()}-${createAlarmDto.user}-${id}}`;
-      const reminderAlarm = new CronJob(reminderAlarmDate, () => {
+      const reminderId = `reminder-${id}`; //format: reminder-{alarm _id from MongoDB}
+      const reminderAlarm = new CronJob(reminderAlarmDate, async () => {
+        const alarmDetails: any = await this.alarmsModel
+          .findById(id)
+          .populate('user');
+
         this.logger.warn(
           `reminder for the alarm was set (${Date.now()}) for job ${reminderId} to run!`,
         );
+
+        if (alarmDetails?.user?.phone) {
+          const msgData = {
+            phone: alarmDetails.user.phone,
+            attendeeEmail: alarmDetails.email,
+            userName: alarmDetails.user.userName,
+            note: alarmDetails.note,
+          };
+          this.whatsappService.sendReminderMsg(msgData);
+        }
       });
 
       this.schedulerRegistry.addCronJob(reminderId, reminderAlarm);
@@ -71,6 +85,10 @@ export class AlarmService {
     }
 
     const alarm = new CronJob(alarmDate, async () => {
+      const alarmDetails: any = await this.alarmsModel
+        .findById(id)
+        .populate('user');
+      // console.log(alarmDetails)
       const deleteResult = await this.deleteAlarm(id);
       const socketId = this.websocketGateway.activeUsers.get(
         createAlarmDto.user,
@@ -79,13 +97,24 @@ export class AlarmService {
         message: '!!! Alarm played !!!',
         deleteResult,
       });
+      if (alarmDetails?.user?.phone) {
+        const msgData = {
+          phone: alarmDetails.user.phone,
+          attendeeEmail: alarmDetails.email,
+          userName: alarmDetails.user.userName,
+          note: alarmDetails.note,
+        };
+        this.whatsappService.sendAlarmMsg(msgData);
+      }
     });
-    //mail sent
-    this.schedulerRegistry.addCronJob(id, alarm);
+
+    const alarmId = `alarm-${id}`;
+
+    this.schedulerRegistry.addCronJob(alarmId, alarm); //id === alarm document ID in DB
     alarm.start();
     // add alarm data in DB
 
-    this.logger.warn(`Alarm ${createAlarmDto.user} added for ${alarmDate}!`);
+    this.logger.warn(`Alarm ${alarmId} added for ${alarmDate}!`);
     return 'Alarm set.';
   }
 
@@ -107,6 +136,43 @@ export class AlarmService {
     return alarm;
   }
 
+  private checkIfCronJobExists(jobName: string): boolean {
+    try {
+      const cronJob = this.schedulerRegistry.getCronJob(jobName);
+      return !!cronJob; // If the job is found, return true
+    } catch (error) {
+      return false; // If an error occurs (job not found), return false
+    }
+  }
+
+  async cancelAlarm(alarmId: string, id: string): Promise<any> {
+    const alarmData = await this.alarmsModel.findById(alarmId);
+    console.log(alarmId, alarmData);
+
+    if (alarmData) {
+      const reminderJobName = `reminder-${alarmId}`;
+      if (this.checkIfCronJobExists(reminderJobName)) {
+        const reminderAlarm =
+          this.schedulerRegistry.getCronJob(reminderJobName);
+        reminderAlarm.stop();
+        console.log('====reminder alarm stopped===');
+      }
+
+      const alarmJobName = `alarm-${alarmId}`;
+      if (this.checkIfCronJobExists(alarmJobName)) {
+        const alarm = this.schedulerRegistry.getCronJob(alarmJobName);
+        alarm.stop();
+        console.log('====alarm stopped===');
+      }
+    }
+    const deleteAlarm = await this.alarmsModel.findOneAndDelete({
+      _id: new Types.ObjectId(`${alarmId}`),
+      user: new Types.ObjectId(`${id}`),
+    });
+
+    return deleteAlarm;
+  }
+
   async onModuleInit(): Promise<void> {
     console.log("===================I'm running bitches===================");
     const alarms: any[] = await this.alarmsModel.find({});
@@ -116,11 +182,29 @@ export class AlarmService {
         const createAlarmDto: CreateAlarmDto = {
           user: alarm.user,
           email: alarm?.email,
+          attendeeId: alarm?.attendeeId,
           date: alarm.date,
           note: alarm.note,
         };
         await this.setAlarm(createAlarmDto, alarm?._id, true);
       });
     }
+  }
+
+  async fetchAlarmsByMonthAndYear(userId: string, month: number, year: number) {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 1);
+    const alarms = await this.alarmsModel
+      .find({
+        user: new Types.ObjectId(`${userId}`),
+        date: {
+          $gte: startDate,
+          $lt: endDate,
+        },
+      })
+      .select('date email note _id attendeeId')
+      .exec();
+
+    return alarms;
   }
 }

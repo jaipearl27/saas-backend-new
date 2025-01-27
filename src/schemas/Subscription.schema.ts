@@ -27,6 +27,12 @@ export class Subscription extends Document {
   })
   contactLimit: number;
 
+  @Prop({
+    type: Number,
+    required: [true, 'Employee limit is required'],
+  })
+  employeeLimit: number;
+
   @Prop({ type: Date, required: true })
   expiryDate: Date; // Calculated based on the plan duration
 
@@ -53,6 +59,14 @@ export class Subscription extends Document {
     required: false,
   })
   contactLimitAddon: number; // Employee limit add-on
+
+  @Prop({
+    type: Number,
+    min: 0,
+    default: 0,
+    required: false,
+  })
+  contactCount: number;
 }
 
 const SubscriptionSchema = SchemaFactory.createForClass(Subscription);

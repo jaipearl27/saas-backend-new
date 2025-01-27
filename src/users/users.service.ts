@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import mongoose, { Model, PipelineStage, Types } from 'mongoose';
+import mongoose, { ClientSession, Model, PipelineStage, Types } from 'mongoose';
 import { User } from 'src/schemas/User.schema';
 import { ConfigService } from '@nestjs/config';
 import { CreateEmployeeDto } from 'src/auth/dto/createEmployee.dto';
@@ -30,6 +30,13 @@ import { JwtService } from '@nestjs/jwt';
 import { GetClientsFilterDto } from './dto/filters.dto';
 import { EmployeeFilterDTO } from './dto/employee-filter.dto';
 import { CustomLeadTypeService } from 'src/custom-lead-type/custom-lead-type.service';
+import { NotificationService } from 'src/notification/notification.service';
+import {
+  notificationActionType,
+  notificationType,
+} from 'src/schemas/notification.schema';
+import exp from 'constants';
+import { monthMultiplier } from 'src/schemas/BillingHistory.schema';
 
 @Injectable()
 export class UsersService {
@@ -38,14 +45,13 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Roles.name) private rolesModel: Model<Roles>,
     @InjectModel(Plans.name) private plansModel: Model<Plans>,
-    @InjectModel(Subscription.name)
-    private subscriptionModel: Model<Subscription>,
     private configService: ConfigService,
     private readonly billingHistoryService: BillingHistoryService,
     @Inject(forwardRef(() => SubscriptionService))
     private readonly subscriptionService: SubscriptionService,
     private readonly jwtService: JwtService,
     private readonly customLeadTypeService: CustomLeadTypeService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   getUsers() {
@@ -94,15 +100,12 @@ export class UsersService {
         );
       }
     }
-    if (filterData.contactsLimit) {
-      subscriptionFilter['contactLimit'] = filterData.contactsLimit;
-    }
+
+    if (filterData.planName) subscriptionFilter['plan'] = filterData.planName;
+
     if (filterData.toggleLimit) {
       subscriptionFilter['toggleLimit'] = filterData.toggleLimit;
     }
-
-    const planFilter = {};
-    if (filterData.planName) planFilter['name'] = filterData.planName;
 
     const employeeCountFilter = {};
     if (filterData.totalEmployees) {
@@ -115,6 +118,9 @@ export class UsersService {
       employeeCountFilter['employeeReminderCount'] =
         filterData.employeeReminderCount;
     }
+    if (filterData.contactsLimit) {
+      employeeCountFilter['contactsLimit'] = filterData.contactsLimit;
+    }
 
     const clientRoleId = this.configService.get('appRoles').ADMIN;
     const empSalesId = this.configService.get('appRoles').EMPLOYEE_SALES;
@@ -123,6 +129,10 @@ export class UsersService {
       {
         $match: {
           role: new Types.ObjectId(`${clientRoleId}`),
+        },
+      },
+      {
+        $match: {
           ...matchFilters,
         },
       },
@@ -136,11 +146,31 @@ export class UsersService {
               $match: subscriptionFilter,
             },
             {
+              $lookup: {
+                from: 'plans',
+                localField: 'plan',
+                foreignField: '_id',
+                pipeline: [
+                  {
+                    $project: {
+                      name: 1,
+                    },
+                  },
+                ],
+                as: 'plan',
+              },
+            },
+            { $unwind: { path: '$plan', preserveNullAndEmptyArrays: true } },
+            {
               $project: {
                 startDate: 1,
                 expiryDate: 1,
                 contactLimit: 1,
                 toggleLimit: 1,
+                contactLimitAddon: 1,
+                employeeLimit: 1,
+                employeeLimitAddon: 1,
+                contactCount: 1,
               },
             },
           ],
@@ -150,25 +180,6 @@ export class UsersService {
       {
         $unwind: { path: '$subscription', preserveNullAndEmptyArrays: false },
       },
-      {
-        $lookup: {
-          from: 'plans',
-          localField: 'plan',
-          foreignField: '_id',
-          pipeline: [
-            {
-              $match: planFilter,
-            },
-            {
-              $project: {
-                name: 1,
-              },
-            },
-          ],
-          as: 'plan',
-        },
-      },
-      { $unwind: { path: '$plan', preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
           from: 'users',
@@ -182,7 +193,13 @@ export class UsersService {
           planName: '$plan.name',
           planStartDate: '$subscription.startDate',
           planExpiry: '$subscription.expiryDate',
-          contactsLimit: '$subscription.contactLimit',
+          usedContactsCount: '$subscription.contactCount',
+          contactsLimit: {
+            $add: [
+              '$subscription.contactLimit',
+              '$subscription.contactLimitAddon',
+            ],
+          },
           toggleLimit: '$subscription.toggleLimit',
           totalEmployees: { $size: '$employees' },
           employeeSalesCount: {
@@ -213,6 +230,34 @@ export class UsersService {
         $match: employeeCountFilter,
       },
       {
+        $addFields: {
+          employeeLimit: {
+            $add: [
+              '$subscription.employeeLimit',
+              '$subscription.employeeLimitAddon',
+            ],
+          },
+          remainingDays: {
+            $max: [
+              {
+                $floor: {
+                  $divide: [
+                    {
+                      $subtract: [
+                        { $toLong: '$subscription.expiryDate' },
+                        { $toLong: new Date() },
+                      ],
+                    },
+                    1000 * 60 * 60 * 24,
+                  ],
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
+      {
         $project: {
           email: 1,
           companyName: 1,
@@ -228,6 +273,9 @@ export class UsersService {
           employeeSalesCount: 1,
           employeeReminderCount: 1,
           contactsCount: 1,
+          employeeLimit: 1,
+          remainingDays: 1,
+          usedContactsCount: 1,
         },
       },
     ];
@@ -333,15 +381,12 @@ export class UsersService {
   ): Promise<any> {
     if (updateUserInfoDto.userName || updateUserInfoDto.email) {
       const isExisting = await this.userModel.findOne({
-        $or: [
-          { userName: updateUserInfoDto.userName },
-          { email: updateUserInfoDto.email },
-        ],
+        email: updateUserInfoDto.email,
         _id: { $ne: id },
       });
 
       if (isExisting) {
-        throw new NotAcceptableException('UserName/E-Mail already exists');
+        throw new NotAcceptableException('E-Mail already exists');
       }
     }
 
@@ -355,6 +400,36 @@ export class UsersService {
       updateUserInfoDto,
       { new: true },
     );
+    console.log(result._id, updateUserInfoDto.isActive);
+    if (result && updateUserInfoDto.isActive === false) {
+      await this.notificationService.createNotification({
+        recipient: result._id.toString(),
+        title: 'Account Deactivation Notice',
+        message: `Your account has been deactivated. Please contact the super admin for more details.`,
+        type: notificationType.INFO,
+        actionType: notificationActionType.ACCOUNT_DEACTIVATION,
+      });
+
+      const employees = await this.userModel.find({
+        adminId: result._id,
+        isActive: true,
+      });
+
+      for (const employee of employees) {
+        await this.userModel.findByIdAndUpdate(employee._id, {
+          $set: { isActive: false },
+        });
+
+        await this.notificationService.createNotification({
+          recipient: employee._id.toString(),
+          title: 'Admin Account Deactivation Notice',
+          message: `The admin account you are associated with has been deactivated. Please contact your admin for further instructions.`,
+          type: notificationType.INFO,
+          actionType: notificationActionType.ACCOUNT_DEACTIVATION,
+        });
+      }
+    }
+
     return result;
   }
 
@@ -436,14 +511,24 @@ export class UsersService {
     return result[0] || { result: [], totalPages: 0, page: page };
   }
 
+  async getEmployeesCount(AdminId: string): Promise<any> {
+    const query = {
+      adminId: new Types.ObjectId(`${AdminId}`),
+    };
+
+    const totalContacts = (await this.userModel.countDocuments(query)) || 0;
+
+    return totalContacts;
+  }
+
   getEmployee(id: string): Promise<User | null> {
     const employee = this.userModel.findById(id);
 
     return employee;
   }
 
-  async getUser(userName: string): Promise<any> {
-    const user = await this.userModel.findOne({ userName: userName });
+  async getUser(email: string): Promise<any> {
+    const user = await this.userModel.findOne({ email: email });
     return user;
   }
 
@@ -455,18 +540,15 @@ export class UsersService {
     id: string,
     updateUserInfoDto: UpdateUserInfoDto,
   ): Promise<any> {
-    console.log(updateUserInfoDto);
-    if (updateUserInfoDto.userName || updateUserInfoDto.email) {
+    // console.log(updateUserInfoDto);
+    if (updateUserInfoDto.email) {
       const isExisting = await this.userModel.findOne({
-        $or: [
-          { userName: updateUserInfoDto.userName },
-          { email: updateUserInfoDto.email },
-        ],
+        email: updateUserInfoDto.email,
         _id: { $ne: id },
       });
 
       if (isExisting) {
-        throw new NotAcceptableException('UserName/E-Mail already exists');
+        throw new NotAcceptableException('E-Mail already exists');
       }
     }
 
@@ -510,6 +592,9 @@ export class UsersService {
     );
 
     user.documents = filteredDocuments;
+
+    //add logic for deleting file from server here
+
     const result = user.save();
 
     return result;
@@ -521,7 +606,7 @@ export class UsersService {
   ): Promise<any> {
     const user = await this.userModel.findById(id);
 
-    console.log(user);
+    // console.log(user);
 
     const verifyOldPassword = await bcrypt.compare(
       updatePasswordDto.oldPassword,
@@ -548,31 +633,6 @@ export class UsersService {
     return { message: 'Password updated successfully!' };
   }
 
-  async isEmployeeCreationAllowed(adminId: string) {
-    const subscription: any =
-      await this.subscriptionService.getSubscription(adminId);
-    if (!subscription) {
-      throw new NotAcceptableException('Subscription not found');
-    }
-    console.log(subscription);
-    if (new Date(subscription.expiryDate) < new Date()) {
-      throw new NotAcceptableException('Subscription Expired');
-    }
-
-    const empCount = subscription?.plan?.employeeCount || 0;
-
-    const existingEmpCount = await this.userModel.countDocuments({
-      adminId: new Types.ObjectId(`${adminId}`),
-      isActive: true,
-    });
-
-    console.log(empCount, existingEmpCount);
-    if (existingEmpCount >= empCount) {
-      throw new NotAcceptableException('You have reached your employee limit');
-    }
-    return true;
-  }
-
   async createEmployee(
     createEmployeeDto: CreateEmployeeDto,
     creatorDetailsDto: CreatorDetailsDto,
@@ -581,9 +641,7 @@ export class UsersService {
       name: createEmployeeDto?.role,
     });
     if (!role) throw new NotFoundException('No Role Found with the given ID.');
-
-    await this.isEmployeeCreationAllowed(creatorDetailsDto.id);
-
+    console.log('creating Employee');
     const user = await this.userModel.create({
       ...createEmployeeDto,
       role: role._id,
@@ -596,17 +654,14 @@ export class UsersService {
     id: string,
     updateEmployeeDto: UpdateEmployeeDto,
   ): Promise<any> {
-    if (updateEmployeeDto.userName || updateEmployeeDto.email) {
+    if (updateEmployeeDto.email) {
       const isExisting = await this.userModel.findOne({
-        $or: [
-          { userName: updateEmployeeDto.userName },
-          { email: updateEmployeeDto.email },
-        ],
+        email: updateEmployeeDto.email,
         _id: { $ne: id },
       });
 
       if (isExisting) {
-        throw new NotAcceptableException('UserName/E-Mail already exists');
+        throw new NotAcceptableException('E-Mail already exists');
       }
     }
 
@@ -648,15 +703,8 @@ export class UsersService {
       throw new NotFoundException('No Subscription Found with the given ID.');
     }
 
-    const empCount = subscription?.plan?.employeeCount || 0;
-
-    const existingEmpCount = await this.userModel.countDocuments({
-      adminId: new Types.ObjectId(`${adminId}`),
-      isActive: true,
-    });
-
-    if (existingEmpCount >= empCount && status) {
-      throw new NotAcceptableException('You have reached your employee limit');
+    if (subscription.toggleLimit <= 0) {
+      throw new NotAcceptableException('Your toggle limit has expired.');
     }
 
     if (new Date(subscription.expiryDate) < new Date()) {
@@ -665,8 +713,17 @@ export class UsersService {
       );
     }
 
-    if (subscription.toggleLimit <= 0) {
-      throw new NotAcceptableException('Your toggle limit has expired.');
+    const totalEmployeeLimit =
+      (subscription.employeeLimit ?? 0) +
+      (subscription.employeeLimitAddon ?? 0);
+
+    const existingEmpCount = await this.userModel.countDocuments({
+      adminId: new Types.ObjectId(`${adminId}`),
+      isActive: true,
+    });
+
+    if (existingEmpCount >= totalEmployeeLimit && status) {
+      throw new NotAcceptableException('You have reached your employee limit');
     }
 
     const user = await this.userModel.findById(userId).exec();
@@ -678,6 +735,7 @@ export class UsersService {
     await user.save();
 
     subscription.toggleLimit = subscription.toggleLimit - 1;
+    subscription.employeeLimit = subscription.employeeLimit || 0;
     await subscription.save();
     return { message: 'Status updated successfully!', subscription };
   }
@@ -691,9 +749,20 @@ export class UsersService {
     });
 
     if (!plan) throw new NotFoundException('No Plans Found with the given ID.');
+    const isDurationConfig = plan.planDurationConfig.has(
+      createClientDto.durationType,
+    );
+    if (!isDurationConfig) {
+      throw new NotFoundException('Duration type not found');
+    }
 
+    const durationConfig = plan.planDurationConfig.get(
+      createClientDto.durationType,
+    );
     let date = new Date();
-    let currentPlanExpiry = date.setDate(date.getDate() + plan.planDuration);
+    let currentPlanExpiry = date.setDate(
+      date.getDate() + durationConfig.duration,
+    );
     createClientDto.currentPlanExpiry = currentPlanExpiry;
 
     /**
@@ -704,31 +773,29 @@ export class UsersService {
 
     // Check if a user already exists
     const existingUser = await this.userModel.findOne({
-      $or: [
-        { userName: createClientDto.userName },
-        { email: createClientDto.email },
-      ],
+      email: createClientDto.email,
     });
     if (existingUser) {
-      throw new BadRequestException(
-        'User with this UserName/E-Mail already exists.',
-      );
+      throw new BadRequestException('User with this E-Mail already exists.');
     }
 
     const userData = await this.userModel.create({
-      ...createClientDto,
+      email: createClientDto.email,
+      userName: createClientDto.userName,
+      password: createClientDto.password,
+      phone: createClientDto.phone,
+      role: createClientDto.role,
+      companyName: createClientDto.companyName,
       adminId: creatorDetailsDto.id,
     });
-    console.log(userData);
+    // console.log(userData);
 
     const payload = {
       id: userData?._id,
       role: userData?.role,
       adminId: userData?.adminId,
-      plan: userData?.plan,
     };
 
-    //create jwt with payload here
     const token = await this.jwtService.signAsync(payload, {
       secret: this.configService.get('PABBLY_CLIENT_ACCESS_TOKEN_SECRET'),
     });
@@ -741,12 +808,11 @@ export class UsersService {
       )
       .select('-password');
 
-    //creating subscription and billing history initial entry
-
     let subscriptionPayload: SubscriptionDto = {
       admin: String(user._id),
       plan: String(plan._id),
       contactLimit: plan.contactLimit,
+      employeeLimit: plan.employeeCount,
       toggleLimit: plan.toggleLimit,
       expiryDate: currentPlanExpiry,
     };
@@ -754,14 +820,30 @@ export class UsersService {
     const subscription =
       await this.subscriptionService.addSubscription(subscriptionPayload);
 
-    let billingHistoryPayload: BillingHistoryDto = {
+    const itemAmount =
+      plan.amount * monthMultiplier[createClientDto.durationType];
+    const discountAmount =
+      durationConfig.discountType === 'flat'
+        ? durationConfig.discountValue
+        : (plan.amount *
+            monthMultiplier[createClientDto.durationType] *
+            durationConfig.discountValue) /
+          100;
+
+    const subTotal = itemAmount - discountAmount;
+    const gst = subTotal * 0.18; // 18% GST
+    const totalWithGST = subTotal + gst;
+
+    const billingHistory = await this.billingHistoryService.addBillingHistory({
       admin: String(user._id),
       plan: String(plan._id),
-      amount: plan.amount,
-    };
-    const billingHistory = await this.billingHistoryService.addBillingHistory(
-      billingHistoryPayload,
-    );
+      amount: totalWithGST,
+      itemAmount: itemAmount,
+      discountAmount: discountAmount,
+      taxPercent: 18,
+      taxAmount: gst,
+      durationType: createClientDto.durationType,
+    });
 
     await this.customLeadTypeService.createDefaultLeadTypes(`${user._id}`);
 
@@ -772,17 +854,22 @@ export class UsersService {
   async deactivateExpiredPlans(): Promise<void> {
     const now = new Date();
     const adminRole = this.configService.get('appRoles').ADMIN;
-    const expiredAdminIds = await this.subscriptionService.getExpiredSubscriptions();
-    if(!Array.isArray(expiredAdminIds) || expiredAdminIds.length == 0) return;
+    const expiredAdminIds =
+      await this.subscriptionService.getExpiredSubscriptions();
+    if (!Array.isArray(expiredAdminIds) || expiredAdminIds.length == 0) return;
     try {
       const result = await this.userModel.updateMany(
         {
-          _id : { $in : expiredAdminIds }, 
+          _id: { $in: expiredAdminIds },
           isActive: true,
           role: new Types.ObjectId(`${adminRole}`),
         },
         {
-          $set: { isActive: false },
+          $set: {
+            isActive: false,
+            statusChangeNote:
+              'Account automatically deactivated due to plan expiration.',
+          },
         },
       );
       //TODO: send email to super admin
@@ -824,14 +911,77 @@ export class UsersService {
     }
   }
 
-  async incrementCount(id: string, incrementValue: number = 1): Promise<boolean> {
-    const user = await this.userModel.findById(id).exec();
+  async alertAdminsForExpiry(): Promise<any> {
+    const expiredAdminIds = await this.subscriptionService.getUpcomingExpiry();
+    if (!Array.isArray(expiredAdminIds) || expiredAdminIds.length == 0) return;
+    try {
+      for (let i = 0; i < expiredAdminIds.length; i++) {
+        let admin = await this.userModel.findById(
+          expiredAdminIds[i].admin.toString(),
+        );
+        console.log(admin);
+        if (admin) {
+          await this.notificationService.createNotification({
+            recipient: admin._id.toString(),
+            title: 'Plan Expiry Alert',
+            message: `Your subscription plan is about to expire in 15 days. Please renew your subscription on or before ${new Date(expiredAdminIds[i].expiryDate).toDateString()} to continue using the services.`,
+            type: notificationType.WARNING,
+            actionType: notificationActionType.EXPIRY_REMINDER,
+          });
+
+          //add whatsapp notification here
+        }
+      }
+
+      this.logger.log(`Notification sent to users with upcoming expiry dates.`);
+    } catch (error) {
+      this.logger.error('Error during plan deactivation:', error.message);
+    }
+  }
+
+  async incrementCount(
+    id: string,
+    incrementValue: number = 1,
+    session?: ClientSession,
+  ): Promise<boolean> {
+    const user = await this.userModel.findById(id).session(session).exec();
     if (user) {
-      // Increment dailyContactCount by the given value
       user.dailyContactCount = (user.dailyContactCount || 0) + incrementValue;
-      await user.save();
+      await user.save({ session });
       return true;
     }
     return false;
+  }
+
+  async resetDailyContactCount() {
+    return await this.userModel.updateMany(
+      {
+        dailyContactCount: { $gt: 0 },
+      },
+      { $set: { dailyContactCount: 0 } },
+    );
+  }
+
+  async getSuperAdminDetails() {
+    const role = this.configService.get('appRoles').SUPER_ADMIN;
+    const superAdmin = await this.userModel
+      .findOne({ role: new Types.ObjectId(`${role}`) })
+      .select('companyName email')
+      .exec();
+    return superAdmin;
+  }
+
+  async getClientsForDropdown() {
+    const clients = await this.userModel.find({
+      role: new Types.ObjectId(`${this.configService.get('appRoles').ADMIN}`),
+    });
+
+    if (Array.isArray(clients)) {
+      return clients.map((client) => ({
+        label: client.email,
+        value: client._id,
+      }));
+    }
+    return [];
   }
 }

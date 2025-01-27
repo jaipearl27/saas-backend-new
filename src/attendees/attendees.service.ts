@@ -1,4 +1,7 @@
 import {
+  BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -15,6 +18,13 @@ import {
 import { Assignments } from 'src/schemas/Assignments.schema';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from 'src/users/users.service';
+import {
+  notificationActionType,
+  notificationType,
+} from 'src/schemas/notification.schema';
+import { NotificationService } from 'src/notification/notification.service';
+import { WebinarService } from 'src/webinar/webinar.service';
+import { SubscriptionService } from 'src/subscription/subscription.service';
 
 @Injectable()
 export class AttendeesService {
@@ -23,7 +33,13 @@ export class AttendeesService {
     private readonly assignmentsModel: Model<Assignments>,
     @InjectModel(Attendee.name) private attendeeModel: Model<Attendee>,
     private readonly configService: ConfigService,
+    @Inject(forwardRef(() => UsersService))
     private readonly userService: UsersService,
+    private readonly notificationService: NotificationService,
+    @Inject(forwardRef(() => WebinarService))
+    private readonly webinarService: WebinarService,
+    @Inject(forwardRef(() => SubscriptionService))
+    private readonly subscriptionService: SubscriptionService,
   ) {}
 
   async addAttendees(attendees: [CreateAttendeeDto]): Promise<any> {
@@ -32,81 +48,158 @@ export class AttendeesService {
   }
 
   async addPostAttendees(
-    attendees: [CreateAttendeeDto],
-    webinar?: any,
+    attendees: CreateAttendeeDto[],
+    webinar: string,
+    isAttended: boolean,
+    adminId: string,
+    postWebinarExists: boolean,
   ): Promise<any> {
-    const result = await this.attendeeModel.insertMany(attendees);
+    const subscription =
+      await this.subscriptionService.getSubscription(adminId);
 
-    const resultLen = result?.length || 0;
+    const contactCountDiff =
+      subscription.contactLimit - subscription.contactCount;
 
-    const assignments = [];
+    if (contactCountDiff <= 0) {
+      throw new BadRequestException('Contact Limit Exceeded');
+    }
+    let tempAttendees = attendees;
 
-    for (let i = 0; i < resultLen; i++) {
-      // Check if the attendee was previously assigned to an employee
-      const lastAssigned = await this.checkPreviousPostAssignment(
-        result[i].email,
+    if (isAttended && !postWebinarExists) {
+      const unattendedAttendees: CreateAttendeeDto[] = await this.getPreWebinarUnattendedData(
+        new Types.ObjectId(`${adminId}`),
+        new Types.ObjectId(`${webinar}`),
+        attendees.map((a) => a.email),
       );
 
-      if (lastAssigned && lastAssigned.assignedTo) {
-        const isEmployeeAssignedToWebinar = webinar.assignedEmployees.some(
-          (employee) => {
-            return (
-              employee._id.toString() === lastAssigned.assignedTo.toString() &&
-              employee.role.toString() ===
-                this.configService.get('appRoles')['EMPLOYEE_SALES']
-            );
-          },
-        );
-
-        // If the same employee is assigned to this webinar
-        if (isEmployeeAssignedToWebinar) {
-          const employee = await this.userService.getEmployee(
-            lastAssigned.assignedTo.toString(),
-          );
-
-          // Validate employee's daily contact limit
-          if (
-            employee &&
-            employee.dailyContactLimit > employee.dailyContactCount
-          ) {
-            // Create a new assignment
-            const newAssignment = await this.assignmentsModel.create({
-              adminId: new Types.ObjectId(`${webinar?.adminId}`),
-              webinar: new Types.ObjectId(`${webinar._id}`),
-              attendee: result[i]._id,
-              user: employee._id,
-              recordType: 'postWebinar',
-            });
-
-            assignments.push(newAssignment);
-
-            // Decrement the employee's daily contact count
-            const isDecremented = await this.userService.incrementCount(
-              employee._id.toString(),
-            );
-
-            if (!isDecremented) {
-              throw new InternalServerErrorException(
-                'Failed to update employee contact count.',
-              );
-            }
-
-            const updatedAttendee = await this.updateAttendeeAssign(
-              result[i]._id.toString(),
-              employee._id.toString(),
-            );
-
-            if (!updatedAttendee) {
-              throw new InternalServerErrorException(
-                'Failed to update employee contact count.',
-              );
-            }
-          }
-        }
+      if (unattendedAttendees.length > 0) {
+        tempAttendees = [...tempAttendees, ...unattendedAttendees];
       }
+
     }
 
-    return { result, assignments };
+    const nonUniqueEmailCount = await this.getNonUniqueAttendeesCount(
+      tempAttendees.map((a) => a.email),
+      new Types.ObjectId(`${adminId}`),
+    );
+    const uniqueEmailsCount = tempAttendees.length - nonUniqueEmailCount;
+
+    if (uniqueEmailsCount > contactCountDiff) {
+      throw new BadRequestException('Contact Limit Exceeded');
+    }
+
+    const session = await this.attendeeModel.startSession();
+
+    try {
+      await session.withTransaction(async () => {
+        const newAttendees = await this.attendeeModel.insertMany(
+          tempAttendees,
+          {
+            session,
+          },
+        );
+        const assignedEmployees =
+          await this.webinarService.getAssignedEmployees(webinar);
+
+        const role = isAttended
+          ? this.configService.get('appRoles')['EMPLOYEE_SALES']
+          : this.configService.get('appRoles')['EMPLOYEE_REMINDER'];
+
+        const empData: {
+          id: Types.ObjectId;
+          contactLimit: number;
+          attendees: any[];
+          assignMents: any[];
+          contactCount: number;
+        }[] = assignedEmployees
+          .filter((emp) => emp.role.toString() === role)
+          .map((emp) => ({
+            id: emp._id,
+            contactLimit: emp.dailyContactLimit - emp.dailyContactCount || 0,
+            attendees: [],
+            assignMents: [],
+            contactCount: 0,
+          }));
+
+        const previousAssignments = await this.checkPreviousAssignmentInBulk(
+          newAttendees.map((a) => a.email),
+          adminId,
+          isAttended,
+          empData.map((a) => a.id),
+        );
+
+        const empDataMap = new Map(empData.map((a) => [a.id.toString(), a]));
+
+        newAttendees.forEach((attendee, index) => {
+          if (previousAssignments.has(attendee.email)) {
+            const prevAssign = previousAssignments.get(attendee.email);
+
+            if (empDataMap.has(prevAssign.assignedTo.toString())) {
+              const emp = empDataMap.get(prevAssign.assignedTo.toString());
+              if (emp.contactCount < emp.contactLimit) {
+                emp.attendees.push(attendee);
+                emp.contactCount += 1;
+                const newAssignment = {
+                  adminId: new Types.ObjectId(`${adminId}`),
+                  webinar: new Types.ObjectId(`${webinar}`),
+                  attendee: attendee._id,
+                  user: emp.id,
+                  recordType: isAttended ? 'postWebinar' : 'preWebinar',
+                };
+                emp.assignMents.push(newAssignment);
+                empDataMap.set(prevAssign.assignedTo.toString(), emp);
+              }
+            }
+          }
+        });
+
+        for (const [empId, empData] of empDataMap) {
+          const newAssignments = await this.assignmentsModel.insertMany(
+            empData.assignMents,
+            { session },
+          );
+          const updatedAttendees = await this.attendeeModel.updateMany(
+            { _id: { $in: empData.attendees.map((a) => a._id) } },
+            { $set: { assignedTo: new Types.ObjectId(`${empId}`) } },
+            { session },
+          );
+
+          await this.userService.incrementCount(
+            empId,
+            empData.contactCount,
+            session,
+          );
+          if (
+            newAssignments.length !== updatedAttendees.modifiedCount ||
+            newAssignments.length !== empData.contactCount
+          ) {
+            throw new Error('Consistency check failed: mismatch in counts.');
+          }
+
+          const notification = {
+            recipient: empId,
+            title: 'New Tasks Assigned',
+            message: `You have been assigned ${empData.contactCount} new tasks. Please check your task list for details.`,
+            type: notificationType.INFO,
+            actionType: notificationActionType.ASSIGNMENT,
+            metadata: {
+              webinarId: webinar,
+            },
+          };
+
+          this.notificationService.createNotification(notification);
+        }
+
+        await this.subscriptionService.incrementContactCount(
+          subscription._id.toString(),
+          uniqueEmailsCount,
+        );
+      });
+    } catch (error) {
+      throw error;
+    } finally {
+      session.endSession();
+    }
   }
 
   async getAttendee(adminId: string, email: string): Promise<any> {
@@ -190,7 +283,6 @@ export class AttendeesService {
     const hasFilters = Object.keys(filters).some(
       (key) => filters[key] !== null && filters[key] !== undefined,
     );
-    console.log('hassFilts ===> ', hasFilters, filters);
 
     const pipeline: PipelineStage[] = [
       // Step 1: Match key fields to reduce dataset size
@@ -425,13 +517,194 @@ export class AttendeesService {
     return lastAssigned;
   }
 
-  async checkPreviousPostAssignment(email: string): Promise<Attendee | null> {
-    const lastAssigned = await this.attendeeModel
-      .findOne({ email, isAttended: true })
-      .sort({ createdAt: -1 })
-      .skip(1)
+  async checkPreviousAssignmentInBulk(
+    emails: string[],
+    adminId: string,
+    isAttended: boolean,
+    empIds: Types.ObjectId[],
+  ): Promise<
+    Map<
+      string,
+      {
+        _id: string;
+        assignedTo: Types.ObjectId;
+      }
+    >
+  > {
+    if (emails.length === 0 || empIds.length === 0) return new Map();
+
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          adminId: new Types.ObjectId(`${adminId}`),
+          assignedTo: { $ne: null },
+          isAttended: isAttended,
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $group: {
+          _id: '$email',
+          firstDetail: { $first: '$$ROOT' },
+        },
+      },
+      {
+        $addFields: {
+          assignedTo: '$firstDetail.assignedTo',
+        },
+      },
+      {
+        $project: {
+          firstDetail: 0,
+        },
+      },
+      {
+        $match: {
+          assignedTo: { $in: empIds },
+        },
+      },
+    ];
+
+    const lastAssigned: {
+      _id: string;
+      assignedTo: Types.ObjectId;
+    }[] = await this.attendeeModel.aggregate(pipeline).exec();
+
+    const lastAssignMap = new Map();
+    lastAssigned.forEach((attendee) => {
+      lastAssignMap.set(attendee._id, attendee);
+    });
+
+    const result = new Map();
+    emails.forEach((email) => {
+      if (lastAssignMap.has(email)) {
+        const attendee = lastAssignMap.get(email);
+        result.set(email, attendee);
+      }
+    });
+
+    return result;
+  }
+
+  async swapFields(
+    attendeesIds: string[],
+    field1: string,
+    field2: string,
+    adminId: string,
+  ): Promise<Attendee[]> {
+    if (!field1 || !field2) {
+      throw new BadRequestException('Both field1 and field2 must be provided.');
+    }
+
+    const attendees = await this.attendeeModel
+      .find({
+        _id: { $in: attendeesIds },
+        adminId: new Types.ObjectId(`${adminId}`),
+      })
       .exec();
 
-    return lastAssigned;
+    if (attendees.length !== attendeesIds.length) {
+      throw new BadRequestException('Some attendees were not found.');
+    }
+
+    const updatedAttendees = await Promise.all(
+      attendees.map(async (attendee) => {
+        if (!(field1 in attendee) || !(field2 in attendee)) {
+          throw new BadRequestException(
+            `Fields ${field1} or ${field2} do not exist in attendee.`,
+          );
+        }
+
+        const temp = attendee[field1];
+        attendee[field1] = attendee[field2];
+        attendee[field2] = temp;
+
+        await attendee.save();
+
+        return attendee;
+      }),
+    );
+
+    return updatedAttendees;
+  }
+
+  async getNonUniqueAttendeesCount(
+    emails: string[],
+    adminId: Types.ObjectId,
+  ): Promise<number> {
+    const pipiline: PipelineStage[] = [
+      {
+        $match: {
+          adminId: adminId,
+        },
+      },
+      {
+        $match: {
+          email: { $in: emails },
+        },
+      },
+      {
+        $group: {
+          _id: '$email',
+        },
+      },
+      {
+        $count: 'emailCount',
+      },
+    ];
+
+    const result = await this.attendeeModel.aggregate(pipiline);
+
+    if (Array.isArray(result) && result.length > 0) {
+      return result[0]?.emailCount || 0;
+    }
+    return 0;
+  }
+
+  async getDynamicAttendeeCount(adminId: Types.ObjectId) {
+    const pipiline: PipelineStage[] = [
+      { $match: { adminId } },
+      { $group: { _id: '$email' } },
+      { $count: 'emailCount' },
+    ];
+    const result = await this.attendeeModel.aggregate(pipiline);
+    if (Array.isArray(result) && result.length > 0) {
+      return result[0]?.emailCount || 0;
+    }
+    return 0;
+  }
+
+  async fillPhoneNumbers(
+    attendees: [CreateAttendeeDto],
+    adminId: Types.ObjectId,
+  ) {
+    const filteredAttendees = attendees.filter((attendee) => !attendee.phone);
+  }
+
+  async getPreWebinarUnattendedData(
+    adminId: Types.ObjectId,
+    webinarId: Types.ObjectId,
+    emails: string[],
+  ) {
+    const result = await this.attendeeModel.find({
+      adminId,
+      webinar: webinarId,
+      email: { $nin: emails },
+      isAttended: false,
+    });
+    return result.map((attendee) => ({
+      email: attendee.email,
+      firstName: attendee.firstName,
+      lastName: attendee.lastName,
+      phone: attendee.phone,
+      timeInSession: 0,
+      gender: attendee.gender,
+      location: attendee.location,
+      webinar: attendee.webinar,
+      isAttended: true,
+      adminId: attendee.adminId,
+    }));
   }
 }

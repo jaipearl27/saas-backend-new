@@ -1,32 +1,69 @@
-import { IsBoolean, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString } from "class-validator";
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsMongoId,
+  IsNotEmpty,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+import { PlanType } from 'src/schemas/Plans.schema';
 
 export class CreatePlansDto {
-    @IsString()
-    @IsNotEmpty()
-    name: string
+  @IsString()
+  @IsNotEmpty()
+  name: string;
 
-    @IsNumber()
-    @IsNotEmpty()
-    amount: number
+  @IsNumber()
+  @IsNotEmpty()
+  amount: number;
 
-    @IsNumber()
-    @IsNotEmpty()
-    employeeCount: number
-    
-    @IsNumber()
-    @IsNotEmpty()
-    contactLimit: number
+  @IsNumber()
+  @IsNotEmpty()
+  employeeCount: number;
 
-    @IsOptional()
-    @IsBoolean()
-    incrementContact?: boolean
+  @IsNumber()
+  @IsNotEmpty()
+  contactLimit: number;
 
-    @IsNumber()
-    @IsNotEmpty()
-    planDuration: number
+  @IsObject()
+  @IsNotEmpty()
+  attendeeTableConfig: Map<string, any>;
 
-    @IsObject()
-    @IsNotEmpty()
-    attendeeTableConfig: Map<string, any>;
+  @IsNumber()
+  @Min(0, { message: 'Minimum value is 0' })
+  toggleLimit: number;
 
+  @IsEnum(PlanType)
+  planType: PlanType;
+
+  @IsOptional()
+  @IsArray()
+  @IsMongoId({ each: true })
+  assignedUsers: string[];
+}
+
+class PlanDTO {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsNumber()
+  @Min(0, { message: 'Minimum value is 0' })
+  sortOrder: number;
+
+  @IsMongoId()
+  id: string;
+}
+
+export class PlanOrderDTO {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PlanDTO)
+  plans: PlanDTO[];
 }
