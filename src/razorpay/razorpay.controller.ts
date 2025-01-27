@@ -37,6 +37,7 @@ export class RazorpayController {
     @Body() body: any,
     @Query() query: { planId: string; adminId: string },
   ): Promise<any> {
+    //validate payment success here
     const planUpdate = await this.subscriptionService.updateClientPlan(
       query.adminId,
       query.planId,
