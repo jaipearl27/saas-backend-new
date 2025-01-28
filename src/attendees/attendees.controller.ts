@@ -101,20 +101,16 @@ export class AttendeesController {
     }
 
     const data = body.data;
-    let postWebinarExists = null;
-    //add reminder type attendees
-    if (!body.isAttended) {
-      // !!!! test if any data exists in postWebinar here !!!!
-       postWebinarExists =
-        await this.attendeesService.getPostWebinarAttendee(
-          body.webinarId,
-          adminId,
-        );
+    const postWebinarExists =
+      await this.attendeesService.getPostWebinarAttendee(
+        body.webinarId,
+        adminId,
+      );
 
-      if (postWebinarExists)
-        throw new NotAcceptableException(
-          'Cannot add Pre-Webinar data as it already exists in Post-Webinar.',
-        );
+    if (postWebinarExists && !body.isAttended) {
+      throw new NotAcceptableException(
+        'Cannot add Pre-Webinar data as it already exists in Post-Webinar.',
+      );
     }
 
     for (let i = 0; i < data.length; i++) {

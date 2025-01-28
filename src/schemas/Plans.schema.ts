@@ -18,15 +18,22 @@ export enum PlanType {
 export class Plans extends Document {
   @Prop({
     type: String,
+    required: [true, 'Plan Name is required'],
+    trim: true,
+  })
+  name: string;
+
+  @Prop({
+    type: String,
     unique: true,
+    trim: true,
     required: [true, 'Plan Name is required'],
   })
-  name: string; //plan name
+  internalName: string;
 
   @Prop({
     type: Number,
     min: 1,
-    unique: true,
     required: [true, 'Plan Amount is required'],
   })
   amount: number; //plan amount
@@ -159,6 +166,7 @@ PlansSchema.pre('save', async function (next) {
   }
 });
 
-PlansSchema.index({ name: 1 }, { unique: true });
+PlansSchema.index({ name: 1 });
 
-PlansSchema.index({ amount: 1 }, { unique: true });
+PlansSchema.index({ amount: 1 });
+ 
