@@ -19,6 +19,10 @@ export class CreatePlansDto {
   @IsNotEmpty()
   name: string;
 
+  @IsString()
+  @IsNotEmpty()
+  internalName: string;
+
   @IsNumber()
   @IsNotEmpty()
   amount: number;

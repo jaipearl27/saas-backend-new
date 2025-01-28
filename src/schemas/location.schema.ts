@@ -25,6 +25,9 @@ export class Location extends Document {
 
   @Prop({ type: Types.ObjectId, ref: User.name, required: false })
   employee: Types.ObjectId;
+
+  @Prop({ type: Boolean, default: false })
+  deactivated: boolean;
 }
 
 export const LocationSchema = SchemaFactory.createForClass(Location);

@@ -66,6 +66,9 @@ export class CreateAttendeeDto {
   @IsNotEmpty({ message: 'Admin ID is required' })
   adminId: Types.ObjectId;
 
+  @IsOptional()
+  @IsMongoId({ message: 'Attendee Id must be a valid MongoId' })
+  attendeeId?: Types.ObjectId;
 }
 
 export class UpdateAttendeeDto {
@@ -159,6 +162,25 @@ export class AttendeesFilterDto {
   @IsOptional()
   @IsString()
   status?: string;
+}
+
+export class GroupedAttendeesFilterDto {
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsObject()
+  timeInSession?: RangeNumberDto;
+
+  @IsOptional()
+  @IsMongoId()
+  leadType?: Types.ObjectId;
+
+  @IsOptional()
+  @IsObject()
+  attendedWebinarCount?: RangeNumberDto;
+
 }
 
 export class GetAttendeesDTO {

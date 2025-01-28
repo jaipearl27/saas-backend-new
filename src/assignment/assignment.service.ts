@@ -283,9 +283,12 @@ export class AssignmentService {
     const subscription =
       await this.subscriptionService.getSubscription(adminId);
 
+      if(!subscription){
+        throw new ForbiddenException('Subscription not found.');
+      }
+
     // Check subscription validity and attendee limits
     if (
-      !subscription ||
       subscription.expiryDate < new Date() || // Subscription expired
       subscription.contactLimit <= subscription.contactCount // Contact limit reached
     ) {
@@ -298,6 +301,16 @@ export class AssignmentService {
       [attendee.email],
       new Types.ObjectId(`${adminId}`),
     );
+
+    if(!attendee.phone){
+      const phoneNumbers = await this.attendeeService.getAttendeePhoneNumbers(
+        new Types.ObjectId(`${adminId}`),
+        attendee.email,
+      );
+      if(phoneNumbers.length > 0){
+        attendee.phone = phoneNumbers[0].phone;
+      }
+    }
 
     // Add the attendee to the database
     const newAttendees: Attendee[] | null =

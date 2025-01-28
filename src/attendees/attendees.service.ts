@@ -13,6 +13,7 @@ import { Attendee } from 'src/schemas/Attendee.schema';
 import {
   AttendeesFilterDto,
   CreateAttendeeDto,
+  GroupedAttendeesFilterDto,
   UpdateAttendeeDto,
 } from './dto/attendees.dto';
 import { Assignments } from 'src/schemas/Assignments.schema';
@@ -65,17 +66,47 @@ export class AttendeesService {
     }
     let tempAttendees = attendees;
 
+    let attendeesForUpdate: CreateAttendeeDto[] = [];
+    if (!isAttended || (postWebinarExists && isAttended)) {
+      const prevAttendees = await this.attendeeModel.find({
+        webinar: new Types.ObjectId(`${webinar}`),
+        adminId: new Types.ObjectId(`${adminId}`),
+        isAttended: isAttended,
+      });
+
+      if (prevAttendees.length > 0) {
+        const prevAttendeesMap = new Map(
+          prevAttendees.map((a) => [a.email, a]),
+        );
+
+        const newAttendees = attendees.filter(
+          (a) => !prevAttendeesMap.has(a.email),
+        );
+        tempAttendees = newAttendees;
+
+        const prevAttendeesToUpdate = attendees.filter((a) =>
+          prevAttendeesMap.has(a.email),
+        );
+        attendeesForUpdate = prevAttendeesToUpdate.map((attendee) => ({
+          ...attendee,
+          phone: attendee.phone || prevAttendeesMap.get(attendee.email).phone,
+          attendeeId: prevAttendeesMap.get(attendee.email)
+            ._id as Types.ObjectId,
+        }));
+      }
+    }
+
     if (isAttended && !postWebinarExists) {
-      const unattendedAttendees: CreateAttendeeDto[] = await this.getPreWebinarUnattendedData(
-        new Types.ObjectId(`${adminId}`),
-        new Types.ObjectId(`${webinar}`),
-        attendees.map((a) => a.email),
-      );
+      const unattendedAttendees: CreateAttendeeDto[] =
+        await this.getPreWebinarUnattendedData(
+          new Types.ObjectId(`${adminId}`),
+          new Types.ObjectId(`${webinar}`),
+          attendees.map((a) => a.email),
+        );
 
       if (unattendedAttendees.length > 0) {
         tempAttendees = [...tempAttendees, ...unattendedAttendees];
       }
-
     }
 
     const nonUniqueEmailCount = await this.getNonUniqueAttendeesCount(
@@ -88,10 +119,46 @@ export class AttendeesService {
       throw new BadRequestException('Contact Limit Exceeded');
     }
 
+    const attendeesWithoutPhone = tempAttendees.filter((a) => !a.phone);
+    if (attendeesWithoutPhone.length > 0) {
+      const phoneNumbers = await this.getAttendeePhoneNumbers(
+        new Types.ObjectId(`${adminId}`),
+        attendeesWithoutPhone.map((a) => a.email),
+      );
+
+      const phoneMap = new Map(phoneNumbers.map((a) => [a._id, a.phone]));
+
+      tempAttendees = tempAttendees.map((a) => ({
+        ...a,
+        phone: a.phone || (phoneMap.has(a.email) ? phoneMap.get(a.email) : ''),
+      }));
+    }
+
     const session = await this.attendeeModel.startSession();
 
     try {
       await session.withTransaction(async () => {
+        if (attendeesForUpdate.length > 0) {
+          await Promise.all(
+            attendeesForUpdate.map((attendee) =>
+              this.attendeeModel.updateOne(
+                { _id: attendee.attendeeId },
+                {
+                  $set: {
+                    firstName: attendee.firstName || null,
+                    lastName: attendee.lastName || null,
+                    phone: attendee.phone,
+                    gender: attendee.gender || null,
+                    timeInSession: attendee.timeInSession || 0,
+                    location: attendee.location || null,
+                  },
+                },
+                { session },
+              ),
+            ),
+          );
+        }
+
         const newAttendees = await this.attendeeModel.insertMany(
           tempAttendees,
           {
@@ -706,5 +773,126 @@ export class AttendeesService {
       isAttended: true,
       adminId: attendee.adminId,
     }));
+  }
+
+  async getAttendeePhoneNumbers(
+    adminId: Types.ObjectId,
+    emails: string[] | string,
+  ): Promise<{ _id: string; phone: string }[]> {
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          adminId,
+          email: typeof emails === 'string' ? emails : { $in: emails },
+          $and: [{ phone: { $exists: true } }, { phone: { $ne: '' } }],
+        },
+      },
+      {
+        $group: {
+          _id: '$email',
+          phone: {
+            $first: '$phone',
+          },
+        },
+      },
+    ];
+    return await this.attendeeModel.aggregate(pipeline).exec();
+  }
+
+  async fetchGroupedAttendees(
+    adminId: Types.ObjectId,
+    page: number = 1,
+    limit: number = 10,
+    filters: GroupedAttendeesFilterDto = {},
+  ) {
+    const skip = (page - 1) * limit;
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          adminId,
+          timeInSession: { $gt: 0 },
+        },
+      },
+      {
+        $group: {
+          _id: '$email',
+          adminId: {
+            $first: '$adminId',
+          },
+          timeInSession: {
+            $sum: '$timeInSession',
+          },
+          attendeeId: {
+            $first: '$_id',
+          },
+          attendedWebinarCount: {
+            $sum: 1,
+          },
+        },
+      },
+      {
+        $sort: {
+          _id: 1,
+        },
+      },
+      {
+        $facet: {
+          pagination: [
+            { $count: 'total' },
+            {
+              $addFields: {
+                totalPages: { $ceil: { $divide: ['$total', 10] } },
+                page: { $literal: page },
+              },
+            },
+          ],
+          data: [
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $lookup: {
+                from: 'attendeeassociations',
+                let: { tempMail: '$_id' },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $and: [
+                          { $eq: ['$adminId', adminId] },
+                          { $eq: ['$email', '$$tempMail'] }, // Match email with attendee email
+                        ],
+                      },
+                    },
+                  },
+                ],
+
+                as: 'lead',
+              },
+            },
+            {
+              $unwind: {
+                path: '$lead',
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $project: {
+                leadType: '$lead.leadType',
+                adminId: 1,
+                timeInSession: 1,
+                attendeeId: 1,
+                attendedWebinarCount: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: '$pagination',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ];
   }
 }

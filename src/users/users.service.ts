@@ -63,8 +63,14 @@ export class UsersService {
     return newUser.save();
   }
 
-  createClientPipeline(filterData: GetClientsFilterDto) {
-    const matchFilters = {};
+  createClientPipeline(
+    filterData: GetClientsFilterDto,
+    hasFilters: boolean = true,
+    skip: number = 0,
+    limit: number = 25,
+  ): mongoose.PipelineStage[] {
+
+    const matchFilters: Record<string, any> = {};
     if (filterData.email) matchFilters['email'] = filterData.email;
     if (filterData.companyName)
       matchFilters['companyName'] = filterData.companyName;
@@ -73,90 +79,75 @@ export class UsersService {
     if (filterData.isActive)
       matchFilters['isActive'] = filterData.isActive === 'active';
 
-    const subscriptionFilter = {};
+    const subscriptionFilter: Record<string, any> = {};
     if (filterData.planStartDate) {
-      subscriptionFilter['startDate'] = {};
-      if (filterData.planStartDate.$gte) {
-        subscriptionFilter['startDate']['$gte'] = new Date(
-          filterData.planStartDate.$gte,
-        );
-      }
-      if (filterData.planStartDate.$lte) {
-        subscriptionFilter['startDate']['$lte'] = new Date(
-          filterData.planStartDate.$lte,
-        );
-      }
+      subscriptionFilter['startDate'] = {
+        ...(filterData.planStartDate.$gte && {
+          $gte: new Date(filterData.planStartDate.$gte),
+        }),
+        ...(filterData.planStartDate.$lte && {
+          $lte: new Date(filterData.planStartDate.$lte),
+        }),
+      };
     }
     if (filterData.planExpiry) {
-      subscriptionFilter['expiryDate'] = {};
-      if (filterData.planExpiry.$gte) {
-        subscriptionFilter['expiryDate']['$gte'] = new Date(
-          filterData.planExpiry.$gte,
-        );
-      }
-      if (filterData.planExpiry.$lte) {
-        subscriptionFilter['expiryDate']['$lte'] = new Date(
-          filterData.planExpiry.$lte,
-        );
-      }
+      subscriptionFilter['expiryDate'] = {
+        ...(filterData.planExpiry.$gte && {
+          $gte: new Date(filterData.planExpiry.$gte),
+        }),
+        ...(filterData.planExpiry.$lte && {
+          $lte: new Date(filterData.planExpiry.$lte),
+        }),
+      };
     }
-
     if (filterData.planName) subscriptionFilter['plan'] = filterData.planName;
-
-    if (filterData.toggleLimit) {
+    if (filterData.toggleLimit)
       subscriptionFilter['toggleLimit'] = filterData.toggleLimit;
-    }
 
-    const employeeCountFilter = {};
-    if (filterData.totalEmployees) {
-      employeeCountFilter['totalEmployees'] = filterData.totalEmployees;
-    }
-    if (filterData.employeeSalesCount) {
-      employeeCountFilter['employeeSalesCount'] = filterData.employeeSalesCount;
-    }
-    if (filterData.employeeReminderCount) {
-      employeeCountFilter['employeeReminderCount'] =
-        filterData.employeeReminderCount;
-    }
-    if (filterData.contactsLimit) {
-      employeeCountFilter['contactsLimit'] = filterData.contactsLimit;
-    }
+    const employeeCountFilter: Record<string, any> = {};
+    [
+      'totalEmployees',
+      'employeeSalesCount',
+      'employeeReminderCount',
+      'contactsLimit',
+    ].forEach((field) => {
+      if (filterData[field]) employeeCountFilter[field] = filterData[field];
+    });
 
     const clientRoleId = this.configService.get('appRoles').ADMIN;
     const empSalesId = this.configService.get('appRoles').EMPLOYEE_SALES;
     const empReminderId = this.configService.get('appRoles').EMPLOYEE_REMINDER;
+
     return [
+      // Match clients with the admin role
       {
         $match: {
           role: new Types.ObjectId(`${clientRoleId}`),
-        },
-      },
-      {
-        $match: {
           ...matchFilters,
         },
       },
+      ...(!hasFilters
+        ? [
+            { $sort: { createdAt: -1 as const } },
+            { $skip: skip || 0 },
+            { $limit: limit || 25 },
+          ]
+        : []),
+
+      // Lookup subscriptions
       {
         $lookup: {
           from: 'subscriptions',
           localField: '_id',
           foreignField: 'admin',
           pipeline: [
-            {
-              $match: subscriptionFilter,
-            },
+            { $match: subscriptionFilter },
             {
               $lookup: {
                 from: 'plans',
                 localField: 'plan',
                 foreignField: '_id',
-                pipeline: [
-                  {
-                    $project: {
-                      name: 1,
-                    },
-                  },
-                ],
+                pipeline: [{ $project: { name: 1 } }],
                 as: 'plan',
               },
             },
@@ -171,15 +162,16 @@ export class UsersService {
                 employeeLimit: 1,
                 employeeLimitAddon: 1,
                 contactCount: 1,
+                'plan.name': 1,
               },
             },
           ],
           as: 'subscription',
         },
       },
-      {
-        $unwind: { path: '$subscription', preserveNullAndEmptyArrays: false },
-      },
+      { $unwind: { path: '$subscription', preserveNullAndEmptyArrays: false } },
+
+      // Lookup employees
       {
         $lookup: {
           from: 'users',
@@ -188,9 +180,11 @@ export class UsersService {
           as: 'employees',
         },
       },
+
+      // Add fields
       {
         $addFields: {
-          planName: '$plan.name',
+          planName: '$subscription.plan.name',
           planStartDate: '$subscription.startDate',
           planExpiry: '$subscription.expiryDate',
           usedContactsCount: '$subscription.contactCount',
@@ -207,9 +201,7 @@ export class UsersService {
               $filter: {
                 input: '$employees',
                 as: 'emp',
-                cond: {
-                  $eq: ['$$emp.role', new Types.ObjectId(`${empSalesId}`)],
-                },
+                cond: { $eq: ['$$emp.role', new Types.ObjectId(empSalesId)] },
               },
             },
           },
@@ -219,16 +211,18 @@ export class UsersService {
                 input: '$employees',
                 as: 'emp',
                 cond: {
-                  $eq: ['$$emp.role', new Types.ObjectId(`${empReminderId}`)],
+                  $eq: ['$$emp.role', new Types.ObjectId(empReminderId)],
                 },
               },
             },
           },
         },
       },
-      {
-        $match: employeeCountFilter,
-      },
+
+      // Apply employee count filters
+      { $match: employeeCountFilter },
+
+      // Add computed fields
       {
         $addFields: {
           employeeLimit: {
@@ -257,6 +251,8 @@ export class UsersService {
           },
         },
       },
+
+      // Project final fields
       {
         $project: {
           email: 1,
@@ -272,10 +268,9 @@ export class UsersService {
           totalEmployees: 1,
           employeeSalesCount: 1,
           employeeReminderCount: 1,
-          contactsCount: 1,
+          usedContactsCount: 1,
           employeeLimit: 1,
           remainingDays: 1,
-          usedContactsCount: 1,
         },
       },
     ];
@@ -286,9 +281,12 @@ export class UsersService {
     limit: number,
     filterData: GetClientsFilterDto,
   ): Promise<any> {
-    const pipeline = this.createClientPipeline(filterData);
+    const hasFilters = Object.keys(filterData).length > 0;
 
-    const totalUsersPipeline = [...pipeline, { $count: 'totalUsers' }];
+    const pipeline = this.createClientPipeline(filterData, hasFilters, skip, limit);
+    const pipelineForCount = this.createClientPipeline(filterData);
+
+    const totalUsersPipeline = [...pipelineForCount, { $count: 'totalUsers' }];
 
     const totalUsersResult = await this.userModel.aggregate(totalUsersPipeline);
     const totalUsers = totalUsersResult[0]?.totalUsers || 0;
@@ -296,8 +294,13 @@ export class UsersService {
 
     const result = await this.userModel.aggregate([
       ...pipeline,
-      { $skip: skip || 0 },
-      { $limit: limit || 25 },
+      ...(hasFilters
+        ? [
+            { $sort: { createdAt: -1 as const } },
+            { $skip: skip || 0 },
+            { $limit: limit || 25 },
+          ]
+        : []),
     ]);
 
     return { result, totalPages };

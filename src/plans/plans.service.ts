@@ -44,13 +44,11 @@ export class PlansService {
   }
 
   async addPlan(createPlanDto: CreatePlansDto): Promise<any> {
-    const existingPlan = await this.plansModel.findOne({
-      $or: [{ name: createPlanDto.name }, { amount: createPlanDto.amount }],
-    });
+    const existingPlan = await this.plansModel.findOne({ internalName: createPlanDto.internalName });
 
     if (existingPlan) {
       throw new BadRequestException(
-        'A plan with the same name/amount already exists.',
+        'A plan with the same Internal Name already exists.',
       );
     }
 
