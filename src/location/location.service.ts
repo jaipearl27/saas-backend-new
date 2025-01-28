@@ -25,36 +25,52 @@ export class LocationService {
 
   async getLocations(): Promise<any> {
     const result = await this.locationModel
-      .find({ isVerified: true })
+      .find({ isVerified: true, deactivated: false })
       .sort({ name: 1 });
     return result;
   }
 
-  async getLocationRequests(
-    isVerified: boolean,
-    admin?: string,
-  ): Promise<any> {
+  async getLocationRequests(isVerified: boolean, admin?: string, isAdminVerified?: boolean): Promise<any> {
     const pipeline = { isVerified };
     if (admin) {
       pipeline['admin'] = new Types.ObjectId(`${admin}`);
     }
-
-    console.log(pipeline)
+    if(isAdminVerified){
+      pipeline['isAdminVerified'] = isAdminVerified;
+    }
     const result = await this.locationModel
       .find(pipeline)
       .sort({ createdAt: -1 });
     return result;
   }
 
-  async updateLocation(
+  async approveRequest(
     id: string,
     updateLocationDto: UpdateLocationDto,
   ): Promise<any> {
-    const result = await this.locationModel.findByIdAndUpdate(
-      id,
+    const result = await this.locationModel.findOneAndUpdate(
+      { _id: new Types.ObjectId(`${id}`), deactivated: false },
       updateLocationDto,
       { new: true },
     );
+    return result;
+  }
+
+  async disapproveRequest(
+    id: string,
+    updateLocationDto: UpdateLocationDto,
+  ): Promise<any> {
+    const result = await this.locationModel.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(`${id}`),
+      },
+      { deactivated: true, ...updateLocationDto },
+      { new: true },
+    );
+
+
+
+
     return result;
   }
 }
