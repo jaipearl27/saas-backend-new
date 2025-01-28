@@ -13,7 +13,7 @@ import { SubscriptionService } from 'src/subscription/subscription.service';
 import { AddOnService } from 'src/addon/addon.service';
 import { RazorPayAddOnDTO, RazorPayUpdatePlanDTO } from './dto/razorpay.dto';
 import { ConfigService } from '@nestjs/config';
-
+import crypto from 'crypto'
 @Controller('razorpay')
 export class RazorpayController {
   constructor(
@@ -41,6 +41,18 @@ export class RazorpayController {
     @Query() query: RazorPayUpdatePlanDTO,
   ): Promise<any> {
     //validate payment success here
+
+    const expectedSignature = crypto
+    .createHmac("sha256", this.configService.get('RAZORPAY_KEY_SECRET'))
+    .update(body.toString())
+    .digest("hex");
+
+    if(body.razorpay_signature !== expectedSignature){
+      return { url: 'http://localhost:5173/failed' };
+    }
+
+
+
     const planUpdate = await this.subscriptionService.updateClientPlan(
       query.adminId,
       query.planId,
