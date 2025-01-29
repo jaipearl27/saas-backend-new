@@ -69,7 +69,13 @@ export class User extends Document {
     type: String,
     required: false,
   })
-  pabblyToken: string; //pabbly token for super admin or admin
+  pabblyToken: string;
+  
+  @Prop({
+    type: String,
+    required: false,
+  })
+  refreshToken: string;
 
   @Prop({
     type: Number,

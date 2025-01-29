@@ -17,7 +17,9 @@ import { AttendeesService } from './attendees.service';
 import {
   AttendeesFilterDto,
   CreateAttendeeDto,
+  FetchGroupedAttendeesDTO,
   GetAttendeesDTO,
+  GroupedAttendeesFilterDto,
   SwapAttendeeFieldsDTO,
   UpdateAttendeeDto,
 } from './dto/attendees.dto';
@@ -44,7 +46,7 @@ export class AttendeesController {
   @Post('webinar')
   async getAttendees(
     @Query() query: { page?: string; limit?: string },
-    @AdminId() adminId: string,
+    @Id() adminId: string,
     @Body() body: GetAttendeesDTO,
   ) {
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
@@ -59,6 +61,24 @@ export class AttendeesController {
       body.filters,
       body?.validCall,
       body?.assignmentType,
+    );
+
+    return result;
+  }
+
+  @Post('grouped')
+  async fechtGroupedAttendees(
+    @Query() query: { page?: string; limit?: string },
+    @Id() adminId: string,
+    @Body() body: FetchGroupedAttendeesDTO,
+  ) {
+    let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
+    let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
+    const result = await this.attendeesService.fetchGroupedAttendees(
+      new Types.ObjectId(`${adminId}`),
+      page,
+      limit,
+      body.filters,
     );
 
     return result;

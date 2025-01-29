@@ -419,6 +419,45 @@ export class AttendeesService {
             },
           ]
         : []),
+
+      ...(filters.leadType
+        ? [
+            {
+              $lookup: {
+                from: 'attendeeassociations',
+                let: { tempMail: '$email' },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $and: [
+                          {
+                            $eq: ['$adminId', new Types.ObjectId(`${AdminId}`)],
+                          },
+                          { $eq: ['$email', '$$tempMail'] },
+                          {
+                            $eq: [
+                              '$leadType',
+                              new Types.ObjectId(filters.leadType),
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  },
+                ],
+
+                as: 'attendeeAssociations',
+              },
+            },
+            {
+              $unwind: {
+                path: '$attendeeAssociations',
+                preserveNullAndEmptyArrays: false,
+              },
+            },
+          ]
+        : []),
       {
         $facet: {
           metadata: [{ $count: 'total' }],
@@ -444,22 +483,47 @@ export class AttendeesService {
                 lookupField: 0, // Remove temporary lookupField if not needed in the output
               },
             },
-            {
-              $lookup: {
-                from: 'attendeeassociations',
-                localField: 'email',
-                foreignField: 'email',
-                as: 'attendeeAssociations',
-              },
-            },
+            ...(filters.leadType
+              ? []
+              : [
+                  {
+                    $lookup: {
+                      from: 'attendeeassociations',
+                      let: { tempMail: '$email' },
+                      pipeline: [
+                        {
+                          $match: {
+                            $expr: {
+                              $and: [
+                                {
+                                  $eq: [
+                                    '$adminId',
+                                    new Types.ObjectId(`${AdminId}`),
+                                  ],
+                                },
+                                { $eq: ['$email', '$$tempMail'] },
+                              ],
+                            },
+                          },
+                        },
+                      ],
+
+                      as: 'attendeeAssociations',
+                    },
+                  },
+                  {
+                    $unwind: {
+                      path: '$attendeeAssociations',
+                      preserveNullAndEmptyArrays: true,
+                    },
+                  },
+                ]),
             {
               $addFields: {
                 isAssigned: {
                   $arrayElemAt: ['$assignedToDetails.userName', 0],
                 },
-                leadType: {
-                  $arrayElemAt: ['$attendeeAssociations.leadType', 0],
-                },
+                leadType: '$attendeeAssociations.leadType',
               },
             },
             {
@@ -798,7 +862,6 @@ export class AttendeesService {
     ];
     return await this.attendeeModel.aggregate(pipeline).exec();
   }
-
   async fetchGroupedAttendees(
     adminId: Types.ObjectId,
     page: number = 1,
@@ -810,7 +873,6 @@ export class AttendeesService {
       {
         $match: {
           adminId,
-          timeInSession: { $gt: 0 },
         },
       },
       {
@@ -826,29 +888,27 @@ export class AttendeesService {
             $first: '$_id',
           },
           attendedWebinarCount: {
-            $sum: 1,
+            $sum: {
+              $cond: [{ $gt: ['$timeInSession', 0] }, 1, 0],
+            },
           },
         },
       },
       {
-        $sort: {
-          _id: 1,
+        $match: {
+          ...(filters.email && {
+            _id: { $regex: filters.email, $options: 'i' },
+          }),
+          ...(filters.timeInSession && {
+            timeInSession: filters.timeInSession,
+          }),
+          ...(filters.attendedWebinarCount && {
+            attendedWebinarCount: filters.attendedWebinarCount,
+          }),
         },
       },
-      {
-        $facet: {
-          pagination: [
-            { $count: 'total' },
-            {
-              $addFields: {
-                totalPages: { $ceil: { $divide: ['$total', 10] } },
-                page: { $literal: page },
-              },
-            },
-          ],
-          data: [
-            { $skip: skip },
-            { $limit: limit },
+      ...(filters.leadType
+        ? [
             {
               $lookup: {
                 from: 'attendeeassociations',
@@ -859,7 +919,13 @@ export class AttendeesService {
                       $expr: {
                         $and: [
                           { $eq: ['$adminId', adminId] },
-                          { $eq: ['$email', '$$tempMail'] }, // Match email with attendee email
+                          { $eq: ['$email', '$$tempMail'] },
+                          {
+                            $eq: [
+                              '$leadType',
+                              new Types.ObjectId(filters.leadType),
+                            ],
+                          },
                         ],
                       },
                     },
@@ -872,9 +938,60 @@ export class AttendeesService {
             {
               $unwind: {
                 path: '$lead',
-                preserveNullAndEmptyArrays: true,
+                preserveNullAndEmptyArrays: false,
               },
             },
+          ]
+        : []),
+      {
+        $sort: {
+          _id: 1,
+        },
+      },
+      {
+        $facet: {
+          pagination: [
+            { $count: 'total' },
+            {
+              $addFields: {
+                totalPages: { $ceil: { $divide: ['$total', limit] } },
+                page: { $literal: page },
+              },
+            },
+          ],
+          data: [
+            { $skip: skip },
+            { $limit: limit },
+            ...(filters.leadType
+              ? []
+              : [
+                  {
+                    $lookup: {
+                      from: 'attendeeassociations',
+                      let: { tempMail: '$_id' },
+                      pipeline: [
+                        {
+                          $match: {
+                            $expr: {
+                              $and: [
+                                { $eq: ['$adminId', adminId] },
+                                { $eq: ['$email', '$$tempMail'] }, // Match email with attendee email
+                              ],
+                            },
+                          },
+                        },
+                      ],
+
+                      as: 'lead',
+                    },
+                  },
+                  {
+                    $unwind: {
+                      path: '$lead',
+                      preserveNullAndEmptyArrays: true,
+                    },
+                  },
+                ]),
             {
               $project: {
                 leadType: '$lead.leadType',
@@ -894,5 +1011,8 @@ export class AttendeesService {
         },
       },
     ];
+    const result = await this.attendeeModel.aggregate(pipeline).exec();
+    if (Array.isArray(result) && result.length > 0) return result[0];
+    return { data: [], pagination: { page: 1, totalPages: 1 } };
   }
 }

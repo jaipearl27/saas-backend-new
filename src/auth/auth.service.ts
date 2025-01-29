@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   NotAcceptableException,
   NotFoundException,
   UnauthorizedException,
@@ -31,13 +32,44 @@ export class AuthService {
     private readonly subscriptionService: SubscriptionService,
   ) {}
 
+  async generateTokens(id: Types.ObjectId) {
+    try {
+      const user: User = await this.userModel.findById(id).exec();
+
+      const payload = {
+        id: user._id,
+        role: user.role,
+        adminId: user.adminId,
+      };
+      const accessToken = await this.jwtService.signAsync(payload, {
+        secret: this.configService.get('ACCESS_TOKEN_SECRET'),
+        expiresIn: '1h',
+      });
+
+      const refreshToken = await this.jwtService.signAsync(
+        { id: user._id },
+        {
+          secret: this.configService.get('REFRESH_TOKEN_SECRET'),
+          expiresIn: '1d',
+        },
+      );
+
+      user.refreshToken = refreshToken;
+      await user.save({ validateBeforeSave: false });
+      return { accessToken, refreshToken };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        error.message || 'Something went wrong during token generation',
+      );
+    }
+  }
+
   async signIn(signInDto: SignInDto): Promise<any> {
     const user = await this.usersService.getUser(signInDto.email);
 
     if (!user) {
       throw new NotFoundException('Incorrect E-Mail');
     }
-
 
     const matchPassword = await bcrypt.compare(
       signInDto.password,
@@ -111,7 +143,6 @@ export class AuthService {
     const totalEmployeeLimit =
       (subscription.employeeLimit ?? 0) +
       (subscription.employeeLimitAddon ?? 0);
-
 
     const isUserExists = await this.userModel.findOne({
       email: createEmployeeDto.email,

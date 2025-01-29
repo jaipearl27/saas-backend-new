@@ -180,7 +180,14 @@ export class GroupedAttendeesFilterDto {
   @IsOptional()
   @IsObject()
   attendedWebinarCount?: RangeNumberDto;
+}
 
+export class FetchGroupedAttendeesDTO {
+
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => GroupedAttendeesFilterDto)
+  filters: GroupedAttendeesFilterDto;
 }
 
 export class GetAttendeesDTO {

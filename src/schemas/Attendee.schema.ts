@@ -38,7 +38,7 @@ export class Attendee extends Document {
   })
   phone: string | null;
 
-  @Prop({ type: Number, default: 0 })
+  @Prop({ type: Number, default: 0, min: 0 })
   timeInSession: number; //Time in session
 
   @Prop({
