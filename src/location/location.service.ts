@@ -3,11 +3,17 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CreateLocationDto, UpdateLocationDto } from './dto/location.dto';
 import { Location } from 'src/schemas/location.schema';
+import { NotificationService } from 'src/notification/notification.service';
+import {
+  notificationActionType,
+  notificationType,
+} from 'src/schemas/notification.schema';
 
 @Injectable()
 export class LocationService {
   constructor(
     @InjectModel(Location.name) private readonly locationModel: Model<Location>,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async addLocation(createLocationDto: CreateLocationDto): Promise<any> {
@@ -30,12 +36,16 @@ export class LocationService {
     return result;
   }
 
-  async getLocationRequests(isVerified: boolean, admin?: string, isAdminVerified?: boolean): Promise<any> {
+  async getLocationRequests(
+    isVerified: boolean,
+    admin?: string,
+    isAdminVerified?: boolean,
+  ): Promise<any> {
     const pipeline = { isVerified };
     if (admin) {
       pipeline['admin'] = new Types.ObjectId(`${admin}`);
     }
-    if(isAdminVerified){
+    if (isAdminVerified) {
       pipeline['isAdminVerified'] = isAdminVerified;
     }
     const result = await this.locationModel
@@ -53,6 +63,29 @@ export class LocationService {
       updateLocationDto,
       { new: true },
     );
+
+    //notification to admin and employee
+    
+    if (result?.admin) {
+      await this.notificationService.createNotification({
+        recipient: result.admin.toString(),
+        title: 'Location request approved.',
+        message: `Your request to add location ${result?.name} has been approved.`,
+        type: notificationType.INFO,
+        actionType: notificationActionType.LOCATION_REQUEST,
+      });
+    }
+
+    if (result?.employee) {
+      await this.notificationService.createNotification({
+        recipient: result?.admin.toString(),
+        title: 'Location request approved.',
+        message: `Your request to add location ${result?.name} has been approved.`,
+        type: notificationType.INFO,
+        actionType: notificationActionType.LOCATION_REQUEST,
+      });
+    }
+
     return result;
   }
 
@@ -68,7 +101,25 @@ export class LocationService {
       { new: true },
     );
 
+    if (result?.admin) {
+      await this.notificationService.createNotification({
+        recipient: result.admin.toString(),
+        title: 'Location request rejected.',
+        message: `Your request to add location ${result?.name} has been rejected.`,
+        type: notificationType.INFO,
+        actionType: notificationActionType.LOCATION_REQUEST,
+      });
+    }
 
+    if (result?.employee) {
+      await this.notificationService.createNotification({
+        recipient: result?.admin.toString(),
+        title: 'Location request rejected.',
+        message: `Your request to add location ${result?.name} has been rejected.`,
+        type: notificationType.INFO,
+        actionType: notificationActionType.LOCATION_REQUEST,
+      });
+    }
 
 
     return result;
