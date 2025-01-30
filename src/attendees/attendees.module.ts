@@ -58,7 +58,10 @@ export class AttendeesModule {
       );
 
     consumer
-      .apply(AuthTokenMiddleware, GetAdminIdMiddleware, ValidateBodyFilters)
-      .forRoutes({ path: 'attendees/webinar', method: RequestMethod.POST });
+      .apply(AuthAdminTokenMiddleware, ValidateBodyFilters)
+      .forRoutes(
+        { path: 'attendees/webinar', method: RequestMethod.POST },
+        { path: 'attendees/grouped', method: RequestMethod.POST },
+      );
   }
 }
