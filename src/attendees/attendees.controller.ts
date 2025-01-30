@@ -84,27 +84,6 @@ export class AttendeesController {
     return result;
   }
 
-  @Post('all')
-  async getAllAttendeesForFilters(
-    @Query() query: { page?: string; limit?: string },
-    @AdminId() adminId: string,
-    @Body() filters: AttendeesFilterDto,
-  ) {
-    let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
-    let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
-
-    const result = await this.attendeesService.getAttendees(
-      '',
-      adminId,
-      true,
-      page,
-      limit,
-      filters,
-    );
-
-    return result;
-  }
-
   @Post()
   async addPostAttendees(
     @Id() adminId: string,

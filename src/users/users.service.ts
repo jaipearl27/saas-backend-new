@@ -69,7 +69,6 @@ export class UsersService {
     skip: number = 0,
     limit: number = 25,
   ): mongoose.PipelineStage[] {
-
     const matchFilters: Record<string, any> = {};
     if (filterData.email) matchFilters['email'] = filterData.email;
     if (filterData.companyName)
@@ -283,7 +282,12 @@ export class UsersService {
   ): Promise<any> {
     const hasFilters = Object.keys(filterData).length > 0;
 
-    const pipeline = this.createClientPipeline(filterData, hasFilters, skip, limit);
+    const pipeline = this.createClientPipeline(
+      filterData,
+      hasFilters,
+      skip,
+      limit,
+    );
     const pipelineForCount = this.createClientPipeline(filterData);
 
     const totalUsersPipeline = [...pipelineForCount, { $count: 'totalUsers' }];
@@ -487,6 +491,9 @@ export class UsersService {
         },
       },
       {
+        $project: { password: 0}
+      },
+      {
         $unset: 'roleInfo', // Remove the temporary `roleInfo` array
       },
       {
@@ -525,7 +532,7 @@ export class UsersService {
   }
 
   getEmployee(id: string): Promise<User | null> {
-    const employee = this.userModel.findById(id);
+    const employee = this.userModel.findById(id).select('-password');
 
     return employee;
   }
@@ -536,7 +543,7 @@ export class UsersService {
   }
 
   async getUserById(id: string) {
-    return await this.userModel.findById(id);
+    return await this.userModel.findById(id).select('-password');
   }
 
   async updateUser(
@@ -688,6 +695,9 @@ export class UsersService {
         dailyContactLimit: updateEmployeeDto.dailyContactLimit,
         role: role._id,
         inactivityTime: updateEmployeeDto.inactivityTime,
+        ...(updateEmployeeDto.password
+          ? { password: updateEmployeeDto.password }
+          : {}),
       },
       { new: true },
     );

@@ -30,5 +30,5 @@ export class AttendeeAssociation extends Document {
 
 export const AttendeeAssociationSchema = SchemaFactory.createForClass(AttendeeAssociation);
 
-// Add index for csvId and recordType fields
-AttendeeAssociationSchema.index({ email: 1 });
+AttendeeAssociationSchema.index({ adminId: 1, email: 1 });
+AttendeeAssociationSchema.index({ adminId: 1, email: 1, leadType: 1 });

@@ -71,3 +71,9 @@ export class PlanOrderDTO {
   @Type(() => PlanDTO)
   plans: PlanDTO[];
 }
+
+export class IdParamsDTO {
+  
+  @IsMongoId()
+  id: string;
+}

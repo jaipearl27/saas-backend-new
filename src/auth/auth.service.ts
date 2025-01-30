@@ -21,6 +21,7 @@ import { CreatorDetailsDto } from './dto/creatorDetails.dto';
 import { PlansService } from 'src/plans/plans.service';
 import { CreateClientDto } from './dto/createClient.dto';
 import { SubscriptionService } from 'src/subscription/subscription.service';
+import { WhatsappService } from 'src/whatsapp/whatsapp.service';
 
 @Injectable()
 export class AuthService {
@@ -30,6 +31,7 @@ export class AuthService {
     private jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly subscriptionService: SubscriptionService,
+    private readonly whatsappService: WhatsappService,
   ) {}
 
   async generateTokens(id: Types.ObjectId) {
@@ -185,6 +187,25 @@ export class AuthService {
     createClientDto.password = hashPassword;
 
     return this.usersService.createClient(createClientDto, creatorDetailsDto);
+  }
+
+  async generateOtp(email: string): Promise<any> {
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const user = await this.userModel.findOne({ email });
+
+    if (!user) {
+      throw new NotFoundException('No user found with the given email.');
+    }
+    user.oneTimePassword = newOtp;
+    console.log(newOtp, user.phone, user.email, user.userName);
+    await this.whatsappService.sendAlarmMsg({
+      phone: user.phone.trim(),
+      note: newOtp,
+      userName: user.userName.trim(),
+      attendeeEmail: user.email.trim(),
+    });
+
+    await user.save();
   }
 
   async pabblyToken(id: string): Promise<any> {

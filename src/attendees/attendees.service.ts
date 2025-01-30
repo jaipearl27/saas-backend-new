@@ -351,14 +351,12 @@ export class AttendeesService {
       (key) => filters[key] !== null && filters[key] !== undefined,
     );
 
-    const pipeline: PipelineStage[] = [
-      // Step 1: Match key fields to reduce dataset size
+    const basePipeline: PipelineStage[] = [
       {
         $match: {
           adminId: new Types.ObjectId(AdminId),
           isAttended: isAttended,
-          ...(webinarId &&
-            webinarId !== '' && { webinar: new Types.ObjectId(webinarId) }),
+          webinar: new Types.ObjectId(webinarId),
           ...(filters.isAssigned &&
             (filters.isAssigned === 'true'
               ? { assignedTo: { $ne: null } }
@@ -385,7 +383,6 @@ export class AttendeesService {
           }),
         },
       },
-      // Step 3: Apply optional filters
 
       ...(hasFilters
         ? [
@@ -458,102 +455,90 @@ export class AttendeesService {
             },
           ]
         : []),
-      {
-        $facet: {
-          metadata: [{ $count: 'total' }],
-          data: [
-            { $sort: { email: 1 } },
-            { $skip: skip },
-            { $limit: limit },
-            {
-              $addFields: {
-                lookupField: { $ifNull: ['$tempAssignedTo', '$assignedTo'] },
-              },
-            },
-            {
-              $lookup: {
-                from: 'users',
-                localField: 'lookupField',
-                foreignField: '_id',
-                as: 'assignedToDetails',
-              },
-            },
-            {
-              $project: {
-                lookupField: 0, // Remove temporary lookupField if not needed in the output
-              },
-            },
-            ...(filters.leadType
-              ? []
-              : [
-                  {
-                    $lookup: {
-                      from: 'attendeeassociations',
-                      let: { tempMail: '$email' },
-                      pipeline: [
-                        {
-                          $match: {
-                            $expr: {
-                              $and: [
-                                {
-                                  $eq: [
-                                    '$adminId',
-                                    new Types.ObjectId(`${AdminId}`),
-                                  ],
-                                },
-                                { $eq: ['$email', '$$tempMail'] },
-                              ],
-                            },
-                          },
-                        },
-                      ],
-
-                      as: 'attendeeAssociations',
-                    },
-                  },
-                  {
-                    $unwind: {
-                      path: '$attendeeAssociations',
-                      preserveNullAndEmptyArrays: true,
-                    },
-                  },
-                ]),
-            {
-              $addFields: {
-                isAssigned: {
-                  $arrayElemAt: ['$assignedToDetails.userName', 0],
-                },
-                leadType: '$attendeeAssociations.leadType',
-              },
-            },
-            {
-              $project: { assignedToDetails: 0, attendeeAssociations: 0 },
-            },
-          ],
-        },
-      },
-      // Step 7: Unwind metadata to extract total count and calculate total pages
-      { $unwind: '$metadata' },
-      {
-        $project: {
-          totalPages: { $ceil: { $divide: ['$metadata.total', limit] } },
-          page: page,
-          result: '$data',
-        },
-      },
     ];
 
-    const aggregationResult = await this.attendeeModel
-      .aggregate(pipeline)
+    const pipeline: PipelineStage[] = [
+      ...basePipeline,
+      { $sort: { email: 1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $addFields: {
+          lookupField: { $ifNull: ['$tempAssignedTo', '$assignedTo'] },
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'lookupField',
+          foreignField: '_id',
+          as: 'assignedToDetails',
+        },
+      },
+      {
+        $project: {
+          lookupField: 0,
+        },
+      },
+      ...(filters.leadType
+        ? []
+        : [
+            {
+              $lookup: {
+                from: 'attendeeassociations',
+                let: { tempMail: '$email' },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $and: [
+                          {
+                            $eq: ['$adminId', new Types.ObjectId(`${AdminId}`)],
+                          },
+                          { $eq: ['$email', '$$tempMail'] },
+                        ],
+                      },
+                    },
+                  },
+                ],
+
+                as: 'attendeeAssociations',
+              },
+            },
+            {
+              $unwind: {
+                path: '$attendeeAssociations',
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+          ]),
+      {
+        $addFields: {
+          isAssigned: {
+            $arrayElemAt: ['$assignedToDetails.userName', 0],
+          },
+          leadType: '$attendeeAssociations.leadType',
+        },
+      },
+      {
+        $project: { assignedToDetails: 0, attendeeAssociations: 0 },
+      },
+    ];
+    const totalResult = await this.attendeeModel
+      .aggregate([...basePipeline, { $count: 'total' }])
       .exec();
+    const total = totalResult[0]?.total || 0;
 
-    if (aggregationResult.length === 0) {
-      return { totalPages: 0, page: page, result: [] };
-    }
+    const result = await this.attendeeModel.aggregate(pipeline).exec();
 
-    const { totalPages, page: currentPage, result } = aggregationResult[0];
+    const pagination = {
+      total,
+      totalPages: Math.ceil(total / limit),
+      page,
+      limit,
+    };
 
-    return { totalPages, page: currentPage, result };
+    return { pagination, result };
   }
 
   async getAttendeesCount(webinarId: string, AdminId: string): Promise<any> {
@@ -1014,5 +999,210 @@ export class AttendeesService {
     const result = await this.attendeeModel.aggregate(pipeline).exec();
     if (Array.isArray(result) && result.length > 0) return result[0];
     return { data: [], pagination: { page: 1, totalPages: 1 } };
+  }
+  async getAttendeesForExport(
+    webinarId: string,
+    AdminId: string,
+    isAttended: boolean,
+    page: number,
+    limit: number,
+    filters: AttendeesFilterDto,
+    validCall?: string,
+    assignmentType?: string,
+  ): Promise<any> {
+    const skip = (page - 1) * limit;
+
+    const hasFilters = Object.keys(filters).some(
+      (key) => filters[key] !== null && filters[key] !== undefined,
+    );
+
+    const basePipeline: PipelineStage[] = [
+      {
+        $match: {
+          adminId: new Types.ObjectId(AdminId),
+          isAttended: isAttended,
+          webinar: new Types.ObjectId(webinarId),
+          ...(filters.isAssigned &&
+            (filters.isAssigned === 'true'
+              ? { assignedTo: { $ne: null } }
+              : {
+                  $or: [
+                    { assignedTo: null },
+                    { assignedTo: { $exists: false } },
+                  ],
+                })),
+          ...(validCall && {
+            ...(validCall === 'Worked'
+              ? { status: { $ne: null } }
+              : { status: null }),
+          }),
+          ...(assignmentType && {
+            ...(assignmentType === 'Assigned'
+              ? {
+                  $and: [
+                    { assignedTo: { $ne: null } },
+                    { isPulledback: { $ne: true } },
+                  ],
+                }
+              : { assignedTo: null }),
+          }),
+        },
+      },
+
+      ...(hasFilters
+        ? [
+            {
+              $match: {
+                ...(filters.email && {
+                  email: { $regex: filters.email, $options: 'i' },
+                }),
+                ...(filters.firstName && {
+                  firstName: { $regex: filters.firstName, $options: 'i' },
+                }),
+                ...(filters.lastName && {
+                  lastName: { $regex: filters.lastName, $options: 'i' },
+                }),
+                ...(filters.gender && {
+                  gender: { $regex: filters.gender, $options: 'i' },
+                }),
+                ...(filters.phone && {
+                  phone: { $regex: filters.phone, $options: 'i' },
+                }),
+                ...(filters.location && {
+                  location: { $regex: filters.location, $options: 'i' },
+                }),
+                ...(filters.timeInSession && {
+                  timeInSession: filters.timeInSession,
+                }),
+                ...(filters.status && {
+                  status: filters.status,
+                }),
+              },
+            },
+          ]
+        : []),
+
+      ...(filters.leadType
+        ? [
+            {
+              $lookup: {
+                from: 'attendeeassociations',
+                let: { tempMail: '$email' },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $and: [
+                          {
+                            $eq: ['$adminId', new Types.ObjectId(`${AdminId}`)],
+                          },
+                          { $eq: ['$email', '$$tempMail'] },
+                          {
+                            $eq: [
+                              '$leadType',
+                              new Types.ObjectId(filters.leadType),
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  },
+                ],
+
+                as: 'attendeeAssociations',
+              },
+            },
+            {
+              $unwind: {
+                path: '$attendeeAssociations',
+                preserveNullAndEmptyArrays: false,
+              },
+            },
+          ]
+        : []),
+    ];
+
+    const pipeline: PipelineStage[] = [
+      ...basePipeline,
+      { $sort: { email: 1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $addFields: {
+          lookupField: { $ifNull: ['$tempAssignedTo', '$assignedTo'] },
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'lookupField',
+          foreignField: '_id',
+          as: 'assignedToDetails',
+        },
+      },
+      {
+        $project: {
+          lookupField: 0,
+        },
+      },
+      ...(filters.leadType
+        ? []
+        : [
+            {
+              $lookup: {
+                from: 'attendeeassociations',
+                let: { tempMail: '$email' },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $and: [
+                          {
+                            $eq: ['$adminId', new Types.ObjectId(`${AdminId}`)],
+                          },
+                          { $eq: ['$email', '$$tempMail'] },
+                        ],
+                      },
+                    },
+                  },
+                ],
+
+                as: 'attendeeAssociations',
+              },
+            },
+            {
+              $unwind: {
+                path: '$attendeeAssociations',
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+          ]),
+      {
+        $addFields: {
+          isAssigned: {
+            $arrayElemAt: ['$assignedToDetails.userName', 0],
+          },
+          leadType: '$attendeeAssociations.leadType',
+        },
+      },
+      {
+        $project: { assignedToDetails: 0, attendeeAssociations: 0 },
+      },
+    ];
+    const totalResult = await this.attendeeModel
+      .aggregate([...basePipeline, { $count: 'total' }])
+      .exec();
+    const total = totalResult[0]?.total || 0;
+
+    const result = await this.attendeeModel.aggregate(pipeline).exec();
+
+    const pagination = {
+      total,
+      totalPages: Math.ceil(total / limit),
+      page,
+      limit,
+    };
+
+    return { pagination, result };
   }
 }
