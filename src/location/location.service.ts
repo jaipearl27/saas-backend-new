@@ -30,9 +30,58 @@ export class LocationService {
   }
 
   async getLocations(): Promise<any> {
-    const result = await this.locationModel
-      .find({ isVerified: true, deactivated: false })
-      .sort({ name: 1 });
+    const result = await this.locationModel.aggregate([
+      {
+        $match: { isVerified: true, deactivated: false },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'admin',
+          foreignField: '_id',
+          as: 'adminData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$adminData',
+          preserveNullAndEmptyArrays: true
+        },
+      },
+      {
+        $addFields: {
+          admin: '$adminData._id',
+          adminEmail: '$adminData.email',
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'employee',
+          foreignField: '_id',
+          as: 'employeeData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$employeeData',
+          preserveNullAndEmptyArrays: true
+        },
+      },
+      {
+        $addFields: {
+          employee: '$employeeData._id',
+          employeeEmail: '$employeeData.email',
+        },
+      },
+      {
+        $project: {
+          adminData: 0,
+          employeeData: 0,
+        },
+      },
+    ]);
+
     return result;
   }
 
@@ -41,16 +90,66 @@ export class LocationService {
     admin?: string,
     isAdminVerified?: boolean,
   ): Promise<any> {
-    const pipeline = { isVerified };
+    const query = { isVerified };
     if (admin) {
-      pipeline['admin'] = new Types.ObjectId(`${admin}`);
+      query['admin'] = new Types.ObjectId(`${admin}`);
     }
     if (isAdminVerified) {
-      pipeline['isAdminVerified'] = isAdminVerified;
+      query['isAdminVerified'] = isAdminVerified;
     }
-    const result = await this.locationModel
-      .find(pipeline)
-      .sort({ createdAt: -1 });
+
+    const result = await this.locationModel.aggregate([
+      {
+        $match: query,
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'admin',
+          foreignField: '_id',
+          as: 'adminData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$adminData',
+          preserveNullAndEmptyArrays: true
+        },
+      },
+      {
+        $addFields: {
+          admin: '$adminData._id',
+          adminEmail: '$adminData.email',
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'employee',
+          foreignField: '_id',
+          as: 'employeeData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$employeeData',
+          preserveNullAndEmptyArrays: true
+        },
+      },
+      {
+        $addFields: {
+          employee: '$employeeData._id',
+          employeeEmail: '$employeeData.email',
+        },
+      },
+      {
+        $project: {
+          adminData: 0,
+          employeeData: 0,
+        },
+      },
+    ]);
+
     return result;
   }
 
@@ -65,7 +164,7 @@ export class LocationService {
     );
 
     //notification to admin and employee
-    
+
     if (result?.admin) {
       await this.notificationService.createNotification({
         recipient: result.admin.toString(),
@@ -120,7 +219,6 @@ export class LocationService {
         actionType: notificationActionType.LOCATION_REQUEST,
       });
     }
-
 
     return result;
   }

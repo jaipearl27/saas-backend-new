@@ -104,7 +104,7 @@ export class AlarmService {
           userName: alarmDetails.user.userName,
           note: alarmDetails.note,
         };
-        this.whatsappService.sendAlarmMsg(msgData);
+        await this.whatsappService.sendAlarmMsg(msgData);
       }
     });
 

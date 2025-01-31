@@ -200,7 +200,7 @@ export class AuthService {
     console.log(newOtp, user.phone, user.email, user.userName);
     await this.whatsappService.sendAlarmMsg({
       phone: user.phone.trim(),
-      note: newOtp,
+      note: String(newOtp),
       userName: user.userName.trim(),
       attendeeEmail: user.email.trim(),
     });
