@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, PipelineStage, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { Worker } from 'worker_threads';
 import * as path from 'path';
 import { User } from '../schemas/User.schema';
@@ -18,16 +18,13 @@ export class ExportExcelService {
     @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly usersService: UsersService,
     private readonly attendeeService: AttendeesService,
-    private readonly webinarService: WebinarService
+    private readonly webinarService: WebinarService,
   ) {}
 
-  async generateExcel(
-    workerData: any,
-    workerPath: string,
-  ): Promise<string> {
+  async generateExcel(workerData: any, workerPath: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const worker = new Worker(workerPath, { workerData });
-  
+
       worker.on('message', (message) => {
         if (message.success) {
           resolve(message.filePath);
@@ -36,12 +33,12 @@ export class ExportExcelService {
           reject(new Error(message.error));
         }
       });
-  
+
       worker.on('error', (err) => {
         console.error('Worker Thread Error:', err);
         reject(err);
       });
-  
+
       worker.on('exit', (code) => {
         if (code !== 0) {
           console.error(`Worker stopped with exit code ${code}`);
@@ -50,7 +47,7 @@ export class ExportExcelService {
       });
     });
   }
-  
+
   async generateExcelForClients(
     limit: number,
     columns: string[],
@@ -69,27 +66,34 @@ export class ExportExcelService {
       { header: 'Contacts Limit', key: 'contactsLimit', width: 15 },
       { header: 'Total Employees', key: 'totalEmployees', width: 15 },
       { header: 'Employee Sales Count', key: 'employeeSalesCount', width: 15 },
-      { header: 'Employee Reminder Count', key: 'employeeReminderCount', width: 15 },
+      {
+        header: 'Employee Reminder Count',
+        key: 'employeeReminderCount',
+        width: 15,
+      },
       { header: 'Toggle Limit', key: 'toggleLimit', width: 15 },
     ];
-  
+
     const selectedColumns = columns.length
       ? defaultColumns.filter((col) => columns.includes(col.key))
       : defaultColumns;
-  
+
     const pipeline = this.usersService.createClientPipeline(filterData);
     const cursor = this.userModel
       .aggregate([...pipeline, { $limit: limit }])
       .cursor();
-  
+
     for await (const doc of cursor) {
       data.push(doc);
     }
-  
-    const workerPath = path.resolve(__dirname, '../workers/generate-excel.worker.js');
+
+    const workerPath = path.resolve(
+      __dirname,
+      '../workers/generate-excel.worker.js',
+    );
     return this.generateExcel({ data, columns: selectedColumns }, workerPath);
   }
-  
+
   async generateExcelForWebinarAttendees(
     limit: number,
     columns: string[],
@@ -97,25 +101,30 @@ export class ExportExcelService {
     webinarId: string,
     isAttended: boolean,
     adminId: string,
-  ): Promise<string> {
-    const aggregationResult = await this.attendeeService.getAttendees(
+    validCall?: string | undefined,
+    assignmentType?: string | undefined,
+  ) {
+    const aggregationResult = await this.attendeeService.getAttendeesForExport(
       webinarId,
       adminId,
       isAttended,
-      1,
       limit,
       filterData,
+      validCall,
+      assignmentType,
     );
-  
+
+    console.log(aggregationResult);
+
     const payload = {
-      data: aggregationResult.result || [],
+      data: aggregationResult || [],
       columns: columns.map((col) => ({
         header: col,
         key: col,
         width: 20,
       })),
     };
-  
+
     const workerPath = path.resolve(__dirname, '../workers/generate-excel.worker.js');
     return this.generateExcel(payload, workerPath);
   }
@@ -126,8 +135,14 @@ export class ExportExcelService {
     filterData: WebinarFilterDTO,
     adminId: string,
   ): Promise<string> {
-    const aggregationResult = await this.webinarService.getWebinars(adminId,1, limit,filterData,false)
-  
+    const aggregationResult = await this.webinarService.getWebinars(
+      adminId,
+      1,
+      limit,
+      filterData,
+      false,
+    );
+
     const payload = {
       data: aggregationResult.result || [],
       columns: columns.map((col) => ({
@@ -136,8 +151,11 @@ export class ExportExcelService {
         width: 20,
       })),
     };
-  
-    const workerPath = path.resolve(__dirname, '../workers/generate-excel.worker.js');
+
+    const workerPath = path.resolve(
+      __dirname,
+      '../workers/generate-excel.worker.js',
+    );
     return this.generateExcel(payload, workerPath);
   }
 
@@ -147,8 +165,13 @@ export class ExportExcelService {
     filterData: EmployeeFilterDTO,
     adminId: string,
   ): Promise<string> {
-    const aggregationResult = await this.usersService.getEmployees(adminId,1, limit,filterData)
-  
+    const aggregationResult = await this.usersService.getEmployees(
+      adminId,
+      1,
+      limit,
+      filterData,
+    );
+
     const payload = {
       data: aggregationResult.result || [],
       columns: columns.map((col) => ({
@@ -157,11 +180,13 @@ export class ExportExcelService {
         width: 20,
       })),
     };
-  
-    const workerPath = path.resolve(__dirname, '../workers/generate-excel.worker.js');
+
+    const workerPath = path.resolve(
+      __dirname,
+      '../workers/generate-excel.worker.js',
+    );
     return this.generateExcel(payload, workerPath);
   }
-  
 
   // async generateExcelForClientsOld(limit: number, columns: string[], filterData: GetClientsFilterDto): Promise<string> {
   //   const data = [];

@@ -106,11 +106,19 @@ export class User extends Document {
   })
   inactivityTime: number;
 
+  @Prop({ type: String, select: false })
+  oneTimePassword?: string;
+
   @Prop({
-    type: String,
-    required: false,
+    type: Date,
   })
-  oneTimePassword: string;
+  otpExpiration?: Date;
+
+  @Prop({ type: Number, default: 0 })
+  failedOtpAttempts?: number;
+
+  @Prop({ type: Date })
+  accountLockedUntil?: Date;
 
   @Prop({
     type: [

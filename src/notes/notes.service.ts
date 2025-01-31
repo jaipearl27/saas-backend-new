@@ -37,6 +37,7 @@ export class NotesService {
         _id: new Types.ObjectId(`${body.attendee}`),
       });
       attendee.status = body.status;
+      console.log(attendee.status, body.status)
       if (totalCallDuration >= user.validCallTime) {
         attendee.validCall = true;
       }
