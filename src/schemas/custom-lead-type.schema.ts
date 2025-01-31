@@ -26,3 +26,5 @@ export class CustomLeadType extends Document {
 
 export const CustomLeadTypeSchema =
   SchemaFactory.createForClass(CustomLeadType);
+
+  CustomLeadTypeSchema.index({createdBy : 1});

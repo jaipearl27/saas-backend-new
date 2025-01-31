@@ -34,7 +34,7 @@ import { AttendeesModule } from 'src/attendees/attendees.module';
     forwardRef(() => AttendeesModule),
     BillingHistoryModule,
     forwardRef(() => AddonModule),
-    PlansModule,
+    forwardRef(() => PlansModule),
   ],
   controllers: [SubscriptionController],
   providers: [SubscriptionService],

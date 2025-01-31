@@ -70,7 +70,7 @@ export class User extends Document {
     required: false,
   })
   pabblyToken: string;
-  
+
   @Prop({
     type: String,
     required: false,
@@ -106,30 +106,45 @@ export class User extends Document {
   })
   inactivityTime: number;
 
+  @Prop({ type: String, select: false })
+  oneTimePassword?: string;
+
   @Prop({
-    type: [{
-      fieldname: String,
-      originalname: String,
-      encoding: String,
-      mimetype: String,
-      destination: String,
-      filename: String,
-      path: String,
-      size: Number
-    }],
+    type: Date,
+  })
+  otpExpiration?: Date;
+
+  @Prop({ type: Number, default: 0 })
+  failedOtpAttempts?: number;
+
+  @Prop({ type: Date })
+  accountLockedUntil?: Date;
+
+  @Prop({
+    type: [
+      {
+        fieldname: String,
+        originalname: String,
+        encoding: String,
+        mimetype: String,
+        destination: String,
+        filename: String,
+        path: String,
+        size: Number,
+      },
+    ],
     requried: false,
   })
-  documents:
-    {
-      fieldname: string,
-      originalname: string,
-      encoding: string,
-      mimetype: string,
-      destination: string,
-      filename: string,
-      path: string,
-      size: number,
-    }[]
+  documents: {
+    fieldname: string;
+    originalname: string;
+    encoding: string;
+    mimetype: string;
+    destination: string;
+    filename: string;
+    path: string;
+    size: number;
+  }[];
 
   @Prop({
     type: String,

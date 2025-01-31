@@ -55,6 +55,13 @@ export class UpdateLocationDto {
   @IsBoolean()
   @IsNotEmpty()
   isAdminVerified?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  note?: string;
+
+  
 }
 
 export class AdminVerificationDto {

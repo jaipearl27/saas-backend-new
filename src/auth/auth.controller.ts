@@ -112,4 +112,9 @@ export class AuthController {
   // ): Promise<any> {
   //   return this.authService.pabblyToken(param.id)
   // }
+
+  @Post('forgot-password/:email')
+  async generateOTP( @Param('email') email: string ) {
+    return this.authService.generateOtp(email);
+  }
 }

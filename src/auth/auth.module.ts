@@ -9,6 +9,7 @@ import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middlew
 import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
 import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
+import { WhatsappModule } from 'src/whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -22,7 +23,8 @@ import { SubscriptionModule } from 'src/subscription/subscription.module';
         schema: UserSchema,
       },
     ]),
-    SubscriptionModule
+    SubscriptionModule,
+    WhatsappModule
   ],
   controllers: [AuthController],
   providers: [AuthService],

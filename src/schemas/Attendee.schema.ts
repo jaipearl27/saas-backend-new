@@ -122,3 +122,4 @@ AttendeeSchema.index({ email: 1 });
 AttendeeSchema.index({ webinar: 1 });
 AttendeeSchema.index({ webinar: 1, adminId: 1 });
 AttendeeSchema.index({ webinar: 1, adminId: 1, isAttended: 1 });
+AttendeeSchema.index({ webinar: 1, adminId: 1, isAttended: 1, email: 1 });

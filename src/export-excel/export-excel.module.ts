@@ -5,20 +5,14 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from '../schemas/User.schema';
 import { UsersModule } from 'src/users/users.module';
 import { AttendeesModule } from 'src/attendees/attendees.module';
-import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
-import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
 import { ValidateBodyFilters } from 'src/middlewares/validate-body-filters.Middleware';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { WebinarModule } from 'src/webinar/webinar.module';
-import { WebinarService } from 'src/webinar/webinar.service';
-import { Webinar, WebinarSchema } from 'src/schemas/Webinar.schema';
 import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([
-      { name: User.name, schema: UserSchema },
-    ]),
+    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     UsersModule,
     SubscriptionModule,
     WebinarModule,
@@ -29,22 +23,17 @@ import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
 })
 export class ExportExcelModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(AuthTokenMiddleware, GetAdminIdMiddleware, ValidateBodyFilters)
-      .forRoutes({
-        path: 'export-excel/webinar-attendees/',
-        method: RequestMethod.POST,
-      });
+    consumer.apply(AuthAdminTokenMiddleware, ValidateBodyFilters).forRoutes({
+      path: 'export-excel/webinar-attendees/',
+      method: RequestMethod.POST,
+    });
 
-    consumer
-      .apply(AuthAdminTokenMiddleware)
-      .forRoutes({
+    consumer.apply(AuthAdminTokenMiddleware).forRoutes(
+      { path: 'export-excel/webinars', method: RequestMethod.POST },
+      {
         path: 'export-excel/employees',
         method: RequestMethod.POST,
-      });
-
-    consumer
-      .apply(AuthAdminTokenMiddleware)
-      .forRoutes({ path: 'export-excel/webinars', method: RequestMethod.POST });
+      },
+    );
   }
 }

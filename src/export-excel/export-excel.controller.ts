@@ -13,7 +13,7 @@ import { Response } from 'express';
 import * as fs from 'fs';
 import { GetClientsFilterDto } from 'src/users/dto/filters.dto';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
-import { AttendeesFilterDto } from 'src/attendees/dto/attendees.dto';
+import { ExportWebinarAttendeesDTO } from 'src/attendees/dto/attendees.dto';
 import { WebinarFilterDTO } from 'src/webinar/dto/webinar-filter.dto';
 import { EmployeeFilterDTO } from 'src/users/dto/employee-filter.dto';
 
@@ -60,21 +60,23 @@ export class ExportExcelController {
   @Post('/webinar-attendees')
   async downloadWebinarAttendees(
     @Body()
-    body: { filters: AttendeesFilterDto; columns: string[]; fieldName: string, webinarId: string },
-    @Query('isAttended') isAttended: string,
-    @AdminId() adminId: string,
-    @Query('limit') limit: string,
+    body: ExportWebinarAttendeesDTO,
+    @Id() adminId: string,
     @Res() res: Response,
   ): Promise<void> {
     try {
+      console.log('body', body, adminId);
+
       const filePath =
         await this.exportExcelService.generateExcelForWebinarAttendees(
-          parseInt(limit) || 1000,
+          body.limit,
           body.columns,
           body.filters,
           body.webinarId,
-          isAttended === 'true' ? true : false,
+          body.isAttended,
           adminId,
+          body?.validCall,
+          body?.assignmentType,
         );
 
       // Stream the file to the client

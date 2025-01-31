@@ -34,6 +34,7 @@ export class SubscriptionService {
     @Inject(forwardRef(() => UsersService))
     private readonly userService: UsersService,
     private readonly BillingHistoryService: BillingHistoryService,
+    @Inject(forwardRef(() => PlansService))
     private readonly plansService: PlansService,
   ) {}
 

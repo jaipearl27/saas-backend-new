@@ -1,10 +1,11 @@
-import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+import { forwardRef, MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { PlansController } from './plans.controller';
 import { PlansService } from './plans.service';
 import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
 import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Plans, PlansSchema } from 'src/schemas/Plans.schema';
+import { SubscriptionModule } from 'src/subscription/subscription.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { Plans, PlansSchema } from 'src/schemas/Plans.schema';
         schema: PlansSchema,
       },
     ]),
+    forwardRef(() => SubscriptionModule),
   ],
   controllers: [PlansController],
   providers: [PlansService],

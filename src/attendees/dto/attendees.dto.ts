@@ -12,6 +12,7 @@ import {
   IsObject,
   ValidateNested,
   IsArray,
+  Min,
 } from 'class-validator';
 import { Types } from 'mongoose';
 import { RangeNumberDto } from 'src/users/dto/filters.dto';
@@ -183,7 +184,6 @@ export class GroupedAttendeesFilterDto {
 }
 
 export class FetchGroupedAttendeesDTO {
-
   @IsNotEmpty()
   @ValidateNested()
   @Type(() => GroupedAttendeesFilterDto)
@@ -191,7 +191,7 @@ export class FetchGroupedAttendeesDTO {
 }
 
 export class GetAttendeesDTO {
-  @IsString()
+  @IsMongoId()
   webinarId: string;
 
   @IsBoolean()
@@ -224,4 +224,15 @@ export class SwapAttendeeFieldsDTO {
   @IsNotEmpty()
   @IsString()
   field2?: string;
+}
+
+export class ExportWebinarAttendeesDTO extends GetAttendeesDTO {
+  @IsArray()
+  @IsNotEmpty()
+  @IsString({ each: true })
+  columns: string[];
+
+  @IsNumber()
+  @Min(0, { message: 'Export limit must be a non-negative integer.' })
+  limit: number;
 }
