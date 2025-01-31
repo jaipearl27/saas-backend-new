@@ -196,6 +196,25 @@ export class AuthService {
     return this.usersService.createClient(createClientDto, creatorDetailsDto);
   }
 
+  async generateOtp(email: string): Promise<any> {
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const user = await this.userModel.findOne({ email });
+
+    if (!user) {
+      throw new NotFoundException('No user found with the given email.');
+    }
+    user.oneTimePassword = newOtp;
+    console.log(newOtp, user.phone, user.email, user.userName);
+    await this.whatsappService.sendAlarmMsg({
+      phone: user.phone.trim(),
+      note: String(newOtp),
+      userName: user.userName.trim(),
+      attendeeEmail: user.email.trim(),
+    });
+
+    await user.save();
+  }
+
   async pabblyToken(id: string): Promise<any> {
     const user = await this.userModel.findById(id);
 

@@ -8,6 +8,7 @@ import { Location, LocationSchema } from 'src/schemas/location.schema';
 import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
 import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
 import { UsersModule } from 'src/users/users.module';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { UsersModule } from 'src/users/users.module';
     MongooseModule.forFeature([
       { name: Location.name, schema: LocationSchema },
     ]),
+    NotificationModule
   ],
   controllers: [LocationController],
   providers: [LocationService],
