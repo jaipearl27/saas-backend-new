@@ -14,7 +14,14 @@ export enum PlanType {
   NORMAL = 'normal',
 }
 
+export type PlanDurationConfig = {
+  duration: number;
+  discountType: string;
+  discountValue: number;
+};
+
 @Schema({ timestamps: true })
+
 export class Plans extends Document {
   @Prop({
     type: String,
@@ -107,7 +114,7 @@ export class Plans extends Document {
   })
   planDurationConfig: Map<
     string,
-    { duration: number; discountType: string; discountValue: number }
+    PlanDurationConfig
   >;
 
   static async validatePlanDurationConfig(this: Plans) {

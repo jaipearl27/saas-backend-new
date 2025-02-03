@@ -521,7 +521,19 @@ export class AttendeesService {
         },
       },
       {
-        $project: { assignedToDetails: 0, attendeeAssociations: 0 },
+        $project: {
+          email: 1,
+          firstName: 1,
+          gender: 1,
+          isAssigned: 1,
+          isAttended: 1,
+          lastName: 1,
+          leadType: 1,
+          location: 1,
+          phone: 1,
+          status: 1,
+          timeInSession: 1,
+        },
       },
     ];
     const totalResult = await this.attendeeModel
@@ -541,20 +553,6 @@ export class AttendeesService {
     return { pagination, result };
   }
 
-  async getAttendeesCount(webinarId: string, AdminId: string): Promise<any> {
-    const webinarPipeline = {
-      adminId: new Types.ObjectId(`${AdminId}`),
-    };
-
-    if (webinarId) {
-      webinarPipeline['webinar'] = new Types.ObjectId(`${webinarId}`);
-    }
-
-    const totalContacts =
-      (await this.attendeeModel.countDocuments(webinarPipeline)) || 0;
-
-    return totalContacts;
-  }
 
   async getPostWebinarAttendee(webinarId: string, adminId: string) {
     const result = await this.attendeeModel.findOne({

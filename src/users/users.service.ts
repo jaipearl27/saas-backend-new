@@ -36,7 +36,7 @@ import {
   notificationType,
 } from 'src/schemas/notification.schema';
 import exp from 'constants';
-import { monthMultiplier } from 'src/schemas/BillingHistory.schema';
+import { BillingType, monthMultiplier } from 'src/schemas/BillingHistory.schema';
 
 @Injectable()
 export class UsersService {
@@ -856,7 +856,8 @@ export class UsersService {
       taxPercent: 18,
       taxAmount: gst,
       durationType: createClientDto.durationType,
-    });
+    }, BillingType.NEW_PLAN);
+
 
     await this.customLeadTypeService.createDefaultLeadTypes(`${user._id}`);
 

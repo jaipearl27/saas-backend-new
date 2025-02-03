@@ -196,7 +196,6 @@ export class AuthService {
     return this.usersService.createClient(createClientDto, creatorDetailsDto);
   }
 
-
   async pabblyToken(id: string): Promise<any> {
     const user = await this.userModel.findById(id);
 
@@ -237,10 +236,6 @@ export class AuthService {
       throw new NotFoundException('No user found with the given email.');
     }
 
-    if (user.otpExpiration && user.otpExpiration > new Date()) {
-      throw new ConflictException('Valid OTP already exists');
-    }
-
     user.oneTimePassword = await this.hashOtp(newOtp); // Store hashed OTP
     user.otpExpiration = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -263,9 +258,8 @@ export class AuthService {
   }
 
   private async generateSecureOtp(): Promise<string> {
-    const crypto = await import('crypto');
-    const buffer = crypto.randomBytes(3);
-    return (buffer.readUIntBE(0, 3) % 1000000).toString().padStart(6, '0');
+    // Generate 6-digit numeric OTP
+    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
   private generateOtpEmailTemplate(otp: string): string {
@@ -282,8 +276,8 @@ export class AuthService {
   }
 
   private async hashOtp(otp: string): Promise<string> {
-    const crypto = await import('crypto');
-    return crypto.createHash('sha256').update(otp).digest('hex');
+    const saltRounds = 10;
+    return await bcrypt.hash(otp, saltRounds);
   }
 
   async validateOTP(email: string, otp: string): Promise<{ success: boolean }> {
@@ -313,9 +307,7 @@ export class AuthService {
       throw new ForbiddenException('OTP has expired');
     }
 
-    
-    const hashedOtp = await this.hashOtp(otp);
-    const isValid = this.compareOtp(hashedOtp, user.oneTimePassword);
+    const isValid = await bcrypt.compare(otp, user.oneTimePassword);
 
     if (!isValid) {
       user.failedOtpAttempts = (user.failedOtpAttempts || 0) + 1;
@@ -332,8 +324,47 @@ export class AuthService {
       throw new ForbiddenException('Invalid OTP');
     }
 
-    await this.clearOtp(user);
+    await this.generateNewPassword(user);
     return { success: true };
+  }
+
+  private async generateNewPassword(user: User): Promise<void> {
+    // Generate random 8-character alphanumeric password
+    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const newPassword = Array.from({length: 8}, () => 
+      charset.charAt(Math.floor(Math.random() * charset.length))
+    ).join('');
+
+    // Hash and save new password
+    user.password = await this.createHash(newPassword);
+    
+    // Clear OTP details
+    await this.clearOtp(user);
+
+    // Send email with new password
+    try {
+      await this.mailerService.sendMail({
+        to: user.email,
+        subject: 'Your New Password',
+        html: this.generateNewPasswordEmailTemplate(newPassword),
+      });
+    } catch (error) {
+      this.logger.error('Failed to send new password email', error.stack);
+      throw new InternalServerErrorException('Failed to send new password email');
+    }
+  }
+
+  private generateNewPasswordEmailTemplate(password: string): string {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Password Reset Successful</h2>
+        <p>Your new password is:</p>
+        <div style="font-size: 24px; font-weight: bold; color: #059669;">${password}</div>
+        <p style="margin-top: 20px;">Please use this password to log in and consider changing it immediately.</p>
+        <hr style="border: 1px solid #e5e7eb;">
+        <p style="color: #6b7280;">If you didn't request this change, please contact support immediately.</p>
+      </div>
+    `;
   }
 
   private async clearOtp(user: User): Promise<void> {
@@ -344,11 +375,15 @@ export class AuthService {
     await user.save();
   }
 
-  private compareOtp(inputHash: string, storedHash: string): boolean {
-    const crypto = require('crypto');
-    return crypto.timingSafeEqual(
-      Buffer.from(inputHash),
-      Buffer.from(storedHash),
-    );
+  async createHash(password: string): Promise<string> {
+    const saltRounds = 10;
+    return await bcrypt.hash(password, saltRounds);
+  }
+
+  async comparePasswords(
+    plainTextPassword: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    return await bcrypt.compare(plainTextPassword, hashedPassword);
   }
 }
