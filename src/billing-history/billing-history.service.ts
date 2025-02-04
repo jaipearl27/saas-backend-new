@@ -58,7 +58,10 @@ export class BillingHistoryService {
   async addOneBillingHistory(
     adminId: string,
     addOnId: string,
-    amount: number,
+    itemAmount: number,
+    taxAmount: number,
+    totalAmount: number,
+    taxPercent: number,
   ): Promise<BillingHistory> {
     let invoiceNumber = this.generateInvoiceNumber();
 
@@ -71,11 +74,15 @@ export class BillingHistoryService {
       date: new Date(),
       addOn: new Types.ObjectId(`${addOnId}`),
       billingType: BillingType.ADD_ON,
-      amount: parseFloat(amount.toFixed(2)),
+      amount: parseFloat(totalAmount.toFixed(2)),
+      itemAmount: parseFloat(itemAmount.toFixed(2)),
+      taxAmount: parseFloat(taxAmount.toFixed(2)),
+      taxPercent: taxPercent,
       invoiceNumber,
     });
     return billingHistory.save();
   }
+
   async getBillingHistory(
     adminId: string,
     page: number,

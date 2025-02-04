@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { ClientSession, Model, Types } from 'mongoose';
+import { ClientSession, Model, PipelineStage, Types } from 'mongoose';
 import { Subscription } from 'src/schemas/Subscription.schema';
 import { SubscriptionDto, UpdateSubscriptionDto } from './dto/subscription.dto';
 import { AddOnService } from 'src/addon/addon.service';
@@ -148,11 +148,17 @@ export class SubscriptionService {
       await subscription.save();
       await session.commitTransaction();
       session.endSession();
+      const { itemAmount, taxAmount, totalAmount } = this.generatePriceForAddon(
+        addOn.addOnPrice,
+      );
 
       const billing = await this.BillingHistoryService.addOneBillingHistory(
         adminId,
         addonId,
-        addOn.addOnPrice,
+        itemAmount,
+        taxAmount,
+        totalAmount,
+        18,
       ).catch(() => {
         throw new Error('Failed to create billing history');
       });
@@ -168,6 +174,16 @@ export class SubscriptionService {
       session.endSession();
       throw error;
     }
+  }
+
+  generatePriceForAddon(amount: number) {
+    const taxAmount = amount * 0.18;
+    const totalAmount = amount + taxAmount;
+    return {
+      itemAmount: amount,
+      taxAmount,
+      totalAmount,
+    };
   }
 
   async decrementSubscriptionAddons(
@@ -211,7 +227,10 @@ export class SubscriptionService {
 
     const isPlanExpired = new Date() > new Date(subscription.expiryDate);
 
-    const usedContacts = await this.attendeesService.getNonUniqueAttendeesCount([], new Types.ObjectId(`${adminId}`));
+    const usedContacts = await this.attendeesService.getNonUniqueAttendeesCount(
+      [],
+      new Types.ObjectId(`${adminId}`),
+    );
     const usedEmployees = await this.userService.getEmployeesCount(adminId);
 
     const plan = await this.plansService.getPlan(planId);
@@ -242,19 +261,25 @@ export class SubscriptionService {
     );
 
     const { totalWithGST, itemAmount, discountAmount, gst } =
-      await this.generatePriceForPlan(plan.amount, durationType, durationConfig);
+      await this.generatePriceForPlan(
+        plan.amount,
+        durationType,
+        durationConfig,
+      );
 
-    const billing = await this.BillingHistoryService.addBillingHistory({
-      admin: adminId,
-      plan: planId,
-      amount: totalWithGST,
-      itemAmount: itemAmount,
-      discountAmount: discountAmount,
-      taxPercent: 18,
-      taxAmount: gst,
-      durationType: durationType,
-    }, BillingType.RENEWAL);
-
+    const billing = await this.BillingHistoryService.addBillingHistory(
+      {
+        admin: adminId,
+        plan: planId,
+        amount: totalWithGST,
+        itemAmount: itemAmount,
+        discountAmount: discountAmount,
+        taxPercent: 18,
+        taxAmount: gst,
+        durationType: durationType,
+      },
+      BillingType.RENEWAL,
+    );
 
     if (isPlanExpired)
       await this.userService.updateClient(adminId, { isActive: true });
@@ -274,9 +299,17 @@ export class SubscriptionService {
     return subscription;
   }
 
-  async generatePriceForPlan(amount: number, durationType: DurationType, durationConfig: PlanDurationConfig ): Promise<{ totalWithGST: number, itemAmount: number, discountAmount: number, gst: number }> {
-
-    const itemAmount =  amount * monthMultiplier[durationType];
+  async generatePriceForPlan(
+    amount: number,
+    durationType: DurationType,
+    durationConfig: PlanDurationConfig,
+  ): Promise<{
+    totalWithGST: number;
+    itemAmount: number;
+    discountAmount: number;
+    gst: number;
+  }> {
+    const itemAmount = amount * monthMultiplier[durationType];
     const discountAmount =
       durationConfig.discountType === 'flat'
         ? durationConfig.discountValue
@@ -295,5 +328,22 @@ export class SubscriptionService {
       gst,
       totalWithGST: totalWithGST,
     };
+  }
+
+  async getPlanSubscriptionCount(): Promise<
+    { _id: string; subscriptionCount: number }[]
+  > {
+    const pipeline: PipelineStage[] = [
+      {
+        $group: {
+          _id: '$plan',
+          subscriptionCount: {
+            $sum: 1,
+          },
+        },
+      },
+    ];
+    const result = await this.SubscriptionModel.aggregate(pipeline).exec();
+    return result;
   }
 }

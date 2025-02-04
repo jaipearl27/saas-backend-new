@@ -23,12 +23,14 @@ import { UsersModule } from 'src/users/users.module';
   ],
   providers: [RazorpayService],
   controllers: [RazorpayController],
-
 })
 export class RazorpayModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthAdminTokenMiddleware)
-      .forRoutes({ path: 'razorpay/checkout', method: RequestMethod.POST });
+      .forRoutes(
+        { path: 'razorpay/checkout', method: RequestMethod.POST },
+        { path: 'razorpay/addon/checkout', method: RequestMethod.POST },
+      );
   }
 }

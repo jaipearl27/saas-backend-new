@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Types } from 'mongoose';
 import Razorpay from 'razorpay';
+import { AddOnService } from 'src/addon/addon.service';
 import { AttendeesService } from 'src/attendees/attendees.service';
 import { PlansService } from 'src/plans/plans.service';
 import {
@@ -24,10 +25,11 @@ export class RazorpayService {
     private readonly plansService: PlansService,
     private readonly attendeesService: AttendeesService,
     private readonly userService: UsersService,
+    private readonly addonService: AddOnService,
   ) {}
 
   async createOrder(amount: number) {
-    console.log(' - ---------- > ',amount, typeof amount);
+    console.log(' - ---------- > ', amount, typeof amount);
     const instance = new Razorpay({
       key_id: this.configService.get('RAZORPAY_KEY_ID'),
       key_secret: this.configService.get('RAZORPAY_KEY_SECRET'),
@@ -37,7 +39,7 @@ export class RazorpayService {
       amount: Math.floor(amount * 100),
       currency: 'INR',
     };
-    console.log(options)
+    console.log(options);
     const result = instance.orders.create(options);
     return result;
   }
@@ -90,5 +92,22 @@ export class RazorpayService {
 
     const result = await this.createOrder(totalWithGST);
     return { planData: plan, result };
+  }
+
+  async createAddonOrder(addon: string, adminId: string) {
+    const subscription =
+      await this.subscriptionService.getSubscription(adminId);
+    if (!subscription) {
+      throw new NotFoundException('Subscription not found');
+    }
+
+    const addonData = await this.addonService.getAddOnById(addon);
+
+    if (!addonData) throw new NotAcceptableException('Addon not found.');
+
+    const { totalAmount } =
+      this.subscriptionService.generatePriceForAddon(addonData.addOnPrice);
+    const result = await this.createOrder(totalAmount);
+    return { addonData, result };
   }
 }

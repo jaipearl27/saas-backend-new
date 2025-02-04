@@ -74,12 +74,8 @@ export class RazorpayController {
   }
 
   @Post('/addon/checkout')
-  async createAddonOrder(@Body('addon') addon: string): Promise<any> {
-    const addonData = await this.addonService.getAddOnById(addon);
-
-    if (!addonData) throw new NotAcceptableException('Addon not found.');
-    const result = await this.razorpayService.createOrder(addonData.addOnPrice);
-    return { addonData, result };
+  async createAddonOrder(@Body('addon') addon: string, @Id() adminId: string): Promise<any> {
+    return this.razorpayService.createAddonOrder(addon, adminId);
   }
 
   @Post('addon/payment-success')

@@ -49,6 +49,7 @@ export class AttendeesController {
     @Id() adminId: string,
     @Body() body: GetAttendeesDTO,
   ) {
+    const start = Date.now();
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
 
@@ -61,9 +62,12 @@ export class AttendeesController {
       body.filters,
       body?.validCall,
       body?.assignmentType,
+      body?.sort,
     );
 
-    return result;
+    const processingTime = Date.now() - start;
+    console.log(`Processing time: ${processingTime} milliseconds`);
+    return result ? { ...result, processingTime } : result;
   }
 
   @Post('grouped')
@@ -79,6 +83,7 @@ export class AttendeesController {
       page,
       limit,
       body.filters,
+      body.sort,
     );
 
     return result;
@@ -150,10 +155,7 @@ export class AttendeesController {
     @Id() adminId: string,
   ) {
     return await this.attendeesService.swapFields(
-      body.attendees,
-      body.field1,
-      body.field2,
-      adminId,
+      body, adminId
     );
   }
 }
