@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { ClientSession, Model, Types } from 'mongoose';
+import { ClientSession, Model, PipelineStage, Types } from 'mongoose';
 import { Subscription } from 'src/schemas/Subscription.schema';
 import { SubscriptionDto, UpdateSubscriptionDto } from './dto/subscription.dto';
 import { AddOnService } from 'src/addon/addon.service';
@@ -16,9 +16,11 @@ import { PlansService } from 'src/plans/plans.service';
 import { AttendeesService } from 'src/attendees/attendees.service';
 import { UsersService } from 'src/users/users.service';
 import {
+  BillingType,
   DurationType,
   monthMultiplier,
 } from 'src/schemas/BillingHistory.schema';
+import { PlanDurationConfig } from 'src/schemas/Plans.schema';
 
 @Injectable()
 export class SubscriptionService {
@@ -66,7 +68,6 @@ export class SubscriptionService {
     const date15DaysLater = new Date();
     date15DaysLater.setDate(today.getDate() + 15);
 
-    console.log(date15DaysLater);
     const startOfDay15DaysLater = new Date(
       date15DaysLater.setHours(0, 0, 0, 0),
     );
@@ -147,11 +148,17 @@ export class SubscriptionService {
       await subscription.save();
       await session.commitTransaction();
       session.endSession();
+      const { itemAmount, taxAmount, totalAmount } = this.generatePriceForAddon(
+        addOn.addOnPrice,
+      );
 
       const billing = await this.BillingHistoryService.addOneBillingHistory(
         adminId,
         addonId,
-        addOn.addOnPrice,
+        itemAmount,
+        taxAmount,
+        totalAmount,
+        18,
       ).catch(() => {
         throw new Error('Failed to create billing history');
       });
@@ -167,6 +174,16 @@ export class SubscriptionService {
       session.endSession();
       throw error;
     }
+  }
+
+  generatePriceForAddon(amount: number) {
+    const taxAmount = amount * 0.18;
+    const totalAmount = amount + taxAmount;
+    return {
+      itemAmount: amount,
+      taxAmount,
+      totalAmount,
+    };
   }
 
   async decrementSubscriptionAddons(
@@ -189,7 +206,6 @@ export class SubscriptionService {
       (result.contactLimitAddon || 0) - contactLimit,
       0,
     );
-    console.log(result);
     await result.save({ session });
     return result;
   }
@@ -211,9 +227,9 @@ export class SubscriptionService {
 
     const isPlanExpired = new Date() > new Date(subscription.expiryDate);
 
-    const usedContacts = await this.attendeesService.getAttendeesCount(
-      '',
-      adminId,
+    const usedContacts = await this.attendeesService.getNonUniqueAttendeesCount(
+      [],
+      new Types.ObjectId(`${adminId}`),
     );
     const usedEmployees = await this.userService.getEmployeesCount(adminId);
 
@@ -244,36 +260,32 @@ export class SubscriptionService {
       Date.now() + durationConfig.duration * 24 * 60 * 60 * 1000,
     );
 
-    const itemAmount = plan.amount * monthMultiplier[durationType];
-    const discountAmount =
-      durationConfig.discountType === 'flat'
-        ? durationConfig.discountValue
-        : (plan.amount *
-            monthMultiplier[durationType] *
-            durationConfig.discountValue) /
-          100;
+    const { totalWithGST, itemAmount, discountAmount, gst } =
+      await this.generatePriceForPlan(
+        plan.amount,
+        durationType,
+        durationConfig,
+      );
 
-    const subTotal = itemAmount - discountAmount;
-    const gst = subTotal * 0.18; // 18% GST
-    const totalWithGST = subTotal + gst;
-
-    const billing = await this.BillingHistoryService.addBillingHistory({
-      admin: adminId,
-      plan: planId,
-      amount: totalWithGST,
-      itemAmount: itemAmount,
-      discountAmount: discountAmount,
-      taxPercent: 18,
-      taxAmount: gst,
-      durationType: durationType,
-    });
+    const billing = await this.BillingHistoryService.addBillingHistory(
+      {
+        admin: adminId,
+        plan: planId,
+        amount: totalWithGST,
+        itemAmount: itemAmount,
+        discountAmount: discountAmount,
+        taxPercent: 18,
+        taxAmount: gst,
+        durationType: durationType,
+      },
+      BillingType.RENEWAL,
+    );
 
     if (isPlanExpired)
       await this.userService.updateClient(adminId, { isActive: true });
 
     await subscription.save();
 
-    console.log('successss');
     return { subscription, billing };
   }
 
@@ -285,5 +297,53 @@ export class SubscriptionService {
     subscription.contactCount = subscription.contactCount + count;
     await subscription.save();
     return subscription;
+  }
+
+  async generatePriceForPlan(
+    amount: number,
+    durationType: DurationType,
+    durationConfig: PlanDurationConfig,
+  ): Promise<{
+    totalWithGST: number;
+    itemAmount: number;
+    discountAmount: number;
+    gst: number;
+  }> {
+    const itemAmount = amount * monthMultiplier[durationType];
+    const discountAmount =
+      durationConfig.discountType === 'flat'
+        ? durationConfig.discountValue
+        : (amount *
+            monthMultiplier[durationType] *
+            durationConfig.discountValue) /
+          100;
+
+    const subTotal = itemAmount - discountAmount;
+    const gst = subTotal * 0.18; // 18% GST
+    const totalWithGST = subTotal + gst;
+
+    return {
+      itemAmount,
+      discountAmount,
+      gst,
+      totalWithGST: totalWithGST,
+    };
+  }
+
+  async getPlanSubscriptionCount(): Promise<
+    { _id: string; subscriptionCount: number }[]
+  > {
+    const pipeline: PipelineStage[] = [
+      {
+        $group: {
+          _id: '$plan',
+          subscriptionCount: {
+            $sum: 1,
+          },
+        },
+      },
+    ];
+    const result = await this.SubscriptionModel.aggregate(pipeline).exec();
+    return result;
   }
 }

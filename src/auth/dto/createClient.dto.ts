@@ -49,3 +49,14 @@ export class CreateClientDto {
   })
   durationType: DurationType;
 }
+
+export class ValidateOtpDto {
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  otp: string;
+}
+

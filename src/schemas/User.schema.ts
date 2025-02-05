@@ -7,6 +7,8 @@ export class User extends Document {
     type: String,
     required: [true, 'E-mail is required'],
     trim: true,
+    lowercase: true,
+    unique: true,
   })
   email: string; //E-Mail
 
@@ -169,3 +171,5 @@ const rolesEnv = process.env.ROLES ? JSON.parse(process.env.ROLES) : {};
 UserSchema.path('adminId').default(() => rolesEnv.SUPER_ADMIN);
 
 export { UserSchema };
+
+UserSchema.index({ adminId: 1 });

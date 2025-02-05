@@ -64,7 +64,6 @@ export class Subscription extends Document {
     type: Number,
     min: 0,
     default: 0,
-    required: false,
   })
   contactCount: number;
 }

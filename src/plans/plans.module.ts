@@ -39,6 +39,8 @@ export class PlansModule {
         { path: 'plans/order', method: RequestMethod.PUT },
         { path: 'plans', method: RequestMethod.PUT },
         { path: 'plans', method: RequestMethod.DELETE },
+        { path: 'plans/dropdown', method: RequestMethod.GET },
+        { path: 'plans/data/:id', method: RequestMethod.GET },
       );
   }
 }

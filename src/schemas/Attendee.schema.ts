@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { CustomLeadType } from './custom-lead-type.schema';
 import { User } from './User.schema';
 import { Webinar } from './Webinar.schema';
 
@@ -11,6 +10,7 @@ export class Attendee extends Document {
     maxlength: 100,
     required: [true, 'Email is required'],
     trim: true,
+    lowercase: true,
   })
   email: string; // E-Mail
 

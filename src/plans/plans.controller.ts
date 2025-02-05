@@ -46,7 +46,7 @@ export class PlansController {
   addPlan(@Body() createPlansDto: CreatePlansDto) {
     return this.plansService.addPlan(createPlansDto);
   }
-  @Get(':id')
+  @Get('data/:id')
   getPlan(@Param() params: any) {
     return this.plansService.getPlan(params.id);
   }
@@ -70,5 +70,10 @@ export class PlansController {
       params.id,
       isActive === 'inactive' ? true : false,
     );
+  }
+
+  @Get('dropdown')
+  async getPlansForDropdown() {
+    return await this.plansService.getPlansForDropdown();
   }
 }

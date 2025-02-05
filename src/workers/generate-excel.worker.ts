@@ -51,10 +51,16 @@ import * as path from 'path';
     const worksheet = workbook.addWorksheet('Data');
 
     worksheet.columns = newColumns.map((col) => ({
-      header: col.header,
+      header: col.header.charAt(0).toUpperCase() + col.header.slice(1),
       key: col.key,
       width: col.width || 20,
     }));
+
+    // Apply bold style to header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true };
+    });
 
     worksheet.addRows(data);
 

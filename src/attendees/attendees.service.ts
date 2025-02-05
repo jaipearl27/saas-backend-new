@@ -14,7 +14,13 @@ import {
   AttendeesFilterDto,
   CreateAttendeeDto,
   GroupedAttendeesFilterDto,
+  GroupedAttendeesSortBy,
+  GroupedAttendeesSortObject,
+  SortOrder,
+  SwapAttendeeFieldsDTO,
   UpdateAttendeeDto,
+  WebinarAttendeesSortBy,
+  WebinarAttendeesSortObject,
 } from './dto/attendees.dto';
 import { Assignments } from 'src/schemas/Assignments.schema';
 import { ConfigService } from '@nestjs/config';
@@ -344,6 +350,10 @@ export class AttendeesService {
     filters: AttendeesFilterDto,
     validCall?: string,
     assignmentType?: string,
+    sort: WebinarAttendeesSortObject = {
+      sortBy: WebinarAttendeesSortBy.EMAIL,
+      sortOrder: SortOrder.ASC,
+    },
   ): Promise<any> {
     const skip = (page - 1) * limit;
 
@@ -459,9 +469,9 @@ export class AttendeesService {
 
     const pipeline: PipelineStage[] = [
       ...basePipeline,
-      { $sort: { email: 1 } },
+      { $sort: { [sort.sortBy]: sort.sortOrder === SortOrder.ASC ? 1 : -1 } },
       { $skip: skip },
-      { $limit: limit },
+      ...(limit > 0 ? [{ $limit: limit }] : []),
       {
         $addFields: {
           lookupField: { $ifNull: ['$tempAssignedTo', '$assignedTo'] },
@@ -521,7 +531,19 @@ export class AttendeesService {
         },
       },
       {
-        $project: { assignedToDetails: 0, attendeeAssociations: 0 },
+        $project: {
+          email: 1,
+          firstName: 1,
+          gender: 1,
+          isAssigned: 1,
+          isAttended: 1,
+          lastName: 1,
+          leadType: 1,
+          location: 1,
+          phone: 1,
+          status: 1,
+          timeInSession: 1,
+        },
       },
     ];
     const totalResult = await this.attendeeModel
@@ -541,19 +563,91 @@ export class AttendeesService {
     return { pagination, result };
   }
 
-  async getAttendeesCount(webinarId: string, AdminId: string): Promise<any> {
-    const webinarPipeline = {
-      adminId: new Types.ObjectId(`${AdminId}`),
-    };
+  async swapFields(payload: SwapAttendeeFieldsDTO, adminId: string) {
+    const {
+      attendees: attendeesIds,
+      field1,
+      field2,
+      filters,
+      webinarId,
+      isAttended,
+      validCall,
+      assignmentType,
+    } = payload;
 
-    if (webinarId) {
-      webinarPipeline['webinar'] = new Types.ObjectId(`${webinarId}`);
+    if (!field1 || !field2) {
+      throw new BadRequestException('Both field1 and field2 must be provided.');
     }
 
-    const totalContacts =
-      (await this.attendeeModel.countDocuments(webinarPipeline)) || 0;
+    let attendees = [];
 
-    return totalContacts;
+    if (attendeesIds.length > 0) {
+      attendees = await this.attendeeModel
+
+        .find({
+          _id: { $in: attendeesIds },
+          adminId: new Types.ObjectId(`${adminId}`),
+        })
+        .exec();
+    } else {
+      const result = await this.getAttendees(
+        webinarId,
+        adminId,
+        isAttended,
+        1,
+        0,
+        filters,
+        validCall,
+        assignmentType,
+      );
+      attendees = result.result;
+    }
+
+    if (attendeesIds.length > 0 && attendees.length !== attendeesIds.length) {
+      throw new BadRequestException('Some attendees were not found.');
+    }
+
+    const session = await this.attendeeModel.startSession();
+    try {
+      await session.withTransaction(async () => {
+        await Promise.all(
+          attendees.map(async (attendee) => {
+            if (!(field1 in attendee) || !(field2 in attendee)) {
+              throw new BadRequestException(
+                `Fields ${field1} or ${field2} do not exist in attendee.`,
+              );
+            }
+
+            const updated = await this.attendeeModel.findOneAndUpdate(
+              { _id: attendee._id },
+              {
+                $set: {
+                  [field1]: attendee[field2],
+                  [field2]: attendee[field1],
+                },
+              },
+              {
+                session,
+              },
+            );
+
+            if (!updated) {
+              throw new InternalServerErrorException(
+                `Failed to update attendee ${attendee._id}`,
+              );
+            }
+
+            return updated;
+          }),
+        );
+      });
+    } catch (error) {
+      throw error;
+    } finally {
+      session.endSession();
+    }
+
+    return { message: 'Attendees updated successfully', success: true };
   }
 
   async getPostWebinarAttendee(webinarId: string, adminId: string) {
@@ -704,48 +798,6 @@ export class AttendeesService {
     return result;
   }
 
-  async swapFields(
-    attendeesIds: string[],
-    field1: string,
-    field2: string,
-    adminId: string,
-  ): Promise<Attendee[]> {
-    if (!field1 || !field2) {
-      throw new BadRequestException('Both field1 and field2 must be provided.');
-    }
-
-    const attendees = await this.attendeeModel
-      .find({
-        _id: { $in: attendeesIds },
-        adminId: new Types.ObjectId(`${adminId}`),
-      })
-      .exec();
-
-    if (attendees.length !== attendeesIds.length) {
-      throw new BadRequestException('Some attendees were not found.');
-    }
-
-    const updatedAttendees = await Promise.all(
-      attendees.map(async (attendee) => {
-        if (!(field1 in attendee) || !(field2 in attendee)) {
-          throw new BadRequestException(
-            `Fields ${field1} or ${field2} do not exist in attendee.`,
-          );
-        }
-
-        const temp = attendee[field1];
-        attendee[field1] = attendee[field2];
-        attendee[field2] = temp;
-
-        await attendee.save();
-
-        return attendee;
-      }),
-    );
-
-    return updatedAttendees;
-  }
-
   async getNonUniqueAttendeesCount(
     emails: string[],
     adminId: Types.ObjectId,
@@ -852,6 +904,10 @@ export class AttendeesService {
     page: number = 1,
     limit: number = 10,
     filters: GroupedAttendeesFilterDto = {},
+    sort: GroupedAttendeesSortObject = {
+      sortBy: GroupedAttendeesSortBy.EMAIL,
+      sortOrder: SortOrder.ASC,
+    },
   ) {
     const skip = (page - 1) * limit;
     const pipeline: PipelineStage[] = [
@@ -930,7 +986,7 @@ export class AttendeesService {
         : []),
       {
         $sort: {
-          _id: 1,
+          [sort.sortBy]: sort.sortOrder === SortOrder.ASC ? 1 : -1,
         },
       },
       {

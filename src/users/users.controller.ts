@@ -89,6 +89,8 @@ export class UsersController {
     @Query() query: { page: string; limit: string },
     @Body() filters: GetClientsFilterDto,
   ): Promise<any> {
+    const start = Date.now();
+
     let page = Number(query.page);
     let limit = Number(query.limit);
     if (page <= 0) page = 1;
@@ -101,8 +103,11 @@ export class UsersController {
       filters,
     );
     clients.page = page;
-    return clients;
+    const processingTime = Date.now() - start;
+    console.log(`Processing time: ${processingTime} milliseconds`);
+    return clients ? { ...clients, processingTime } : clients;
   }
+
 
   @Get('/clients/:id')
   async getClient(@Param('id') id: string): Promise<any> {

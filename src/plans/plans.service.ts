@@ -38,13 +38,13 @@ export class PlansService {
     isActive: boolean = true,
   ): Promise<any> {
     let query = {};
-
+    let planSubscriptionCount = [];
 
     if (role !== this.configService.get('appRoles')['SUPER_ADMIN']) {
       const subscription = await this.subscriptionService.getSubscription(
         userId.toString(),
       );
-      if(!subscription){
+      if (!subscription) {
         throw new NotFoundException('No Subscription found.');
       }
 
@@ -55,13 +55,30 @@ export class PlansService {
           { _id: subscription.plan },
         ],
       };
-    }
-    else{
+    } else {
       query = { isActive };
+      planSubscriptionCount =
+        await this.subscriptionService.getPlanSubscriptionCount();
     }
-    console.log(query);
-    const plans = await this.plansModel.find(query).sort({ sortOrder: 1 });
-    return plans;
+    const plans = await this.plansModel
+      .find(query)
+      .sort({ sortOrder: 1 })
+      .lean();
+
+    if (planSubscriptionCount.length === 0) {
+      return plans;
+    }
+    console.log(planSubscriptionCount);
+    return plans.map((plan) => {
+      const subscriptionCount = planSubscriptionCount.find(
+        (count) => String(count._id) === String(plan._id),
+      );
+      console.log(subscriptionCount);
+      return {
+        ...plan,
+        subscriptionCount: subscriptionCount?.subscriptionCount || 0,
+      };
+    });
   }
 
   async addPlan(createPlanDto: CreatePlansDto): Promise<any> {
@@ -90,7 +107,7 @@ export class PlansService {
 
   async inactivePlan(id: string, isActive: boolean): Promise<any> {
     const plan = await this.plansModel.findByIdAndUpdate(id, {
-      isActive
+      isActive,
     });
     if (!plan) {
       throw new NotFoundException('Plan not found');
@@ -119,5 +136,17 @@ export class PlansService {
       message: 'Plans order updated successfully.',
       updatedPlans: plans,
     };
+  }
+
+  async getPlansForDropdown() {
+    const plans = await this.plansModel
+      .find()
+      .sort({ sortOrder: 1 })
+      .select('name _id')
+      .lean();
+    return plans.map((plan) => ({
+      label: plan.name,
+      value: plan._id,
+    }));
   }
 }

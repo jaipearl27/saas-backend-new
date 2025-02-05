@@ -59,7 +59,21 @@ export class GetClientsFilterDto {
 
   @IsOptional()
   @IsObject()
+  employeeLimit?: RangeNumberDto;
+
+  @IsOptional()
+  @IsObject()
+  remainingDays?: RangeNumberDto;
+
+  @IsOptional()
+  @IsObject()
+  usedContactsCount?: RangeNumberDto;
+
+
+  @IsOptional()
+  @IsObject()
   totalEmployees?: RangeNumberDto;
+
 
   @IsOptional()
   @IsObject()

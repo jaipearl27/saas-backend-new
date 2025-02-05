@@ -5,7 +5,7 @@ import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { CreateEmployeeDto } from './dto/createEmployee.dto';
 import { AdminId, Id, Plan, Role } from 'src/decorators/custom.decorator';
-import { CreateClientDto } from './dto/createClient.dto';
+import { CreateClientDto, ValidateOtpDto } from './dto/createClient.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -116,5 +116,11 @@ export class AuthController {
   @Post('forgot-password/:email')
   async generateOTP( @Param('email') email: string ) {
     return this.authService.generateOtp(email);
+  } 
+
+  @Post('validate-otp')
+  async validateOTP(@Body() validateOtpDto: ValidateOtpDto) {
+    await this.authService.validateOTP(validateOtpDto.email, validateOtpDto.otp);
+    return { message: 'OTP validated successfully' };
   }
 }

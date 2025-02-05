@@ -183,11 +183,54 @@ export class GroupedAttendeesFilterDto {
   attendedWebinarCount?: RangeNumberDto;
 }
 
+export enum SortOrder {
+  ASC = 'asc',
+  DESC = 'desc',
+}
+
+export enum WebinarAttendeesSortBy {
+  EMAIL = 'email',
+  TIME_IN_SESSION = 'timeInSession',
+  CREATED_AT = 'createdAt',
+  UPDATED_AT = 'updatedAt',
+}
+
+export enum GroupedAttendeesSortBy {
+  EMAIL = '_id',
+  ATTENDED_WEBINAR_COUNT = 'attendedWebinarCount',
+  TIME_IN_SESSION = 'timeInSession',
+}
+
+export class WebinarAttendeesSortObject {
+  @IsString()
+  @IsEnum(SortOrder)
+  sortOrder: SortOrder;
+
+  @IsString()
+  @IsEnum(WebinarAttendeesSortBy)
+  sortBy: WebinarAttendeesSortBy;
+}
+
+export class GroupedAttendeesSortObject {
+  @IsString()
+  @IsEnum(SortOrder)
+  sortOrder: SortOrder;
+
+  @IsString()
+  @IsEnum(GroupedAttendeesSortBy)
+  sortBy: GroupedAttendeesSortBy;
+}
+
 export class FetchGroupedAttendeesDTO {
   @IsNotEmpty()
   @ValidateNested()
   @Type(() => GroupedAttendeesFilterDto)
   filters: GroupedAttendeesFilterDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => GroupedAttendeesSortObject)
+  sort?: GroupedAttendeesSortObject;
 }
 
 export class GetAttendeesDTO {
@@ -209,6 +252,11 @@ export class GetAttendeesDTO {
   @ValidateNested()
   @Type(() => AttendeesFilterDto)
   filters: AttendeesFilterDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => WebinarAttendeesSortObject)
+  sort?: WebinarAttendeesSortObject;
 }
 
 export class SwapAttendeeFieldsDTO {
@@ -224,7 +272,28 @@ export class SwapAttendeeFieldsDTO {
   @IsNotEmpty()
   @IsString()
   field2?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AttendeesFilterDto)
+  filters: AttendeesFilterDto;
+
+  @IsMongoId()
+  webinarId: string;
+
+  @IsBoolean()
+  isAttended: boolean;
+
+  @IsOptional()
+  @IsString()
+  validCall?: string;
+
+  @IsOptional()
+  @IsString()
+  assignmentType?: string;
+
 }
+
 
 export class ExportWebinarAttendeesDTO extends GetAttendeesDTO {
   @IsArray()
