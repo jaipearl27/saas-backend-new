@@ -60,7 +60,10 @@ export class PlansService {
       planSubscriptionCount =
         await this.subscriptionService.getPlanSubscriptionCount();
     }
-    const plans = await this.plansModel.find(query).sort({ sortOrder: 1 }).lean();
+    const plans = await this.plansModel
+      .find(query)
+      .sort({ sortOrder: 1 })
+      .lean();
 
     if (planSubscriptionCount.length === 0) {
       return plans;
@@ -77,7 +80,6 @@ export class PlansService {
       };
     });
   }
-
 
   async addPlan(createPlanDto: CreatePlansDto): Promise<any> {
     const existingPlan = await this.plansModel.findOne({
@@ -134,5 +136,17 @@ export class PlansService {
       message: 'Plans order updated successfully.',
       updatedPlans: plans,
     };
+  }
+
+  async getPlansForDropdown() {
+    const plans = await this.plansModel
+      .find()
+      .sort({ sortOrder: 1 })
+      .select('name _id')
+      .lean();
+    return plans.map((plan) => ({
+      label: plan.name,
+      value: plan._id,
+    }));
   }
 }
