@@ -32,6 +32,13 @@ export class User extends Document {
   phone: string; //Phone
 
   @Prop({
+    type: String,
+    trim: true,
+    required: false,
+  })
+  alarmPhone: string; //Phone number for alarm msg
+
+  @Prop({
     type: Boolean,
     default: true,
   })

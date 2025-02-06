@@ -15,7 +15,7 @@ import { CreateAlarmDto } from './dto/alarm.dto';
 @Controller('alarm')
 export class AlarmController {
   constructor(private readonly alarmService: AlarmService) {}
-
+ 
   @Post()
   async setAlarm(
     @Id() id: string,
