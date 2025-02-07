@@ -181,12 +181,17 @@ export class GroupedAttendeesFilterDto {
   @IsOptional()
   @IsObject()
   attendedWebinarCount?: RangeNumberDto;
+
+  @IsOptional()
+  @IsObject()
+  registeredWebinarCount?: RangeNumberDto;
 }
 
 export enum SortOrder {
   ASC = 'asc',
   DESC = 'desc',
 }
+
 
 export enum WebinarAttendeesSortBy {
   EMAIL = 'email',
@@ -199,6 +204,7 @@ export enum GroupedAttendeesSortBy {
   EMAIL = '_id',
   ATTENDED_WEBINAR_COUNT = 'attendedWebinarCount',
   TIME_IN_SESSION = 'timeInSession',
+  REGISTERED_WEBINAR_COUNT = 'registeredWebinarCount',
 }
 
 export class WebinarAttendeesSortObject {

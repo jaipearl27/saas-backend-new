@@ -113,6 +113,7 @@ export class BillingHistory extends Document {
 
 const BillingHistorySchema = SchemaFactory.createForClass(BillingHistory);
 
+BillingHistorySchema.index({ date: 1 });
 BillingHistorySchema.index({ admin: 1, date: 1 });
 BillingHistorySchema.index({ invoiceNumber: 1 }, { unique: true });
 

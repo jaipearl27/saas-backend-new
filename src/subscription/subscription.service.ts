@@ -227,8 +227,7 @@ export class SubscriptionService {
 
     const isPlanExpired = new Date() > new Date(subscription.expiryDate);
 
-    const usedContacts = await this.attendeesService.getNonUniqueAttendeesCount(
-      [],
+    const usedContacts = await this.attendeesService.getDynamicAttendeeCount(
       new Types.ObjectId(`${adminId}`),
     );
     const usedEmployees = await this.userService.getEmployeesCount(adminId);
@@ -248,17 +247,24 @@ export class SubscriptionService {
       throw new BadRequestException('You cannot downgrade the plan');
     }
 
+    const durationConfig = plan.planDurationConfig.get(durationType);
+
+    if (String(subscription.plan) === String(planId) && !isPlanExpired) {
+      subscription.expiryDate = new Date(
+        subscription.expiryDate.getTime() + durationConfig.duration * 24 * 60 * 60 * 1000,
+      );
+    } else {
+      subscription.startDate = new Date();
+      subscription.expiryDate = new Date(
+        Date.now() + durationConfig.duration * 24 * 60 * 60 * 1000,
+      );
+    }
+
     subscription.plan = new Types.ObjectId(`${planId}`);
     subscription.contactLimit = plan.contactLimit;
     subscription.employeeLimit = plan.employeeCount;
     subscription.toggleLimit = plan.toggleLimit;
-    subscription.startDate = new Date();
 
-    const durationConfig = plan.planDurationConfig.get(durationType);
-
-    subscription.expiryDate = new Date(
-      Date.now() + durationConfig.duration * 24 * 60 * 60 * 1000,
-    );
 
     const { totalWithGST, itemAmount, discountAmount, gst } =
       await this.generatePriceForPlan(
