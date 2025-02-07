@@ -44,6 +44,7 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { RazorpayModule } from './razorpay/razorpay.module';
 import { NotificationModule } from './notification/notification.module';
 import { LocationModule } from './location/location.module';
+import { RevenueModule } from './revenue/revenue.module';
 
 @Module({
   imports: [
@@ -106,6 +107,7 @@ import { LocationModule } from './location/location.module';
     RazorpayModule,
     NotificationModule,
     LocationModule,
+    RevenueModule,
   ],
   controllers: [AppController],
   providers: [AppService, CalendarService],

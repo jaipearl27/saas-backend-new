@@ -546,12 +546,17 @@ export class AttendeesService {
         },
       },
     ];
-    const totalResult = await this.attendeeModel
-      .aggregate([...basePipeline, { $count: 'total' }])
-      .exec();
-    const total = totalResult[0]?.total || 0;
+    // const totalResult = await this.attendeeModel
+    //   .aggregate([...basePipeline, { $count: 'total' }])
+    //   .exec();
 
-    const result = await this.attendeeModel.aggregate(pipeline).exec();
+    // const result = await this.attendeeModel.aggregate(pipeline).exec();
+
+    const [result, totalResult] = await Promise.all([
+      this.attendeeModel.aggregate(pipeline).exec(),
+      this.attendeeModel.aggregate([...basePipeline, { $count: 'total' }]).exec()
+    ]);
+    const total = totalResult[0]?.total || 0;
 
     const pagination = {
       total,
@@ -909,8 +914,9 @@ export class AttendeesService {
       sortOrder: SortOrder.ASC,
     },
   ) {
+    console.log(filters, page, limit, adminId);
     const skip = (page - 1) * limit;
-    const pipeline: PipelineStage[] = [
+    const basePipeline: PipelineStage[] = [
       {
         $match: {
           adminId,
@@ -918,6 +924,7 @@ export class AttendeesService {
       },
       {
         $group: {
+
           _id: '$email',
           adminId: {
             $first: '$adminId',
@@ -933,8 +940,14 @@ export class AttendeesService {
               $cond: [{ $gt: ['$timeInSession', 0] }, 1, 0],
             },
           },
+          registeredWebinarCount: {
+            $sum: {
+              $cond: [{ $eq: ['$isAttended', false] }, 1, 0],
+            },
+          },
         },
       },
+
       {
         $match: {
           ...(filters.email && {
@@ -946,8 +959,12 @@ export class AttendeesService {
           ...(filters.attendedWebinarCount && {
             attendedWebinarCount: filters.attendedWebinarCount,
           }),
+          ...(filters.registeredWebinarCount && {
+            registeredWebinarCount: filters.registeredWebinarCount,
+          }),
         },
       },
+
       ...(filters.leadType
         ? [
             {
@@ -984,77 +1001,74 @@ export class AttendeesService {
             },
           ]
         : []),
+    ];
+
+    const countPipeline: PipelineStage[] = [
+      ...basePipeline,
+      { $count: 'total' },
+    ];
+
+    const mainPipeline: PipelineStage[] = [
+      ...basePipeline,
       {
         $sort: {
           [sort.sortBy]: sort.sortOrder === SortOrder.ASC ? 1 : -1,
         },
       },
-      {
-        $facet: {
-          pagination: [
-            { $count: 'total' },
+      { $skip: skip },
+      { $limit: limit },
+      ...(filters.leadType
+        ? []
+        : [
             {
-              $addFields: {
-                totalPages: { $ceil: { $divide: ['$total', limit] } },
-                page: { $literal: page },
-              },
-            },
-          ],
-          data: [
-            { $skip: skip },
-            { $limit: limit },
-            ...(filters.leadType
-              ? []
-              : [
+              $lookup: {
+                from: 'attendeeassociations',
+                let: { tempMail: '$_id' },
+                pipeline: [
                   {
-                    $lookup: {
-                      from: 'attendeeassociations',
-                      let: { tempMail: '$_id' },
-                      pipeline: [
-                        {
-                          $match: {
-                            $expr: {
-                              $and: [
-                                { $eq: ['$adminId', adminId] },
-                                { $eq: ['$email', '$$tempMail'] }, // Match email with attendee email
-                              ],
-                            },
-                          },
-                        },
-                      ],
+                    $match: {
+                      $expr: {
+                        $and: [
+                          { $eq: ['$adminId', adminId] },
+                          { $eq: ['$email', '$$tempMail'] }, // Match email with attendee email
+                        ],
+                      },
+                    },
+                  },
+                ],
 
-                      as: 'lead',
-                    },
-                  },
-                  {
-                    $unwind: {
-                      path: '$lead',
-                      preserveNullAndEmptyArrays: true,
-                    },
-                  },
-                ]),
-            {
-              $project: {
-                leadType: '$lead.leadType',
-                adminId: 1,
-                timeInSession: 1,
-                attendeeId: 1,
-                attendedWebinarCount: 1,
+                as: 'lead',
               },
             },
-          ],
-        },
-      },
+            {
+              $unwind: {
+                path: '$lead',
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+          ]),
       {
-        $unwind: {
-          path: '$pagination',
-          preserveNullAndEmptyArrays: true,
+        $project: {
+          leadType: '$lead.leadType',
+          adminId: 1,
+          timeInSession: 1,
+          attendeeId: 1,
+          attendedWebinarCount: 1,
+          registeredWebinarCount: 1,
         },
       },
     ];
-    const result = await this.attendeeModel.aggregate(pipeline).exec();
-    if (Array.isArray(result) && result.length > 0) return result[0];
-    return { data: [], pagination: { page: 1, totalPages: 1 } };
+
+    const [countResult, mainResult] = await Promise.all([
+      this.attendeeModel.aggregate(countPipeline).exec(),
+      this.attendeeModel.aggregate(mainPipeline).exec(),
+    ]);
+    console.log(countResult);
+    const total = countResult[0]?.total || 0;
+    const totalPages = Math.ceil(total / limit) || 1;
+    const pagination = { page, totalPages, total };
+    console.log(pagination, limit);
+    return { data: mainResult || [], pagination };
   }
   async getAttendeesForExport(
     webinarId: string,

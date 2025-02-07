@@ -105,7 +105,12 @@ export class WebinarService {
               $filter: {
                 input: '$attendees',
                 as: 'attendee',
-                cond: { $eq: ['$$attendee.isAttended', true] },
+                cond: {
+                  $and: [
+                    { $eq: ['$$attendee.isAttended', true] },
+                    { $gt: ['$$attendee.timeInSession', 0] },
+                  ],
+                },
               },
             },
           },
@@ -118,14 +123,16 @@ export class WebinarService {
               },
             },
           },
-        },
-      },
-      {
-        // Avoid redundant calculation by reusing fields directly
-        $addFields: {
+
           totalParticipants: {
-            $add: ['$totalAttendees', '$totalRegistrations'],
-          },
+            $size: {
+              $filter: {
+                input: '$attendees',
+                as: 'attendee',
+                cond: { $eq: ['$$attendee.isAttended', true] },
+              },
+            },
+          }
         },
       },
       {
