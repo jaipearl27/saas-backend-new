@@ -70,6 +70,12 @@ export class CreateAttendeeDto {
   @IsOptional()
   @IsMongoId({ message: 'Attendee Id must be a valid MongoId' })
   attendeeId?: Types.ObjectId;
+
+  @IsOptional()
+  @IsString({ message: 'Source must be a string' })
+  @IsEnum(['Import', 'API'], { message: 'Source must be one of Import or API' })
+  source?: string;
+
 }
 
 export class UpdateAttendeeDto {
