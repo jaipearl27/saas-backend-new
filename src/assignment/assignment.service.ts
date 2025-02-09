@@ -317,6 +317,7 @@ export class AssignmentService {
       await this.attendeeService.addAttendees([
         {
           ...attendee,
+          source: 'API',
           isAttended: false,
           webinar: new Types.ObjectId(`${webinarId}`),
           adminId: new Types.ObjectId(`${adminId}`),

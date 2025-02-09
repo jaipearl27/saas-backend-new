@@ -543,6 +543,8 @@ export class AttendeesService {
           phone: 1,
           status: 1,
           timeInSession: 1,
+          source: 1,
+          createdAt: 1,
         },
       },
     ];
