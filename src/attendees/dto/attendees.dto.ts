@@ -51,6 +51,7 @@ export class CreateAttendeeDto {
   @IsNotEmpty({ message: 'IsAttended is required' })
   isAttended: boolean;
 
+
   @IsOptional()
   @IsEnum(['male', 'female', 'others'], {
     message: 'Gender must be one of male, female, or others',
@@ -73,9 +74,7 @@ export class CreateAttendeeDto {
 
   @IsOptional()
   @IsString({ message: 'Source must be a string' })
-  @IsEnum(['Import', 'API'], { message: 'Source must be one of Import or API' })
   source?: string;
-
 }
 
 export class UpdateAttendeeDto {

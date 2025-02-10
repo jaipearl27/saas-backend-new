@@ -255,6 +255,16 @@ export class AssignmentService {
     return { success: true, message: 'Assignment created successfully' };
   }
 
+  formatPhoneNumber(phoneNumber: string) {
+    if (!phoneNumber) return '';
+    if (phoneNumber.includes('E')) {
+      return Number(phoneNumber).toFixed(0);
+    }
+    const cleanedPhoneNumber = phoneNumber.toString().replace(/[^0-9]/g, '');
+    if (cleanedPhoneNumber.length === 12) return cleanedPhoneNumber.slice(2);
+    return cleanedPhoneNumber;
+  }
+
   async addPreWebinarAssignments(
     adminId: string,
     webinarId: string,
@@ -283,9 +293,9 @@ export class AssignmentService {
     const subscription =
       await this.subscriptionService.getSubscription(adminId);
 
-      if(!subscription){
-        throw new ForbiddenException('Subscription not found.');
-      }
+    if (!subscription) {
+      throw new ForbiddenException('Subscription not found.');
+    }
 
     // Check subscription validity and attendee limits
     if (
@@ -302,22 +312,24 @@ export class AssignmentService {
       new Types.ObjectId(`${adminId}`),
     );
 
-    if(!attendee.phone){
+    if (!attendee.phone) {
       const phoneNumbers = await this.attendeeService.getAttendeePhoneNumbers(
         new Types.ObjectId(`${adminId}`),
         attendee.email,
       );
-      if(phoneNumbers.length > 0){
+      if (phoneNumbers.length > 0) {
         attendee.phone = phoneNumbers[0].phone;
       }
     }
+
+    attendee.phone = this.formatPhoneNumber(attendee.phone);
 
     // Add the attendee to the database
     const newAttendees: Attendee[] | null =
       await this.attendeeService.addAttendees([
         {
           ...attendee,
-          source: 'API',
+          source: attendee.source || 'API',
           isAttended: false,
           webinar: new Types.ObjectId(`${webinarId}`),
           adminId: new Types.ObjectId(`${adminId}`),
@@ -337,6 +349,22 @@ export class AssignmentService {
         subscription._id.toString(),
       );
     }
+
+    const notificationForAdmin = {
+      recipient: adminId,
+      title: 'New Attendee Registered',
+      message: `A new attendee has registered for the webinar. Please check your attendee list for details.`,
+      type: notificationType.INFO,
+      actionType: notificationActionType.ATTENDEE_REGISTRATION,
+      metadata: {
+        webinarId,
+        isAttended: false,
+      },
+    };
+
+    setTimeout(() => {
+      this.notificationService.createNotification(notificationForAdmin);
+    }, 1000);
 
     const newAttendee = newAttendees[0];
 

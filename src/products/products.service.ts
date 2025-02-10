@@ -3,6 +3,7 @@ import {
   Inject,
   Injectable,
   NotAcceptableException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -111,7 +112,10 @@ export class ProductsService {
         throw new NotAcceptableException('Previous Product Level not found.');
     }
 
-    const result = await this.productLevelModel.create(createProductLevelDto);
+    const result = await this.productLevelModel.create({
+      ...createProductLevelDto,
+      adminId: new Types.ObjectId(`${adminId}`),
+    });
 
     return result;
   }
@@ -121,24 +125,42 @@ export class ProductsService {
     updateProductLevelDto: UpdateProductLevelDto,
     adminId: string,
   ): Promise<any> {
+
+    const isExisting = await this.productLevelModel.findOne({
+      label: updateProductLevelDto.label,
+      adminId: new Types.ObjectId(`${adminId}`),
+      _id: { $ne: new Types.ObjectId(`${id}`) },
+    });
+    if (isExisting)
+      throw new NotAcceptableException('Product label already exists.');
+
+
     const result = await this.productLevelModel.findOneAndUpdate(
       {
         _id: new Types.ObjectId(`${id}`),
         adminId: new Types.ObjectId(`${adminId}`),
       },
-      updateProductLevelDto,
+      { label: updateProductLevelDto.label},
       { new: true },
     );
+    if (!result) {
+      throw new NotFoundException('Product Level not found.');
+    }
     return result;
   }
+
 
   async deleteProductLevel(id: string, adminId: string): Promise<any> {
     const result = await this.productLevelModel.findOneAndDelete({
       _id: new Types.ObjectId(`${id}`),
       adminId: new Types.ObjectId(`${adminId}`),
     });
+    if (!result) {
+      throw new NotFoundException('Product Level not found.');
+    }
     return result;
   }
+
 
   async getProductLevels(adminId: string): Promise<any> {
     const result = await this.productLevelModel.find({

@@ -20,5 +20,10 @@ export class WebinarFilterDTO {
 
   @IsOptional()
   @IsObject()
+  totalUnAttended?: RangeNumberDto;
+
+  @IsOptional()
+  @IsObject()
   webinarDate?: RangeStringDto;
+
 }
