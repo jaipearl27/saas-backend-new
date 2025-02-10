@@ -19,6 +19,9 @@ export class Attendee extends Document {
     maxlength: 100,
     trim: true,
     default: null,
+    // get: (val: string) => val?.charAt(0).toUpperCase() + val?.slice(1), 
+    // set: (val: string) => val?.charAt(0).toUpperCase() + val?.slice(1), 
+
   })
   firstName: string | null; // First Name
 
@@ -98,7 +101,6 @@ export class Attendee extends Document {
   })
   status: string | null;
 
-  
   @Prop({
     type: Boolean,
     required: false,
@@ -115,12 +117,10 @@ export class Attendee extends Document {
 
   @Prop({
     type: String,
-    enum: ['Import', 'API'],
     default: 'Import',
   })
   source: string;
 }
-
 
 export const AttendeeSchema = SchemaFactory.createForClass(Attendee);
 

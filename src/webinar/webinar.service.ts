@@ -132,7 +132,14 @@ export class WebinarService {
                 cond: { $eq: ['$$attendee.isAttended', true] },
               },
             },
-          }
+          },
+        },
+      },
+      {
+        $addFields: {
+          totalUnAttended: {
+            $subtract: ['$totalParticipants', '$totalAttendees'],
+          },
         },
       },
       {
@@ -145,6 +152,9 @@ export class WebinarService {
           }),
           ...(filters.totalParticipants && {
             totalParticipants: filters.totalParticipants,
+          }),
+          ...(filters.totalUnAttended && {
+            totalUnAttended: filters.totalUnAttended,
           }),
         },
       },
@@ -253,7 +263,6 @@ export class WebinarService {
   }
 
   async getAssignedEmployees(webinarId: string): Promise<any> {
-
     const result: any = await this.webinarModel
       .findById(webinarId)
       .populate('assignedEmployees')
