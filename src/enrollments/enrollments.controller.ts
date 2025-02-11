@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -8,7 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
-import { CreateEnrollmentDto, UpdateEnrollmentDto } from './dto/enrollment.dto';
+import { CreateEnrollmentDto, GetEnrollmentsByProductLevelDto, UpdateEnrollmentDto } from './dto/enrollment.dto';
 import { EnrollmentsService } from './enrollments.service';
 
 @Controller('enrollments')
@@ -26,7 +27,7 @@ export class EnrollmentsController {
     return enrollment;
   }
 
-  @Get(':id')
+  @Get('webinar/:id')
   async getEnrollment(
     @Param('id') webinarId: string,
     @Query() query: { page?: string; limit?: string },
@@ -61,6 +62,40 @@ export class EnrollmentsController {
     );
 
     return enrollment;
+  } 
+
+  @Get('product-level-counts')
+  async getProductLevelCounts(
+    @AdminId() adminId: string,
+    @Query('email') email: string,
+  ): Promise<any> {
+    if (!email || !adminId) {
+      throw new BadRequestException('Email and Admin ID are required');
+    }
+    const result = await this.enrollmentsService.getProductLevelCounts(
+      adminId,
+      email,
+    );
+    return result;
+  }
+
+  @Get('product-level-enrollments')
+  async getEnrollmentsByProductLevel(
+    @AdminId() adminId: string,
+    @Query() query: GetEnrollmentsByProductLevelDto,
+  ): Promise<any> {
+
+    const productLevel = Number(query.productLevel);
+    if (isNaN(productLevel)) {
+      throw new BadRequestException('Invalid product level');
+    }
+
+    const result = await this.enrollmentsService.getEnrollmentsByProductLevel(
+      adminId,
+      query.email,
+      productLevel,
+    );
+    return result;
   }
 
   @Patch(':id')

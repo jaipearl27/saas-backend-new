@@ -46,4 +46,6 @@ EnrollmentSchema.pre('save', function (next) {
   next();
 });
 
+EnrollmentSchema.index({ attendee: 1, adminId: 1 });
+
 export { EnrollmentSchema };

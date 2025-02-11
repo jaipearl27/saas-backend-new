@@ -38,9 +38,8 @@ export class Products extends Document {
   @Prop({
     type: Number,
     required: true,
-    enums: [1, 2, 3],
   })
-  level: 1 | 2 | 3;
+  level: number;
 }
 
 export const ProductsSchema = SchemaFactory.createForClass(Products);
