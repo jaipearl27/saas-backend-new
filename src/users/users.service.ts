@@ -72,7 +72,6 @@ export class UsersService {
     skip: number = 0,
     limit: number = 25,
   ): mongoose.PipelineStage[] {
-    console.log('filterData', filterData);
     const matchFilters: Record<string, any> = {};
     if (filterData.email)
       matchFilters['email'] = { $regex: filterData.email.toLowerCase() };
@@ -178,11 +177,6 @@ export class UsersService {
 
       };
     }
-
-    console.log(
-      'subscriptionFilter -------- > ',
-      JSON.stringify(subscriptionFilter, null, 2),
-    );
 
     const employeeCountFilter: Record<string, any> = {};
     ['totalEmployees', 'employeeSalesCount', 'employeeReminderCount'].forEach(
@@ -495,7 +489,6 @@ export class UsersService {
       updateUserInfoDto,
       { new: true },
     );
-    console.log(result._id, updateUserInfoDto.isActive);
     if (result && updateUserInfoDto.isActive === false) {
       await this.notificationService.createNotification({
         recipient: result._id.toString(),
@@ -638,7 +631,6 @@ export class UsersService {
     id: string,
     updateUserInfoDto: UpdateUserInfoDto,
   ): Promise<any> {
-    // console.log(updateUserInfoDto);
     if (updateUserInfoDto.email) {
       const isExisting = await this.userModel.findOne({
         email: updateUserInfoDto.email,
@@ -704,8 +696,6 @@ export class UsersService {
   ): Promise<any> {
     const user = await this.userModel.findById(id);
 
-    // console.log(user);
-
     const verifyOldPassword = await bcrypt.compare(
       updatePasswordDto.oldPassword,
       user.password,
@@ -739,7 +729,6 @@ export class UsersService {
       name: createEmployeeDto?.role,
     });
     if (!role) throw new NotFoundException('No Role Found with the given ID.');
-    console.log('creating Employee');
     const user = await this.userModel.create({
       ...createEmployeeDto,
       role: role._id,
@@ -869,7 +858,6 @@ export class UsersService {
     /**
     // * test for date in frontend to be in IST
      * let date = new Date('2024-12-02T06:14:48.287Z')
-      console.log(date.toLocaleString('en-IN'))
      */
 
     // Check if a user already exists
@@ -888,8 +876,8 @@ export class UsersService {
       role: createClientDto.role,
       companyName: createClientDto.companyName,
       adminId: creatorDetailsDto.id,
+      dateFormat: createClientDto.dateFormat,
     });
-    // console.log(userData);
 
     const payload = {
       id: userData?._id,
@@ -994,7 +982,6 @@ export class UsersService {
           .exec();
 
         const adminIds = deactivatedAdminIds.map((admin) => admin._id);
-        console.log('adminIds', adminIds);
 
         const employeeResult = await this.userModel.updateMany(
           {
@@ -1023,7 +1010,6 @@ export class UsersService {
         let admin = await this.userModel.findById(
           expiredAdminIds[i].admin.toString(),
         );
-        console.log(admin);
         if (admin) {
           await this.notificationService.createNotification({
             recipient: admin._id.toString(),

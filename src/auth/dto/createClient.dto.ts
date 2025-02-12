@@ -9,6 +9,7 @@ import {
 } from 'class-validator';
 import { DurationType } from 'src/schemas/BillingHistory.schema';
 import { PlanDuration } from 'src/schemas/Plans.schema';
+import { DateFormat } from 'src/schemas/User.schema';
 
 export class CreateClientDto {
   @IsString()
@@ -48,6 +49,12 @@ export class CreateClientDto {
     message: 'Duration type must be one of the allowed values.',
   })
   durationType: DurationType;
+
+  @IsOptional()
+  @IsEnum(DateFormat, {
+    message: 'Date format must be one of the allowed values.',
+  })
+  dateFormat: DateFormat;
 }
 
 export class ValidateOtpDto {

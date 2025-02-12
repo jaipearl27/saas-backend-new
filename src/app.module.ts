@@ -45,6 +45,7 @@ import { RazorpayModule } from './razorpay/razorpay.module';
 import { NotificationModule } from './notification/notification.module';
 import { LocationModule } from './location/location.module';
 import { RevenueModule } from './revenue/revenue.module';
+import { TagsModule } from './tags/tags.module';
 
 @Module({
   imports: [
@@ -108,6 +109,7 @@ import { RevenueModule } from './revenue/revenue.module';
     NotificationModule,
     LocationModule,
     RevenueModule,
+    TagsModule,
   ],
   controllers: [AppController],
   providers: [AppService, CalendarService],
