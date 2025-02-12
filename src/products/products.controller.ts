@@ -84,7 +84,6 @@ export class ProductsController {
     @Body() createProductLevelDto: CreateProductLevelDto,
     @Id() adminId: string,
   ): Promise<any> {
-    console.log(createProductLevelDto, adminId, 'adminId');
     const result = await this.productsService.createProductLevel(
       createProductLevelDto,
       adminId,

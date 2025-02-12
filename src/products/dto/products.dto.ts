@@ -25,7 +25,12 @@ export class CreateProductsDto {
 
   @IsNumber()
   @IsNotEmpty()
-  level: 1 | 2 | 3;
+  level: number;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  tag: string;
 }
 
 export class UpdateProductsDto {
@@ -52,5 +57,9 @@ export class UpdateProductsDto {
   @IsOptional()
   @IsNumber()
   @IsNotEmpty()
-  level?: 1 | 2 | 3;
+  level?: number;
+
+  @IsOptional()
+  @IsString()
+  tag?: string;
 }

@@ -119,7 +119,13 @@ export class Attendee extends Document {
     type: String,
     default: 'Import',
   })
-  source: string;
+  source: string; 
+
+  @Prop({
+    type: [String],
+    default: [],
+  })
+  tags: string[];
 }
 
 export const AttendeeSchema = SchemaFactory.createForClass(Attendee);

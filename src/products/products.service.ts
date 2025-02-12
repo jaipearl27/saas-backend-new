@@ -103,15 +103,6 @@ export class ProductsService {
         'Product Level or label already exists.',
       );
 
-    if (createProductLevelDto.level > 0) {
-      const isExisting = await this.productLevelModel.findOne({
-        level: createProductLevelDto.level - 1,
-        adminId: new Types.ObjectId(`${adminId}`),
-      });
-      if (!isExisting)
-        throw new NotAcceptableException('Previous Product Level not found.');
-    }
-
     const result = await this.productLevelModel.create({
       ...createProductLevelDto,
       adminId: new Types.ObjectId(`${adminId}`),
@@ -165,7 +156,7 @@ export class ProductsService {
   async getProductLevels(adminId: string): Promise<any> {
     const result = await this.productLevelModel.find({
       adminId: new Types.ObjectId(`${adminId}`),
-    });
+    }).sort({ level: 1 });
     return result;
   }
 }
