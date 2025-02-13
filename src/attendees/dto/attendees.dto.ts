@@ -75,6 +75,12 @@ export class CreateAttendeeDto {
   @IsOptional()
   @IsString({ message: 'Source must be a string' })
   source?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsNotEmpty()
+  @IsString({ each: true })
+  tags: string[];
 }
 
 export class UpdateAttendeeDto {

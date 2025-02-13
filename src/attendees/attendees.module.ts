@@ -17,6 +17,7 @@ import { ValidateBodyFilters } from 'src/middlewares/validate-body-filters.Middl
 import { Assignments, AssignmentsSchema } from 'src/schemas/Assignments.schema';
 import { WebinarModule } from 'src/webinar/webinar.module';
 import { NotificationModule } from 'src/notification/notification.module';
+import { CompressionMiddleware } from '@nest-middlewares/compression';
 
 @Module({
   imports: [
@@ -47,6 +48,11 @@ export class AttendeesModule {
         { path: 'attendees', method: RequestMethod.POST },
         { path: 'attendees/swap', method: RequestMethod.PUT },
       );
+
+    consumer.apply(CompressionMiddleware).forRoutes(
+      { path: 'attendees/webinar', method: RequestMethod.POST },
+      { path: 'attendees/grouped', method: RequestMethod.POST },
+    );
 
     consumer
       .apply(AuthTokenMiddleware, GetAdminIdMiddleware)

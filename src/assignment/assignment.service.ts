@@ -28,6 +28,7 @@ import {
   notificationActionType,
   notificationType,
 } from 'src/schemas/notification.schema';
+import { TagsService } from 'src/tags/tags.service';
 
 @Injectable()
 export class AssignmentService {
@@ -42,6 +43,7 @@ export class AssignmentService {
     private readonly subscriptionService: SubscriptionService,
     private readonly attendeeService: AttendeesService,
     private readonly userService: UsersService,
+    private readonly tagsService: TagsService,
   ) {}
 
   async getAssignments(

@@ -2,9 +2,9 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
 export enum DateFormat {
-  DD_MM_YYYY = "dd-mm-yyyy",
-  MM_DD_YYYY = "mm-dd-yyyy",
-  YYYY_MM_DD = "yyyy-mm-dd",
+  DD_MM_YYYY = "dd-MM-yyyy",
+  MM_DD_YYYY = "MM-dd-yyyy",
+  YYYY_MM_DD = "yyyy-MM-dd",
 }
 
 @Schema({ timestamps: true })
@@ -169,9 +169,8 @@ export class User extends Document {
 
   @Prop({
     type: String,
-    required: false,
     default: DateFormat.DD_MM_YYYY,
-    enum: DateFormat,
+    enum: Object.values(DateFormat),
   })
   dateFormat: DateFormat;
 }
