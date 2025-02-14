@@ -12,8 +12,12 @@ export class TagsService {
     createTagDto: CreateTagDto,
     adminId: Types.ObjectId,
   ): Promise<Tag> {
+    const sanitizedName = createTagDto.name
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '');
+
     const existingTag = await this.tagModel.findOne({
-      name: createTagDto.name,
+      name: sanitizedName,
       adminId,
     });
 
@@ -22,7 +26,7 @@ export class TagsService {
     }
 
     const tag = new this.tagModel({
-      name: createTagDto.name,
+      name: sanitizedName,
       usecase: createTagDto.usecase,
       adminId,
     });
@@ -39,6 +43,6 @@ export class TagsService {
       console.log(usecase);
       query['usecase'] = usecase;
     }
-    return this.tagModel.find(query);
+    return this.tagModel.find(query).sort({ createdAt: -1 });
   }
 }

@@ -115,7 +115,8 @@ export class UsersService {
     if (filterData.contactsLimit) {
       subscriptionFilter.$expr = {
         $and: [
-          ...(filterData.contactsLimit.$gte || filterData.contactsLimit.$gte === 0
+          ...(filterData.contactsLimit.$gte ||
+          filterData.contactsLimit.$gte === 0
             ? [
                 {
                   $gte: [
@@ -125,7 +126,8 @@ export class UsersService {
                 },
               ]
             : []),
-          ...(filterData.contactsLimit.$lte || filterData.contactsLimit.$lte === 0
+          ...(filterData.contactsLimit.$lte ||
+          filterData.contactsLimit.$lte === 0
             ? [
                 {
                   $lte: [
@@ -142,7 +144,8 @@ export class UsersService {
     if (filterData.employeeLimit) {
       subscriptionFilter.$expr = {
         $and: [
-          ...(filterData.employeeLimit.$gte || filterData.employeeLimit.$gte === 0
+          ...(filterData.employeeLimit.$gte ||
+          filterData.employeeLimit.$gte === 0
             ? [
                 {
                   $gte: [
@@ -152,7 +155,8 @@ export class UsersService {
                 },
               ]
             : []),
-          ...(filterData.employeeLimit.$lte || filterData.employeeLimit.$lte === 0
+          ...(filterData.employeeLimit.$lte ||
+          filterData.employeeLimit.$lte === 0
             ? [
                 {
                   $lte: [
@@ -168,13 +172,14 @@ export class UsersService {
 
     if (filterData.usedContactsCount) {
       subscriptionFilter['contactCount'] = {
-        ...((filterData.usedContactsCount.$gte || filterData.usedContactsCount.$gte === 0) && {
+        ...((filterData.usedContactsCount.$gte ||
+          filterData.usedContactsCount.$gte === 0) && {
           $gte: filterData.usedContactsCount.$gte,
         }),
-        ...((filterData.usedContactsCount.$lte || filterData.usedContactsCount.$lte === 0) && {
+        ...((filterData.usedContactsCount.$lte ||
+          filterData.usedContactsCount.$lte === 0) && {
           $lte: filterData.usedContactsCount.$lte,
         }),
-
       };
     }
 
@@ -319,13 +324,14 @@ export class UsersService {
             {
               $match: {
                 remainingDays: {
-                  ...((filterData.remainingDays.$gte || filterData.remainingDays.$gte === 0) && {
+                  ...((filterData.remainingDays.$gte ||
+                    filterData.remainingDays.$gte === 0) && {
                     $gte: filterData.remainingDays.$gte,
                   }),
-                  ...((filterData.remainingDays.$lte || filterData.remainingDays.$lte === 0 ) && {
+                  ...((filterData.remainingDays.$lte ||
+                    filterData.remainingDays.$lte === 0) && {
                     $lte: filterData.remainingDays.$lte,
                   }),
-
                 },
               },
             },
@@ -352,6 +358,7 @@ export class UsersService {
           usedContactsCount: '$subscription.contactCount',
           employeeLimit: '$subscription.employeeLimitTotal',
           remainingDays: 1,
+          dateFormat: 1,
         },
       },
     ];
@@ -374,20 +381,22 @@ export class UsersService {
 
     const totalUsersPipeline = [...pipelineForCount, { $count: 'totalUsers' }];
 
-    const totalUsersResult = await this.userModel.aggregate(totalUsersPipeline);
+    const [result, totalUsersResult] = await Promise.all([
+      this.userModel.aggregate([
+        ...pipeline,
+        ...(hasFilters
+          ? [
+              { $sort: { createdAt: -1 as const } },
+              { $skip: skip || 0 },
+              { $limit: limit || 25 },
+            ]
+          : []),
+      ]),
+      this.userModel.aggregate(totalUsersPipeline),
+    ]);
+
     const totalUsers = totalUsersResult[0]?.totalUsers || 0;
     const totalPages = Math.ceil(totalUsers / limit);
-
-    const result = await this.userModel.aggregate([
-      ...pipeline,
-      ...(hasFilters
-        ? [
-            { $sort: { createdAt: -1 as const } },
-            { $skip: skip || 0 },
-            { $limit: limit || 25 },
-          ]
-        : []),
-    ]);
 
     return { result, totalPages };
   }

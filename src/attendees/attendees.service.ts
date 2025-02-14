@@ -276,6 +276,8 @@ export class AttendeesService {
   }
 
   async getAttendee(adminId: string, email: string): Promise<any> {
+
+    
     const pipeline: PipelineStage[] = [
       {
         $match: {
@@ -880,6 +882,7 @@ export class AttendeesService {
       webinar: attendee.webinar,
       isAttended: true,
       adminId: attendee.adminId,
+      tags: Array.isArray(attendee.tags) ? attendee.tags : [],
     }));
   }
 

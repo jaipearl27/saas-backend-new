@@ -127,7 +127,7 @@ export class ProductsController {
   }
 
   @Get('level')
-  async getProductLevels(@Id() adminId: string): Promise<any> {
+  async getProductLevels(@AdminId() adminId: string): Promise<any> {
     const result = await this.productsService.getProductLevels(adminId);
     return {
       success: true,

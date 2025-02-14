@@ -18,6 +18,7 @@ import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
 import { GetAdminIdForUserActivityMiddleware } from 'src/middlewares/getAdminIdForUserActivity.Middleware';
 import { NotificationModule } from 'src/notification/notification.module';
+import { TagsModule } from 'src/tags/tags.module';
 
 @Module({
   imports: [
@@ -40,7 +41,8 @@ import { NotificationModule } from 'src/notification/notification.module';
         schema: WebinarSchema,
       },
     ]),
-    NotificationModule
+    NotificationModule,
+    TagsModule
   ],
   providers: [AssignmentService, WebinarService],
   controllers: [AssignmentController],

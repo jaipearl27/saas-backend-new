@@ -1,4 +1,5 @@
-import {IsArray, IsBoolean, IsEmail, IsNotEmpty, IsNotEmptyObject, IsObject, IsOptional, IsString, ValidateIf } from "class-validator";
+import {IsArray, IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsNotEmptyObject, IsObject, IsOptional, IsString, ValidateIf } from "class-validator";
+import { DateFormat } from "src/schemas/User.schema";
 
 export class UpdateUserInfoDto {
     @IsString()
@@ -39,6 +40,12 @@ export class UpdateUserInfoDto {
     @IsOptional()
     @IsString()
     gst?: string
+
+    @IsOptional()
+    @IsEnum(DateFormat, {
+      message: 'Date format must be one of the allowed values.',
+    })
+    dateFormat?: DateFormat;
   
 }
 
