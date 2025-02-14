@@ -6,7 +6,6 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { UserActivity } from 'src/schemas/UserActivity.schema';
 import { Model, Types } from 'mongoose';
-import { MailerService } from '@nestjs-modules/mailer';
 import { NotificationService } from 'src/notification/notification.service';
 import {
   notificationActionType,
@@ -18,7 +17,6 @@ export class UserActivityService {
   constructor(
     @InjectModel(UserActivity.name)
     private readonly userActivityModel: Model<UserActivity>,
-    private readonly mailerService: MailerService,
     private readonly notificationService: NotificationService,
   ) {}
 

@@ -18,9 +18,17 @@ export const monthMultiplier = {
   yearly: 12,
 };
 
+export enum BillingType {
+  NEW_PLAN = 'new_plan',
+  ADD_ON = 'add_on',
+  RENEWAL = 'renewal',
+}
+
 @Schema({ timestamps: true })
+
 export class BillingHistory extends Document {
   @Prop({ type: Types.ObjectId, ref: User.name, required: true })
+
   admin: Types.ObjectId; // Admin user
 
   @Prop({
@@ -59,6 +67,13 @@ export class BillingHistory extends Document {
   durationType: DurationType | null;
 
   @Prop({
+    type: String,
+    enum: BillingType,
+    required: true,
+  })
+  billingType: BillingType;
+
+  @Prop({
     type: Number,
     required: false,
     min: 0,
@@ -84,6 +99,7 @@ export class BillingHistory extends Document {
   @Prop({
     type: String,
     required: [true, 'Invoice number is required'],
+    unique: true,
   })
   invoiceNumber: string;
 
@@ -97,6 +113,7 @@ export class BillingHistory extends Document {
 
 const BillingHistorySchema = SchemaFactory.createForClass(BillingHistory);
 
+BillingHistorySchema.index({ date: 1 });
 BillingHistorySchema.index({ admin: 1, date: 1 });
 BillingHistorySchema.index({ invoiceNumber: 1 }, { unique: true });
 

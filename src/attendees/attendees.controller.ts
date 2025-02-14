@@ -17,7 +17,9 @@ import { AttendeesService } from './attendees.service';
 import {
   AttendeesFilterDto,
   CreateAttendeeDto,
+  FetchGroupedAttendeesDTO,
   GetAttendeesDTO,
+  GroupedAttendeesFilterDto,
   SwapAttendeeFieldsDTO,
   UpdateAttendeeDto,
 } from './dto/attendees.dto';
@@ -44,9 +46,10 @@ export class AttendeesController {
   @Post('webinar')
   async getAttendees(
     @Query() query: { page?: string; limit?: string },
-    @AdminId() adminId: string,
+    @Id() adminId: string,
     @Body() body: GetAttendeesDTO,
   ) {
+    const start = Date.now();
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
 
@@ -59,27 +62,28 @@ export class AttendeesController {
       body.filters,
       body?.validCall,
       body?.assignmentType,
+      body?.sort,
     );
 
-    return result;
+    const processingTime = Date.now() - start;
+    console.log(`Processing time: ${processingTime} milliseconds`);
+    return result ? { ...result, processingTime } : result;
   }
 
-  @Post('all')
-  async getAllAttendeesForFilters(
+  @Post('grouped')
+  async fechtGroupedAttendees(
     @Query() query: { page?: string; limit?: string },
-    @AdminId() adminId: string,
-    @Body() filters: AttendeesFilterDto,
+    @Id() adminId: string,
+    @Body() body: FetchGroupedAttendeesDTO,
   ) {
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
-
-    const result = await this.attendeesService.getAttendees(
-      '',
-      adminId,
-      true,
+    const result = await this.attendeesService.fetchGroupedAttendees(
+      new Types.ObjectId(`${adminId}`),
       page,
       limit,
-      filters,
+      body.filters,
+      body.sort,
     );
 
     return result;
@@ -151,10 +155,7 @@ export class AttendeesController {
     @Id() adminId: string,
   ) {
     return await this.attendeesService.swapFields(
-      body.attendees,
-      body.field1,
-      body.field2,
-      adminId,
+      body, adminId
     );
   }
 }

@@ -28,6 +28,9 @@ export class Location extends Document {
 
   @Prop({ type: Boolean, default: false })
   deactivated: boolean;
+
+  @Prop({type: String, required: false})
+  note: string
 }
 
 export const LocationSchema = SchemaFactory.createForClass(Location);

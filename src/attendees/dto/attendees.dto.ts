@@ -12,6 +12,7 @@ import {
   IsObject,
   ValidateNested,
   IsArray,
+  Min,
 } from 'class-validator';
 import { Types } from 'mongoose';
 import { RangeNumberDto } from 'src/users/dto/filters.dto';
@@ -50,6 +51,7 @@ export class CreateAttendeeDto {
   @IsNotEmpty({ message: 'IsAttended is required' })
   isAttended: boolean;
 
+
   @IsOptional()
   @IsEnum(['male', 'female', 'others'], {
     message: 'Gender must be one of male, female, or others',
@@ -69,6 +71,16 @@ export class CreateAttendeeDto {
   @IsOptional()
   @IsMongoId({ message: 'Attendee Id must be a valid MongoId' })
   attendeeId?: Types.ObjectId;
+
+  @IsOptional()
+  @IsString({ message: 'Source must be a string' })
+  source?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsNotEmpty()
+  @IsString({ each: true })
+  tags: string[];
 }
 
 export class UpdateAttendeeDto {
@@ -181,10 +193,65 @@ export class GroupedAttendeesFilterDto {
   @IsObject()
   attendedWebinarCount?: RangeNumberDto;
 
+  @IsOptional()
+  @IsObject()
+  registeredWebinarCount?: RangeNumberDto;
+}
+
+export enum SortOrder {
+  ASC = 'asc',
+  DESC = 'desc',
+}
+
+
+export enum WebinarAttendeesSortBy {
+  EMAIL = 'email',
+  TIME_IN_SESSION = 'timeInSession',
+  CREATED_AT = 'createdAt',
+  UPDATED_AT = 'updatedAt',
+}
+
+export enum GroupedAttendeesSortBy {
+  EMAIL = '_id',
+  ATTENDED_WEBINAR_COUNT = 'attendedWebinarCount',
+  TIME_IN_SESSION = 'timeInSession',
+  REGISTERED_WEBINAR_COUNT = 'registeredWebinarCount',
+}
+
+export class WebinarAttendeesSortObject {
+  @IsString()
+  @IsEnum(SortOrder)
+  sortOrder: SortOrder;
+
+  @IsString()
+  @IsEnum(WebinarAttendeesSortBy)
+  sortBy: WebinarAttendeesSortBy;
+}
+
+export class GroupedAttendeesSortObject {
+  @IsString()
+  @IsEnum(SortOrder)
+  sortOrder: SortOrder;
+
+  @IsString()
+  @IsEnum(GroupedAttendeesSortBy)
+  sortBy: GroupedAttendeesSortBy;
+}
+
+export class FetchGroupedAttendeesDTO {
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => GroupedAttendeesFilterDto)
+  filters: GroupedAttendeesFilterDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => GroupedAttendeesSortObject)
+  sort?: GroupedAttendeesSortObject;
 }
 
 export class GetAttendeesDTO {
-  @IsString()
+  @IsMongoId()
   webinarId: string;
 
   @IsBoolean()
@@ -202,6 +269,11 @@ export class GetAttendeesDTO {
   @ValidateNested()
   @Type(() => AttendeesFilterDto)
   filters: AttendeesFilterDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => WebinarAttendeesSortObject)
+  sort?: WebinarAttendeesSortObject;
 }
 
 export class SwapAttendeeFieldsDTO {
@@ -217,4 +289,36 @@ export class SwapAttendeeFieldsDTO {
   @IsNotEmpty()
   @IsString()
   field2?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AttendeesFilterDto)
+  filters: AttendeesFilterDto;
+
+  @IsMongoId()
+  webinarId: string;
+
+  @IsBoolean()
+  isAttended: boolean;
+
+  @IsOptional()
+  @IsString()
+  validCall?: string;
+
+  @IsOptional()
+  @IsString()
+  assignmentType?: string;
+
+}
+
+
+export class ExportWebinarAttendeesDTO extends GetAttendeesDTO {
+  @IsArray()
+  @IsNotEmpty()
+  @IsString({ each: true })
+  columns: string[];
+
+  @IsNumber()
+  @Min(0, { message: 'Export limit must be a non-negative integer.' })
+  limit: number;
 }

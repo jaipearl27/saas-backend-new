@@ -1,12 +1,20 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
+export enum DateFormat {
+  DD_MM_YYYY = "dd-MM-yyyy",
+  MM_DD_YYYY = "MM-dd-yyyy",
+  YYYY_MM_DD = "yyyy-MM-dd",
+}
+
 @Schema({ timestamps: true })
 export class User extends Document {
   @Prop({
     type: String,
     required: [true, 'E-mail is required'],
     trim: true,
+    lowercase: true,
+    unique: true,
   })
   email: string; //E-Mail
 
@@ -28,6 +36,13 @@ export class User extends Document {
     trim: true,
   })
   phone: string; //Phone
+
+  @Prop({
+    type: String,
+    trim: true,
+    required: false,
+  })
+  alarmPhone: string; //Phone number for alarm msg
 
   @Prop({
     type: Boolean,
@@ -69,7 +84,13 @@ export class User extends Document {
     type: String,
     required: false,
   })
-  pabblyToken: string; //pabbly token for super admin or admin
+  pabblyToken: string;
+
+  @Prop({
+    type: String,
+    required: false,
+  })
+  refreshToken: string;
 
   @Prop({
     type: Number,
@@ -100,36 +121,58 @@ export class User extends Document {
   })
   inactivityTime: number;
 
+  @Prop({ type: String, select: false })
+  oneTimePassword?: string;
+
   @Prop({
-    type: [{
-      fieldname: String,
-      originalname: String,
-      encoding: String,
-      mimetype: String,
-      destination: String,
-      filename: String,
-      path: String,
-      size: Number
-    }],
+    type: Date,
+  })
+  otpExpiration?: Date;
+
+  @Prop({ type: Number, default: 0 })
+  failedOtpAttempts?: number;
+
+  @Prop({ type: Date })
+  accountLockedUntil?: Date;
+
+  @Prop({
+    type: [
+      {
+        fieldname: String,
+        originalname: String,
+        encoding: String,
+        mimetype: String,
+        destination: String,
+        filename: String,
+        path: String,
+        size: Number,
+      },
+    ],
     requried: false,
   })
-  documents:
-    {
-      fieldname: string,
-      originalname: string,
-      encoding: string,
-      mimetype: string,
-      destination: string,
-      filename: string,
-      path: string,
-      size: number,
-    }[]
+  documents: {
+    fieldname: string;
+    originalname: string;
+    encoding: string;
+    mimetype: string;
+    destination: string;
+    filename: string;
+    path: string;
+    size: number;
+  }[];
 
   @Prop({
     type: String,
     required: false,
   })
   gst: string;
+
+  @Prop({
+    type: String,
+    default: DateFormat.DD_MM_YYYY,
+    enum: Object.values(DateFormat),
+  })
+  dateFormat: DateFormat;
 }
 
 const UserSchema = SchemaFactory.createForClass(User);
@@ -148,3 +191,5 @@ const rolesEnv = process.env.ROLES ? JSON.parse(process.env.ROLES) : {};
 UserSchema.path('adminId').default(() => rolesEnv.SUPER_ADMIN);
 
 export { UserSchema };
+
+UserSchema.index({ adminId: 1 });

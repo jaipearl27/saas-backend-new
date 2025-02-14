@@ -76,7 +76,11 @@ export class LocationController {
     @Role() role: string,
   ): Promise<any> {
     if (role === this.configService.get('appRoles').SUPER_ADMIN) {
-      const result = await this.locationService.getLocationRequests(false,null, true);
+      const result = await this.locationService.getLocationRequests(
+        false,
+        null,
+        true,
+      );
       return result;
     } else if (this.configService.get('appRoles').ADMIN === role) {
       const result = await this.locationService.getLocationRequests(false, id);
@@ -88,7 +92,7 @@ export class LocationController {
     }
   }
 
-  @Patch('approve/:id')
+  @Patch('/approve/:id')
   async approveLocation(
     @Body() updateLocationDto: UpdateLocationDto,
     @Param('id') id: string,
@@ -120,7 +124,7 @@ export class LocationController {
     }
   }
 
-  @Patch('disapprove/:id')
+  @Patch('/disapprove/:id')
   async disapproveLocation(
     @Body() updateLocationDto: UpdateLocationDto,
     @Param('id') id: string,

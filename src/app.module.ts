@@ -44,6 +44,8 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { RazorpayModule } from './razorpay/razorpay.module';
 import { NotificationModule } from './notification/notification.module';
 import { LocationModule } from './location/location.module';
+import { RevenueModule } from './revenue/revenue.module';
+import { TagsModule } from './tags/tags.module';
 
 @Module({
   imports: [
@@ -82,7 +84,7 @@ import { LocationModule } from './location/location.module';
       transport: {
         host: 'smtp.gmail.com',
         port: 465,
-        service: "gmail",
+        service: 'gmail',
         ignoreTLS: true,
         secure: false,
         auth: {
@@ -90,18 +92,24 @@ import { LocationModule } from './location/location.module';
           pass: process.env.MAILDEV_INCOMING_PASS,
         },
       },
+      defaults: {
+        from: 'App Name <noreply@app.com>',
+      },
+    
     }),
     NotesModule,
     CloudinaryModule,
     EnrollmentsModule,
     DeleteDataModule,
     CustomLeadTypeModule,
-     AddonModule,
-     SubscriptionAddonModule,
-     WhatsappModule,
-     RazorpayModule,
-     NotificationModule,
-     LocationModule,
+    AddonModule,
+    SubscriptionAddonModule,
+    WhatsappModule,
+    RazorpayModule,
+    NotificationModule,
+    LocationModule,
+    RevenueModule,
+    TagsModule,
   ],
   controllers: [AppController],
   providers: [AppService, CalendarService],

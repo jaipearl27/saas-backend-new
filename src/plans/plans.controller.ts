@@ -8,32 +8,45 @@ import {
   Patch,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { PlansService } from './plans.service';
-import { CreatePlansDto, PlanOrderDTO } from './dto/createPlans.dto';
+import {
+  CreatePlansDto,
+  IdParamsDTO,
+  PlanOrderDTO,
+} from './dto/createPlans.dto';
 import { UpdatePlansDto } from './dto/updatePlans.dto';
 import { Id, Role } from 'src/decorators/custom.decorator';
 import { Types } from 'mongoose';
 
 @Controller('plans')
 export class PlansController {
-  constructor(
-    private readonly plansService: PlansService,
-  ) {}
+  constructor(private readonly plansService: PlansService) {}
 
   @Get()
-  getPlans(@Id() userId: string, @Role() role: string) {
+  async getPlans(
+    @Id() userId: string,
+    @Role() role: string,
+    @Query('isActive') isActive: string,
+  ) {
     if (!userId || !role) {
       throw new BadRequestException('User ID and Role is required');
     }
-    return this.plansService.getPlans(new Types.ObjectId(userId), role);
+    console.log(isActive);
+
+    return await this.plansService.getPlans(
+      new Types.ObjectId(userId),
+      role,
+      isActive === 'inactive' ? false : true,
+    );
   }
 
   @Post()
   addPlan(@Body() createPlansDto: CreatePlansDto) {
     return this.plansService.addPlan(createPlansDto);
   }
-  @Get(':id')
+  @Get('data/:id')
   getPlan(@Param() params: any) {
     return this.plansService.getPlan(params.id);
   }
@@ -49,7 +62,18 @@ export class PlansController {
   }
 
   @Delete(':id')
-  deletePlan(@Param() params: any) {
-    return this.plansService.deletePlan(params.id);
+  async inactivePlan(
+    @Param() params: IdParamsDTO,
+    @Query('isActive') isActive: string,
+  ) {
+    return await this.plansService.inactivePlan(
+      params.id,
+      isActive === 'inactive' ? true : false,
+    );
+  }
+
+  @Get('dropdown')
+  async getPlansForDropdown() {
+    return await this.plansService.getPlansForDropdown();
   }
 }

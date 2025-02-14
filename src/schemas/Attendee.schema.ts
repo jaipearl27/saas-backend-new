@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { CustomLeadType } from './custom-lead-type.schema';
 import { User } from './User.schema';
 import { Webinar } from './Webinar.schema';
 
@@ -11,6 +10,7 @@ export class Attendee extends Document {
     maxlength: 100,
     required: [true, 'Email is required'],
     trim: true,
+    lowercase: true,
   })
   email: string; // E-Mail
 
@@ -19,6 +19,9 @@ export class Attendee extends Document {
     maxlength: 100,
     trim: true,
     default: null,
+    // get: (val: string) => val?.charAt(0).toUpperCase() + val?.slice(1), 
+    // set: (val: string) => val?.charAt(0).toUpperCase() + val?.slice(1), 
+
   })
   firstName: string | null; // First Name
 
@@ -38,7 +41,7 @@ export class Attendee extends Document {
   })
   phone: string | null;
 
-  @Prop({ type: Number, default: 0 })
+  @Prop({ type: Number, default: 0, min: 0 })
   timeInSession: number; //Time in session
 
   @Prop({
@@ -98,7 +101,6 @@ export class Attendee extends Document {
   })
   status: string | null;
 
-  
   @Prop({
     type: Boolean,
     required: false,
@@ -113,12 +115,25 @@ export class Attendee extends Document {
   })
   isPulledback: boolean;
 
+  @Prop({
+    type: String,
+    default: 'Import',
+  })
+  source: string; 
+
+  @Prop({
+    type: [String],
+    default: [],
+  })
+  tags: string[];
 }
 
 export const AttendeeSchema = SchemaFactory.createForClass(Attendee);
 
 AttendeeSchema.index({ adminId: 1 });
+
 AttendeeSchema.index({ email: 1 });
 AttendeeSchema.index({ webinar: 1 });
 AttendeeSchema.index({ webinar: 1, adminId: 1 });
 AttendeeSchema.index({ webinar: 1, adminId: 1, isAttended: 1 });
+AttendeeSchema.index({ webinar: 1, adminId: 1, isAttended: 1, email: 1 });

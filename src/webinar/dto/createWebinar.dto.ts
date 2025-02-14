@@ -1,4 +1,4 @@
-import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsMongoId, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Types } from 'mongoose';
 
 export class CreateWebinarDto {
@@ -19,6 +19,10 @@ export class CreateWebinarDto {
   @IsArray()
   @IsOptional()
   assignedEmployees?: Types.ObjectId[];
+
+  @IsOptional()
+  @IsMongoId()
+  productId?: string;
 }
 
 export class UpdateWebinarDto {
@@ -33,4 +37,8 @@ export class UpdateWebinarDto {
   @IsArray()
   @IsOptional()
   assignedEmployees?: Types.ObjectId[];
+
+  @IsOptional()
+  @IsMongoId()
+  productId?: string;
 }

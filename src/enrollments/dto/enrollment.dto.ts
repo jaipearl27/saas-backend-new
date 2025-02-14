@@ -25,3 +25,14 @@ export class UpdateEnrollmentDto {
   @IsNotEmpty()
   product?: string;
 }
+
+
+export class GetEnrollmentsByProductLevelDto {
+  @IsString()
+  @IsNotEmpty()
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  productLevel: string;
+}

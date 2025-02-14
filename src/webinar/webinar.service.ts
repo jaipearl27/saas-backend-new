@@ -24,7 +24,6 @@ export class WebinarService {
 
   async createWebiar(createWebinarDto: CreateWebinarDto): Promise<any> {
     // Create webinar
-    console.log(createWebinarDto);
 
     const result = await this.webinarModel.create(createWebinarDto);
 
@@ -92,6 +91,14 @@ export class WebinarService {
         },
       },
       {
+        $lookup: {
+          from: 'products',
+          localField: 'productId',
+          foreignField: '_id',
+          as: 'product',
+        },
+      },
+      {
         $project: {
           _id: 1,
           webinarName: 1,
@@ -100,12 +107,18 @@ export class WebinarService {
           adminId: 1,
           createdAt: 1,
           updatedAt: 1,
+          productName: { $arrayElemAt: ['$product.name', 0] },
           totalAttendees: {
             $size: {
               $filter: {
                 input: '$attendees',
                 as: 'attendee',
-                cond: { $eq: ['$$attendee.isAttended', true] },
+                cond: {
+                  $and: [
+                    { $eq: ['$$attendee.isAttended', true] },
+                    { $gt: ['$$attendee.timeInSession', 0] },
+                  ],
+                },
               },
             },
           },
@@ -118,13 +131,22 @@ export class WebinarService {
               },
             },
           },
+
+          totalParticipants: {
+            $size: {
+              $filter: {
+                input: '$attendees',
+                as: 'attendee',
+                cond: { $eq: ['$$attendee.isAttended', true] },
+              },
+            },
+          },
         },
       },
       {
-        // Avoid redundant calculation by reusing fields directly
         $addFields: {
-          totalParticipants: {
-            $add: ['$totalAttendees', '$totalRegistrations'],
+          totalUnAttended: {
+            $subtract: ['$totalParticipants', '$totalAttendees'],
           },
         },
       },
@@ -138,6 +160,9 @@ export class WebinarService {
           }),
           ...(filters.totalParticipants && {
             totalParticipants: filters.totalParticipants,
+          }),
+          ...(filters.totalUnAttended && {
+            totalUnAttended: filters.totalUnAttended,
           }),
         },
       },
@@ -203,13 +228,19 @@ export class WebinarService {
     updateWebinarDto: UpdateWebinarDto,
   ): Promise<any> {
     //update webinar
-    console.log(id, adminId);
     const result = await this.webinarModel.findOneAndUpdate(
       {
         _id: new Types.ObjectId(`${id}`),
         adminId: new Types.ObjectId(`${adminId}`),
       },
-      updateWebinarDto,
+      {
+        $set: {
+          ...updateWebinarDto,
+          productId: updateWebinarDto.productId
+            ? new Types.ObjectId(`${updateWebinarDto.productId}`)
+            : null,
+        },
+      },
     );
     return result;
   }
@@ -246,7 +277,6 @@ export class WebinarService {
   }
 
   async getAssignedEmployees(webinarId: string): Promise<any> {
-
     const result: any = await this.webinarModel
       .findById(webinarId)
       .populate('assignedEmployees')

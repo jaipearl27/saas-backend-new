@@ -38,9 +38,14 @@ export class Products extends Document {
   @Prop({
     type: Number,
     required: true,
-    enums: [1, 2, 3],
   })
-  level: 1 | 2 | 3;
+  level: number;
+
+  @Prop({
+    type: String,
+    required: false,
+  })
+  tag: string;
 }
 
 export const ProductsSchema = SchemaFactory.createForClass(Products);
@@ -52,5 +57,5 @@ ProductsSchema.pre('save', function (next) {
   if (typeof this.webinar === 'string') {
     this.webinar = new Types.ObjectId(`${this.webinar}`);
   }
-  next()
+  next();
 });

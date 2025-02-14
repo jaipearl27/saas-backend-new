@@ -36,7 +36,10 @@ import {
   notificationType,
 } from 'src/schemas/notification.schema';
 import exp from 'constants';
-import { monthMultiplier } from 'src/schemas/BillingHistory.schema';
+import {
+  BillingType,
+  monthMultiplier,
+} from 'src/schemas/BillingHistory.schema';
 
 @Injectable()
 export class UsersService {
@@ -69,13 +72,17 @@ export class UsersService {
     skip: number = 0,
     limit: number = 25,
   ): mongoose.PipelineStage[] {
-
     const matchFilters: Record<string, any> = {};
-    if (filterData.email) matchFilters['email'] = filterData.email;
+    if (filterData.email)
+      matchFilters['email'] = { $regex: filterData.email.toLowerCase() };
     if (filterData.companyName)
-      matchFilters['companyName'] = filterData.companyName;
-    if (filterData.userName) matchFilters['userName'] = filterData.userName;
-    if (filterData.phone) matchFilters['phone'] = filterData.phone;
+      matchFilters['companyName'] = {
+        $regex: filterData.companyName,
+        $options: 'i',
+      };
+    if (filterData.userName)
+      matchFilters['userName'] = { $regex: filterData.userName, $options: 'i' };
+    if (filterData.phone) matchFilters['phone'] = { $regex: filterData.phone };
     if (filterData.isActive)
       matchFilters['isActive'] = filterData.isActive === 'active';
 
@@ -100,19 +107,88 @@ export class UsersService {
         }),
       };
     }
-    if (filterData.planName) subscriptionFilter['plan'] = filterData.planName;
+    if (filterData.planName)
+      subscriptionFilter['plan'] = new Types.ObjectId(filterData.planName);
     if (filterData.toggleLimit)
       subscriptionFilter['toggleLimit'] = filterData.toggleLimit;
 
+    if (filterData.contactsLimit) {
+      subscriptionFilter.$expr = {
+        $and: [
+          ...(filterData.contactsLimit.$gte ||
+          filterData.contactsLimit.$gte === 0
+            ? [
+                {
+                  $gte: [
+                    { $add: ['$contactLimit', '$contactLimitAddon'] },
+                    filterData.contactsLimit.$gte,
+                  ],
+                },
+              ]
+            : []),
+          ...(filterData.contactsLimit.$lte ||
+          filterData.contactsLimit.$lte === 0
+            ? [
+                {
+                  $lte: [
+                    { $add: ['$contactLimit', '$contactLimitAddon'] },
+                    filterData.contactsLimit.$lte,
+                  ],
+                },
+              ]
+            : []),
+        ],
+      };
+    }
+
+    if (filterData.employeeLimit) {
+      subscriptionFilter.$expr = {
+        $and: [
+          ...(filterData.employeeLimit.$gte ||
+          filterData.employeeLimit.$gte === 0
+            ? [
+                {
+                  $gte: [
+                    { $add: ['$employeeLimit', '$employeeLimitAddon'] },
+                    filterData.employeeLimit.$gte,
+                  ],
+                },
+              ]
+            : []),
+          ...(filterData.employeeLimit.$lte ||
+          filterData.employeeLimit.$lte === 0
+            ? [
+                {
+                  $lte: [
+                    { $add: ['$employeeLimit', '$employeeLimitAddon'] },
+                    filterData.employeeLimit.$lte,
+                  ],
+                },
+              ]
+            : []),
+        ],
+      };
+    }
+
+    if (filterData.usedContactsCount) {
+      subscriptionFilter['contactCount'] = {
+        ...((filterData.usedContactsCount.$gte ||
+          filterData.usedContactsCount.$gte === 0) && {
+          $gte: filterData.usedContactsCount.$gte,
+        }),
+        ...((filterData.usedContactsCount.$lte ||
+          filterData.usedContactsCount.$lte === 0) && {
+          $lte: filterData.usedContactsCount.$lte,
+        }),
+      };
+    }
+
     const employeeCountFilter: Record<string, any> = {};
-    [
-      'totalEmployees',
-      'employeeSalesCount',
-      'employeeReminderCount',
-      'contactsLimit',
-    ].forEach((field) => {
-      if (filterData[field]) employeeCountFilter[field] = filterData[field];
-    });
+    ['totalEmployees', 'employeeSalesCount', 'employeeReminderCount'].forEach(
+      (field) => {
+        if (filterData[field]) employeeCountFilter[field] = filterData[field];
+      },
+    );
 
     const clientRoleId = this.configService.get('appRoles').ADMIN;
     const empSalesId = this.configService.get('appRoles').EMPLOYEE_SALES;
@@ -156,11 +232,13 @@ export class UsersService {
               $project: {
                 startDate: 1,
                 expiryDate: 1,
-                contactLimit: 1,
                 toggleLimit: 1,
-                contactLimitAddon: 1,
-                employeeLimit: 1,
-                employeeLimitAddon: 1,
+                contactLimitTotal: {
+                  $add: ['$contactLimit', '$contactLimitAddon'],
+                },
+                employeeLimitTotal: {
+                  $add: ['$employeeLimit', '$employeeLimitAddon'],
+                },
                 contactCount: 1,
                 'plan.name': 1,
               },
@@ -187,13 +265,6 @@ export class UsersService {
           planName: '$subscription.plan.name',
           planStartDate: '$subscription.startDate',
           planExpiry: '$subscription.expiryDate',
-          usedContactsCount: '$subscription.contactCount',
-          contactsLimit: {
-            $add: [
-              '$subscription.contactLimit',
-              '$subscription.contactLimitAddon',
-            ],
-          },
           toggleLimit: '$subscription.toggleLimit',
           totalEmployees: { $size: '$employees' },
           employeeSalesCount: {
@@ -201,7 +272,9 @@ export class UsersService {
               $filter: {
                 input: '$employees',
                 as: 'emp',
-                cond: { $eq: ['$$emp.role', new Types.ObjectId(empSalesId)] },
+                cond: {
+                  $eq: ['$$emp.role', new Types.ObjectId(`${empSalesId}`)],
+                },
               },
             },
           },
@@ -211,7 +284,7 @@ export class UsersService {
                 input: '$employees',
                 as: 'emp',
                 cond: {
-                  $eq: ['$$emp.role', new Types.ObjectId(empReminderId)],
+                  $eq: ['$$emp.role', new Types.ObjectId(`${empReminderId}`)],
                 },
               },
             },
@@ -225,16 +298,10 @@ export class UsersService {
       // Add computed fields
       {
         $addFields: {
-          employeeLimit: {
-            $add: [
-              '$subscription.employeeLimit',
-              '$subscription.employeeLimitAddon',
-            ],
-          },
           remainingDays: {
             $max: [
               {
-                $floor: {
+                $ceil: {
                   $divide: [
                     {
                       $subtract: [
@@ -252,7 +319,27 @@ export class UsersService {
         },
       },
 
+      ...(filterData.remainingDays
+        ? [
+            {
+              $match: {
+                remainingDays: {
+                  ...((filterData.remainingDays.$gte ||
+                    filterData.remainingDays.$gte === 0) && {
+                    $gte: filterData.remainingDays.$gte,
+                  }),
+                  ...((filterData.remainingDays.$lte ||
+                    filterData.remainingDays.$lte === 0) && {
+                    $lte: filterData.remainingDays.$lte,
+                  }),
+                },
+              },
+            },
+          ]
+        : []),
+
       // Project final fields
+
       {
         $project: {
           email: 1,
@@ -263,14 +350,15 @@ export class UsersService {
           planName: 1,
           planStartDate: 1,
           planExpiry: 1,
-          contactsLimit: 1,
+          contactsLimit: '$subscription.contactLimitTotal',
           toggleLimit: 1,
           totalEmployees: 1,
           employeeSalesCount: 1,
           employeeReminderCount: 1,
-          usedContactsCount: 1,
-          employeeLimit: 1,
+          usedContactsCount: '$subscription.contactCount',
+          employeeLimit: '$subscription.employeeLimitTotal',
           remainingDays: 1,
+          dateFormat: 1,
         },
       },
     ];
@@ -283,25 +371,32 @@ export class UsersService {
   ): Promise<any> {
     const hasFilters = Object.keys(filterData).length > 0;
 
-    const pipeline = this.createClientPipeline(filterData, hasFilters, skip, limit);
+    const pipeline = this.createClientPipeline(
+      filterData,
+      hasFilters,
+      skip,
+      limit,
+    );
     const pipelineForCount = this.createClientPipeline(filterData);
 
     const totalUsersPipeline = [...pipelineForCount, { $count: 'totalUsers' }];
 
-    const totalUsersResult = await this.userModel.aggregate(totalUsersPipeline);
+    const [result, totalUsersResult] = await Promise.all([
+      this.userModel.aggregate([
+        ...pipeline,
+        ...(hasFilters
+          ? [
+              { $sort: { createdAt: -1 as const } },
+              { $skip: skip || 0 },
+              { $limit: limit || 25 },
+            ]
+          : []),
+      ]),
+      this.userModel.aggregate(totalUsersPipeline),
+    ]);
+
     const totalUsers = totalUsersResult[0]?.totalUsers || 0;
     const totalPages = Math.ceil(totalUsers / limit);
-
-    const result = await this.userModel.aggregate([
-      ...pipeline,
-      ...(hasFilters
-        ? [
-            { $sort: { createdAt: -1 as const } },
-            { $skip: skip || 0 },
-            { $limit: limit || 25 },
-          ]
-        : []),
-    ]);
 
     return { result, totalPages };
   }
@@ -403,7 +498,6 @@ export class UsersService {
       updateUserInfoDto,
       { new: true },
     );
-    console.log(result._id, updateUserInfoDto.isActive);
     if (result && updateUserInfoDto.isActive === false) {
       await this.notificationService.createNotification({
         recipient: result._id.toString(),
@@ -487,6 +581,9 @@ export class UsersService {
         },
       },
       {
+        $project: { password: 0 },
+      },
+      {
         $unset: 'roleInfo', // Remove the temporary `roleInfo` array
       },
       {
@@ -525,7 +622,7 @@ export class UsersService {
   }
 
   getEmployee(id: string): Promise<User | null> {
-    const employee = this.userModel.findById(id);
+    const employee = this.userModel.findById(id).select('-password');
 
     return employee;
   }
@@ -536,14 +633,13 @@ export class UsersService {
   }
 
   async getUserById(id: string) {
-    return await this.userModel.findById(id);
+    return await this.userModel.findById(id).select('-password');
   }
 
   async updateUser(
     id: string,
     updateUserInfoDto: UpdateUserInfoDto,
   ): Promise<any> {
-    // console.log(updateUserInfoDto);
     if (updateUserInfoDto.email) {
       const isExisting = await this.userModel.findOne({
         email: updateUserInfoDto.email,
@@ -609,8 +705,6 @@ export class UsersService {
   ): Promise<any> {
     const user = await this.userModel.findById(id);
 
-    // console.log(user);
-
     const verifyOldPassword = await bcrypt.compare(
       updatePasswordDto.oldPassword,
       user.password,
@@ -644,7 +738,6 @@ export class UsersService {
       name: createEmployeeDto?.role,
     });
     if (!role) throw new NotFoundException('No Role Found with the given ID.');
-    console.log('creating Employee');
     const user = await this.userModel.create({
       ...createEmployeeDto,
       role: role._id,
@@ -688,6 +781,9 @@ export class UsersService {
         dailyContactLimit: updateEmployeeDto.dailyContactLimit,
         role: role._id,
         inactivityTime: updateEmployeeDto.inactivityTime,
+        ...(updateEmployeeDto.password
+          ? { password: updateEmployeeDto.password }
+          : {}),
       },
       { new: true },
     );
@@ -771,7 +867,6 @@ export class UsersService {
     /**
     // * test for date in frontend to be in IST
      * let date = new Date('2024-12-02T06:14:48.287Z')
-      console.log(date.toLocaleString('en-IN'))
      */
 
     // Check if a user already exists
@@ -790,8 +885,8 @@ export class UsersService {
       role: createClientDto.role,
       companyName: createClientDto.companyName,
       adminId: creatorDetailsDto.id,
+      dateFormat: createClientDto.dateFormat,
     });
-    // console.log(userData);
 
     const payload = {
       id: userData?._id,
@@ -837,16 +932,19 @@ export class UsersService {
     const gst = subTotal * 0.18; // 18% GST
     const totalWithGST = subTotal + gst;
 
-    const billingHistory = await this.billingHistoryService.addBillingHistory({
-      admin: String(user._id),
-      plan: String(plan._id),
-      amount: totalWithGST,
-      itemAmount: itemAmount,
-      discountAmount: discountAmount,
-      taxPercent: 18,
-      taxAmount: gst,
-      durationType: createClientDto.durationType,
-    });
+    const billingHistory = await this.billingHistoryService.addBillingHistory(
+      {
+        admin: String(user._id),
+        plan: String(plan._id),
+        amount: totalWithGST,
+        itemAmount: itemAmount,
+        discountAmount: discountAmount,
+        taxPercent: 18,
+        taxAmount: gst,
+        durationType: createClientDto.durationType,
+      },
+      BillingType.NEW_PLAN,
+    );
 
     await this.customLeadTypeService.createDefaultLeadTypes(`${user._id}`);
 
@@ -893,7 +991,6 @@ export class UsersService {
           .exec();
 
         const adminIds = deactivatedAdminIds.map((admin) => admin._id);
-        console.log('adminIds', adminIds);
 
         const employeeResult = await this.userModel.updateMany(
           {
@@ -922,7 +1019,6 @@ export class UsersService {
         let admin = await this.userModel.findById(
           expiredAdminIds[i].admin.toString(),
         );
-        console.log(admin);
         if (admin) {
           await this.notificationService.createNotification({
             recipient: admin._id.toString(),

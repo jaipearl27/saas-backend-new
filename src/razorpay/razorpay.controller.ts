@@ -11,9 +11,15 @@ import { RazorpayService } from './razorpay.service';
 import { PlansService } from 'src/plans/plans.service';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 import { AddOnService } from 'src/addon/addon.service';
-import { RazorPayAddOnDTO, RazorPayUpdatePlanDTO } from './dto/razorpay.dto';
+import {
+  RazorPayAddOnDTO,
+  RazorPayCheckoutPlanDTO,
+  RazorPayUpdatePlanDTO,
+} from './dto/razorpay.dto';
 import { ConfigService } from '@nestjs/config';
-import crypto from 'crypto'
+import crypto from 'crypto';
+import { monthMultiplier } from 'src/schemas/BillingHistory.schema';
+import { Id } from 'src/decorators/custom.decorator';
 @Controller('razorpay')
 export class RazorpayController {
   constructor(
@@ -25,14 +31,11 @@ export class RazorpayController {
   ) {}
 
   @Post('/checkout')
-  async createOrder(@Body('plan') plan: string): Promise<any> {
-    const planData = await this.plansService.getPlan(plan);
-
-    if (!planData) throw new NotAcceptableException('Plan not found.');
-
-    const result = await this.razorpayService.createOrder(planData.amount);
-    return { planData, result };
+  async createOrder(@Body() body: RazorPayCheckoutPlanDTO, @Id() adminId: string): Promise<any> {
+    const { plan, durationType } = body;
+    return this.razorpayService.createPlanOrder(plan, durationType, adminId);
   }
+
 
   @Post('/payment-success')
   @Redirect()
@@ -42,16 +45,15 @@ export class RazorpayController {
   ): Promise<any> {
     //validate payment success here
 
-    const expectedSignature = crypto
-    .createHmac("sha256", this.configService.get('RAZORPAY_KEY_SECRET'))
-    .update(body.toString())
-    .digest("hex");
+    const generatedSignature = crypto
+      .createHmac('sha256', this.configService.get('RAZORPAY_KEY_SECRET'))
+      .update(`${body.razorpay_order_id}|${body.razorpay_payment_id}`)
+      .digest('hex');
 
-    if(body.razorpay_signature !== expectedSignature){
+
+    if (generatedSignature !== body.razorpay_signature) {
       return { url: 'http://localhost:5173/failed' };
     }
-
-
 
     const planUpdate = await this.subscriptionService.updateClientPlan(
       query.adminId,
@@ -72,13 +74,8 @@ export class RazorpayController {
   }
 
   @Post('/addon/checkout')
-  async createAddonOrder(@Body('addon') addon: string): Promise<any> {
-    const addonData = await this.addonService.getAddOnById(addon);
-
-    if (!addonData) throw new NotAcceptableException('Addon not found.');
-    console.log(addonData);
-    const result = await this.razorpayService.createOrder(addonData.addOnPrice);
-    return { addonData, result };
+  async createAddonOrder(@Body('addon') addon: string, @Id() adminId: string): Promise<any> {
+    return this.razorpayService.createAddonOrder(addon, adminId);
   }
 
   @Post('addon/payment-success')

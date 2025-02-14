@@ -16,7 +16,7 @@ export class EnrollmentsService {
     createEnrollmentDto: CreateEnrollmentDto,
   ): Promise<any> {
     const pipeline = {
-      // webinar: new Types.ObjectId(`${createEnrollmentDto.webinar}`),
+      webinar: new Types.ObjectId(`${createEnrollmentDto.webinar}`),
       attendee: createEnrollmentDto.attendee,
       product: new Types.ObjectId(`${createEnrollmentDto.product}`),
     };
@@ -34,7 +34,6 @@ export class EnrollmentsService {
     page: number,
     limit: number,
   ): Promise<any> {
-    console.log(page, limit);
     const skip = (page - 1) * limit;
 
     const pipeline: PipelineStage[] = [
@@ -142,8 +141,6 @@ export class EnrollmentsService {
       adminId: new Types.ObjectId(`${adminId}`),
     };
 
-    console.log(pipeline)
-
     const totalEnrollments =
       await this.enrollmentModel.countDocuments(pipeline);
 
@@ -187,6 +184,104 @@ export class EnrollmentsService {
     const result = await this.enrollmentModel.findOne({
       product: new Types.ObjectId(`${id}`),
     });
+    return result;
+  }
+
+  async getProductLevelCounts(adminId: string, email: string) {
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          adminId: new Types.ObjectId(`${adminId}`),
+          attendee: email,
+        },
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'product',
+          foreignField: '_id',
+          as: 'product',
+        },
+      },
+      {
+        $unwind: {
+          path: '$product',
+        },
+      },
+      {
+        $group: {
+          _id: '$product.level',
+          count: {
+            $sum: 1,
+          },
+        },
+      },
+    ];
+
+    const result = await this.enrollmentModel.aggregate(pipeline);
+    return result;
+  }
+
+  async getEnrollmentsByProductLevel(adminId: string, email: string, productLevel: number) {
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          adminId: new Types.ObjectId(`${adminId}`),
+          attendee: email,
+        },
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'product',
+          foreignField: '_id',
+          as: 'product'
+        }
+      },
+      {
+        $unwind: {
+          path: '$product',
+        }
+      },
+      {
+        $match: {
+          $expr: {
+            $eq: ['$product.level', productLevel]
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: 'webinars',
+          localField: 'webinar',
+          foreignField: '_id',
+          as: 'webinar',
+        },
+      },
+      {
+        $unwind: {
+          path: '$webinar',
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          webinarName : '$webinar.webinarName',
+          webinarDate: '$webinar.webinarDate',
+          productName: '$product.name',
+          productLevel: '$product.level',
+          productPrice: '$product.price',
+          enrollmentDate: '$createdAt',
+        },
+      },
+      {
+        $sort: {
+          enrollmentDate: -1,
+        },
+      },
+    ];
+
+    const result = await this.enrollmentModel.aggregate(pipeline);
     return result;
   }
 }

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { BillingHistory } from 'src/schemas/BillingHistory.schema';
+import { BillingHistory, BillingType } from 'src/schemas/BillingHistory.schema';
 import {
   BillingHistoryDto,
   UpdateBillingHistory,
@@ -28,7 +28,7 @@ export class BillingHistoryService {
     return !existing;
   }
 
-  async addBillingHistory(billingHistoryDto: BillingHistoryDto): Promise<any> {
+  async addBillingHistory(billingHistoryDto: BillingHistoryDto, billingType: BillingType): Promise<any> {
     let invoiceNumber = this.generateInvoiceNumber();
 
     while (!(await this.isInvoiceNumberUnique(invoiceNumber))) {
@@ -38,6 +38,11 @@ export class BillingHistoryService {
     const result = await this.BillingHistoryModel.create({
       ...billingHistoryDto,
       invoiceNumber,
+      billingType,
+      itemAmount: parseFloat(billingHistoryDto.itemAmount.toFixed(2)),
+      discountAmount: parseFloat(billingHistoryDto.discountAmount.toFixed(2)),
+      taxAmount: parseFloat(billingHistoryDto.taxAmount.toFixed(2)),
+      amount: parseFloat(billingHistoryDto.amount.toFixed(2))
     });
     return result;
   }
@@ -53,7 +58,10 @@ export class BillingHistoryService {
   async addOneBillingHistory(
     adminId: string,
     addOnId: string,
-    amount: number,
+    itemAmount: number,
+    taxAmount: number,
+    totalAmount: number,
+    taxPercent: number,
   ): Promise<BillingHistory> {
     let invoiceNumber = this.generateInvoiceNumber();
 
@@ -65,11 +73,16 @@ export class BillingHistoryService {
       admin: new Types.ObjectId(`${adminId}`),
       date: new Date(),
       addOn: new Types.ObjectId(`${addOnId}`),
-      amount,
+      billingType: BillingType.ADD_ON,
+      amount: parseFloat(totalAmount.toFixed(2)),
+      itemAmount: parseFloat(itemAmount.toFixed(2)),
+      taxAmount: parseFloat(taxAmount.toFixed(2)),
+      taxPercent: taxPercent,
       invoiceNumber,
     });
     return billingHistory.save();
   }
+
   async getBillingHistory(
     adminId: string,
     page: number,
