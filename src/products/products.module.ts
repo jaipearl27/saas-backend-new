@@ -38,6 +38,7 @@ export class ProductsModule {
       .exclude(
         { path: 'products', method: RequestMethod.GET },
         { path: 'products/all', method: RequestMethod.GET },
+        { path: 'products/level', method: RequestMethod.GET },
       )
       .forRoutes({ path: 'products*', method: RequestMethod.ALL });
 
@@ -46,6 +47,7 @@ export class ProductsModule {
       .forRoutes(
         { path: 'products', method: RequestMethod.GET },
         { path: 'products/all', method: RequestMethod.GET },
+        { path: 'products/level', method: RequestMethod.GET },
       );
   }
 }
