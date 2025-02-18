@@ -16,13 +16,16 @@ export class CreateWebinarDto {
   @IsNotEmpty()
   adminId?: string;
 
-  @IsArray()
+
   @IsOptional()
+  @IsArray()
+  @IsMongoId({ each: true })
   assignedEmployees?: Types.ObjectId[];
 
   @IsOptional()
-  @IsMongoId()
-  productId?: string;
+  @IsArray()
+  @IsMongoId({ each: true })
+  productIds?: Types.ObjectId[];
 }
 
 export class UpdateWebinarDto {
@@ -34,11 +37,13 @@ export class UpdateWebinarDto {
   @IsOptional()
   webinarDate?: string;
 
-  @IsArray()
   @IsOptional()
+  @IsArray()
+  @IsMongoId({ each: true })
   assignedEmployees?: Types.ObjectId[];
 
   @IsOptional()
-  @IsMongoId()
-  productId?: string;
+  @IsArray()
+  @IsMongoId({ each: true })
+  productIds?: Types.ObjectId[];
 }

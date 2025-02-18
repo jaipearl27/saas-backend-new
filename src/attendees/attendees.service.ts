@@ -547,6 +547,7 @@ export class AttendeesService {
           timeInSession: 1,
           source: 1,
           createdAt: 1,
+          tags: 1,
         },
       },
     ];

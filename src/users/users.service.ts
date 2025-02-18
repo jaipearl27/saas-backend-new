@@ -784,6 +784,7 @@ export class UsersService {
         ...(updateEmployeeDto.password
           ? { password: updateEmployeeDto.password }
           : {}),
+        tags: updateEmployeeDto.tags,
       },
       { new: true },
     );

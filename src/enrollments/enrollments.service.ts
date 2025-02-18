@@ -222,7 +222,11 @@ export class EnrollmentsService {
     return result;
   }
 
-  async getEnrollmentsByProductLevel(adminId: string, email: string, productLevel: number) {
+  async getEnrollmentsByProductLevel(
+    adminId: string,
+    email: string,
+    productLevel: number,
+  ) {
     const pipeline: PipelineStage[] = [
       {
         $match: {
@@ -235,20 +239,20 @@ export class EnrollmentsService {
           from: 'products',
           localField: 'product',
           foreignField: '_id',
-          as: 'product'
-        }
+          as: 'product',
+        },
       },
       {
         $unwind: {
           path: '$product',
-        }
+        },
       },
       {
         $match: {
           $expr: {
-            $eq: ['$product.level', productLevel]
-          }
-        }
+            $eq: ['$product.level', productLevel],
+          },
+        },
       },
       {
         $lookup: {
@@ -266,7 +270,7 @@ export class EnrollmentsService {
       {
         $project: {
           _id: 1,
-          webinarName : '$webinar.webinarName',
+          webinarName: '$webinar.webinarName',
           webinarDate: '$webinar.webinarDate',
           productName: '$product.name',
           productLevel: '$product.level',
@@ -282,6 +286,21 @@ export class EnrollmentsService {
     ];
 
     const result = await this.enrollmentModel.aggregate(pipeline);
+    return result;
+  }
+
+  async getEnrollmentByWebinarAndAttendee(
+    adminId: string,
+    webinar: string,
+    attendee: string,
+    product: string,
+  ) {
+    const result = await this.enrollmentModel.findOne({
+      adminId: new Types.ObjectId(`${adminId}`),
+      webinar: new Types.ObjectId(`${webinar}`),
+      attendee: attendee,
+      product: new Types.ObjectId(`${product}`),
+    });
     return result;
   }
 }
