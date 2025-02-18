@@ -370,7 +370,7 @@ export class AssignmentService {
         webinar.productIds,
       );
 
-      // await existingAttendee.save();
+      await existingAttendee.save();
       return { success: true, message: 'Attendee updated successfully' };
     }
 
