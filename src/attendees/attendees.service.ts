@@ -276,8 +276,6 @@ export class AttendeesService {
   }
 
   async getAttendee(adminId: string, email: string): Promise<any> {
-
-    
     const pipeline: PipelineStage[] = [
       {
         $match: {
@@ -323,6 +321,7 @@ export class AttendeesService {
             isAttended: '$isAttended',
             createdAt: '$createdAt', // Include createdAt for sorting
             updatedAt: '$updatedAt', // Include updatedAt for reference
+            tags: '$tags',
           },
         },
       },
@@ -559,7 +558,9 @@ export class AttendeesService {
 
     const [result, totalResult] = await Promise.all([
       this.attendeeModel.aggregate(pipeline).exec(),
-      this.attendeeModel.aggregate([...basePipeline, { $count: 'total' }]).exec()
+      this.attendeeModel
+        .aggregate([...basePipeline, { $count: 'total' }])
+        .exec(),
     ]);
     const total = totalResult[0]?.total || 0;
 
@@ -704,14 +705,23 @@ export class AttendeesService {
   async updateAttendeeAssign(
     id: string,
     assignedTo: string,
+    isTemporary: boolean = false,
   ): Promise<Attendee | null> {
     return await this.attendeeModel.findByIdAndUpdate(
       id,
       {
         $set: {
-          assignedTo: Types.ObjectId.isValid(assignedTo)
-            ? new Types.ObjectId(assignedTo)
-            : null,
+          ...(isTemporary
+            ? {
+                tempAssignedTo: Types.ObjectId.isValid(assignedTo)
+                  ? new Types.ObjectId(assignedTo)
+                  : null,
+              }
+            : {
+                assignedTo: Types.ObjectId.isValid(assignedTo)
+                  ? new Types.ObjectId(assignedTo)
+                  : null,
+              }),
         },
       },
       { new: true },
@@ -930,7 +940,6 @@ export class AttendeesService {
       },
       {
         $group: {
-
           _id: '$email',
           adminId: {
             $first: '$adminId',

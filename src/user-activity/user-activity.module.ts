@@ -11,6 +11,7 @@ import { UsersModule } from 'src/users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 import { GetAdminIdForUserActivityMiddleware } from 'src/middlewares/getAdminIdForUserActivity.Middleware';
 import { NotificationModule } from 'src/notification/notification.module';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -28,7 +29,8 @@ import { NotificationModule } from 'src/notification/notification.module';
     NotificationModule
   ],
   controllers: [UserActivityController],
-  providers: [UserActivityService],
+  providers: [UserActivityService, ConfigService],
+  exports: [UserActivityService],
 })
 export class UserActivityModule {
   configure(consumer: MiddlewareConsumer) {

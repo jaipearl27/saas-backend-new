@@ -1,16 +1,18 @@
 // user-activity.controller.ts
 import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Post, Put, Query, Req } from '@nestjs/common';
 import { Request } from 'express';
-import { AdminId, Id } from 'src/decorators/custom.decorator';
+import { AdminId, Id, Role } from 'src/decorators/custom.decorator';
 import { CreateUserActivityDto, InactiviUserDTO } from './dto/user-activity.dto';
 import { UserActivityService } from './user-activity.service';
 import { Types } from 'mongoose';
 import { UsersService } from 'src/users/users.service';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('user-activities')
 export class UserActivityController {
   constructor(private readonly userActivityService: UserActivityService,
-    private readonly userService: UsersService
+    private readonly userService: UsersService,
+    private readonly configService: ConfigService
   ) {}
 
   @Post()
@@ -59,15 +61,26 @@ export class UserActivityController {
   }
 
   @Get()
-  getUserActivities(
+  async getUserActivities(
     @Req() req: Request,
     @AdminId() adminId: string,
+    @Role() role: string,
     @Id() id: string,
+    @Query('email') email: string,
   ) {
     console.log('Admin ID:', adminId);
     console.log('ID:', id);
+    let admin = "";
+    const clientRoleId = this.configService.get('appRoles').ADMIN;
 
-    return { message: 'User activities retrieved', adminId, id };
+    if(role === clientRoleId){
+      admin = id;
+    }else{
+      admin = adminId;
+    }
+    const activities = await this.userActivityService.getuserActivitiesByAdmin(admin, email);
+
+    return { message: 'User activities retrieved', data: activities };
   }
 
   @Put('inactive')

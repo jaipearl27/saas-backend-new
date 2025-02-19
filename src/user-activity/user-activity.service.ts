@@ -30,6 +30,7 @@ export class UserActivityService {
     }
 
     return this.userActivityModel.create({
+      ...dto,
       user: new Types.ObjectId(user),
       adminId: new Types.ObjectId(adminId),
       action: dto.action,
@@ -83,5 +84,17 @@ export class UserActivityService {
     await this.notificationService.createNotification(notification);
 
     return [];
+  }
+
+  async getuserActivitiesByAdmin(adminId: string, email?: string) {
+    const activities = await this.userActivityModel.find({
+      $or: [
+        { adminId: new Types.ObjectId(adminId) },
+        { user: new Types.ObjectId(adminId) },
+      ] ,
+      ...(email ? { item: email } : {}),
+    });
+
+    return activities;
   }
 }

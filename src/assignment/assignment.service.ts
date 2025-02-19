@@ -100,6 +100,7 @@ export class AssignmentService {
           timeInSession: '$attendee.timeInSession',
           webinar: '$attendee.webinar',
           createdAt: '$createdAt',
+          tags: '$attendee.tags',
         },
       },
       {
@@ -309,6 +310,77 @@ export class AssignmentService {
           }
         }
       } else {
+        const taggedEmployee = assignedEmployees.find((employee) =>
+          employee.tags.includes(tag),
+        );
+        if (
+          taggedEmployee &&
+          taggedEmployee.role.toString() ===
+            this.configService.get('appRoles').EMPLOYEE_REMINDER &&
+          taggedEmployee.dailyContactLimit > taggedEmployee.dailyContactCount
+        ) {
+          const existingAssignment = await this.assignmentsModel.findOne({
+            adminId: adminId,
+            webinar: new Types.ObjectId(`${webinarId}`),
+            attendee: attendeeId,
+            user: taggedEmployee._id,
+            recordType: 'preWebinar',
+          });
+          if (existingAssignment) {
+          } else {
+            const newAssignment = await this.assignmentsModel.create({
+              adminId: adminId,
+              webinar: new Types.ObjectId(webinarId),
+              attendee: attendeeId,
+              user: taggedEmployee._id,
+              recordType: 'preWebinar',
+            });
+
+            if (!newAssignment) {
+              throw new InternalServerErrorException(
+                'Failed to create assignment.',
+              );
+            }
+
+            // Increment the employee's daily contact count
+            const isIncremented = await this.userService.incrementCount(
+              taggedEmployee._id.toString(),
+            );
+
+            if (!isIncremented) {
+              throw new InternalServerErrorException(
+                'Failed to update employee contact count.',
+              );
+            }
+
+            const updatedAttendee =
+              await this.attendeeService.updateAttendeeAssign(
+                attendeeId.toString(),
+                taggedEmployee._id.toString(),
+                true,
+              );
+            if (!updatedAttendee) {
+              throw new InternalServerErrorException(
+                'Failed to update employee contact count.',
+              );
+            }
+
+            const notification = {
+              recipient: taggedEmployee._id.toString(),
+              title: 'New Task Assigned',
+              message: `You have been assigned a new task. Please check your task list for details.`,
+              type: notificationType.INFO,
+              actionType: notificationActionType.ASSIGNMENT,
+              metadata: {
+                webinarId,
+                attendeeId: attendeeId.toString(),
+                assignmentId: newAssignment._id.toString(),
+              },
+            };
+
+            await this.notificationService.createNotification(notification);
+          }
+        }
       }
     }
 
@@ -368,6 +440,7 @@ export class AssignmentService {
         new Types.ObjectId(adminId),
         newTags,
         webinar.productIds,
+        webinar.assignedEmployees,
       );
 
       await existingAttendee.save();
@@ -442,6 +515,7 @@ export class AssignmentService {
       new Types.ObjectId(adminId),
       newAttendee.tags,
       webinar.productIds,
+      webinar.assignedEmployees,
     );
 
     if (!executeFurther) {
