@@ -86,15 +86,34 @@ export class UserActivityService {
     return [];
   }
 
-  async getuserActivitiesByAdmin(adminId: string, email?: string) {
-    const activities = await this.userActivityModel.find({
+  async getUserActivitiesByAdmin(adminId: string, email?: string, page:number=1, limit:number=10) {
+    const skip = (page - 1) * limit;
+    const query: any = {
       $or: [
         { adminId: new Types.ObjectId(adminId) },
         { user: new Types.ObjectId(adminId) },
-      ] ,
+      ],
       ...(email ? { item: email } : {}),
-    });
+    };
 
-    return activities;
+    const activities = await this.userActivityModel
+      .find(query)
+      .populate('user', 'userName email')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const totalLogs = await this.userActivityModel.countDocuments(query);
+
+    return {
+      data: activities,
+      pagination: {
+        totalLogs,
+        totalPages: Math.ceil(totalLogs / limit),
+        currentPage: page,
+        pageSize: activities.length,
+      },
+      message: 'User activities retrieved',
+    };
   }
 }

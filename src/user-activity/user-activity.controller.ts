@@ -67,6 +67,8 @@ export class UserActivityController {
     @Role() role: string,
     @Id() id: string,
     @Query('email') email: string,
+    @Query('page') page: string,
+    @Query('limit') limit: string,
   ) {
     console.log('Admin ID:', adminId);
     console.log('ID:', id);
@@ -78,9 +80,7 @@ export class UserActivityController {
     }else{
       admin = adminId;
     }
-    const activities = await this.userActivityService.getuserActivitiesByAdmin(admin, email);
-
-    return { message: 'User activities retrieved', data: activities };
+    return await this.userActivityService.getUserActivitiesByAdmin(admin, email, parseInt(page) || 1, parseInt(limit) || 10);
   }
 
   @Put('inactive')

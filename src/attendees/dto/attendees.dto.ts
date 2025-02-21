@@ -174,6 +174,17 @@ export class AttendeesFilterDto {
   @IsOptional()
   @IsString()
   status?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsMongoId({each: true})
+  enrollments?: string[];
+
 }
 
 export class GroupedAttendeesFilterDto {
