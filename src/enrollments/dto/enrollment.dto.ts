@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsMongoId, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateEnrollmentDto {
   @IsString()
@@ -35,4 +35,25 @@ export class GetEnrollmentsByProductLevelDto {
   @IsString()
   @IsNotEmpty()
   productLevel: string;
+}
+
+export class EnrollmentsByLevelOrProductDTO{
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  productLevel?: string;
+
+  @IsOptional()
+  @IsMongoId()
+  productId?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  page?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  limit?: string;
 }

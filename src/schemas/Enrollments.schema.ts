@@ -24,6 +24,14 @@ export class Enrollment extends Document {
   product: Types.ObjectId;
 
   @Prop({
+    type: Number,
+    min:0,
+    default: 0,
+    required: [true, 'Product price is required'],
+  })
+  price: number;
+
+  @Prop({
     type: Types.ObjectId,
     ref: 'User',
     required: [true, 'Admin Id is required'],
