@@ -46,8 +46,18 @@ export class NotificationService {
         $match: {
           recipient: new Types.ObjectId(`${recipient}`),
           actionType: important
-            ? { $ne: notificationActionType.ATTENDEE_REGISTRATION }
-            : notificationActionType.ATTENDEE_REGISTRATION,
+            ? {
+                $nin: [
+                  notificationActionType.ATTENDEE_REGISTRATION,
+                  notificationActionType.ASSIGNMENT,
+                ],
+              }
+            : {
+                $in: [
+                  notificationActionType.ATTENDEE_REGISTRATION,
+                  notificationActionType.ASSIGNMENT,
+                ],
+              },
         },
       },
       {
@@ -98,10 +108,23 @@ export class NotificationService {
     return { notifications: [], totalPages: 1, unseenCount: 0, page: 1 };
   }
 
-  async resetUserUnseenCount(recipient: string) {
+  async resetUserUnseenCount(recipient: string, important: boolean) {
     return await this.notificationModel.updateMany(
       {
         recipient: new Types.ObjectId(`${recipient}`),
+        actionType: important
+          ? {
+              $nin: [
+                notificationActionType.ATTENDEE_REGISTRATION,
+                notificationActionType.ASSIGNMENT,
+              ],
+            }
+          : {
+              $in: [
+                notificationActionType.ATTENDEE_REGISTRATION,
+                notificationActionType.ASSIGNMENT,
+              ],
+            },
         isSeen: false,
       },
       {

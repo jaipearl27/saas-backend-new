@@ -311,7 +311,7 @@ export class AssignmentService {
         }
       } else {
         const taggedEmployee = assignedEmployees.find((employee) =>
-          employee.tags.includes(tag),
+          Array.isArray(employee.tags) && employee.tags.includes(tag),
         );
         if (
           taggedEmployee &&

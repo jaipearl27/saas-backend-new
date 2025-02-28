@@ -72,16 +72,22 @@ export class AlarmService {
         );
         const user = alarmDetails?.user;
         let subscription: any = {};
-        if (String(user?.role) === this.configService.get('appRoles')['ADMIN']) {
-          subscription = await this.subscriptionService.getSubscription(user?._id);
+        if (
+          String(user?.role) === this.configService.get('appRoles')['ADMIN']
+        ) {
+          subscription = await this.subscriptionService.getSubscription(
+            user?._id,
+          );
         } else {
-          subscription = await this.subscriptionService.getSubscription(user?.adminId);
+          subscription = await this.subscriptionService.getSubscription(
+            user?.adminId,
+          );
         }
-        console.log("usvcripton", subscription)
-  
+        console.log('usvcripton', subscription);
+
         const whatsappNotificationOnAlarms =
           subscription?.plan?.whatsappNotificationOnAlarms;
-          console.log("whtsapp",whatsappNotificationOnAlarms)
+        console.log('whtsapp', whatsappNotificationOnAlarms);
         if (alarmDetails?.user?.phone && whatsappNotificationOnAlarms) {
           const msgData = {
             phone: alarmDetails.user.phone,
@@ -115,15 +121,19 @@ export class AlarmService {
       const user = alarmDetails?.user;
       let subscription: any = {};
       if (String(user?.role) === this.configService.get('appRoles')['ADMIN']) {
-        subscription = await this.subscriptionService.getSubscription(user?._id);
+        subscription = await this.subscriptionService.getSubscription(
+          user?._id,
+        );
       } else {
-        subscription = await this.subscriptionService.getSubscription(user?.adminId);
+        subscription = await this.subscriptionService.getSubscription(
+          user?.adminId,
+        );
       }
-      console.log("usvcripton", subscription)
+      console.log('usvcripton', subscription);
 
       const whatsappNotificationOnAlarms =
         subscription?.plan?.whatsappNotificationOnAlarms;
-        console.log("whtsapp",whatsappNotificationOnAlarms)
+      console.log('whtsapp', whatsappNotificationOnAlarms);
       if (alarmDetails?.user?.phone && whatsappNotificationOnAlarms) {
         const msgData = {
           phone: alarmDetails.user.phone,
@@ -151,7 +161,11 @@ export class AlarmService {
   }
 
   async deleteAlarm(id: string): Promise<any> {
-    const alarm = await this.alarmsModel.findByIdAndDelete(id);
+    const alarm = await this.alarmsModel.findByIdAndUpdate(
+      id,
+      { $set: { isActive: false } },
+      { new: true },
+    );
     return alarm;
   }
 
@@ -159,6 +173,7 @@ export class AlarmService {
     const alarm = await this.alarmsModel.findOne({
       user: new Types.ObjectId(`${user}`),
       email: email,
+      isActive: true,
     });
     return alarm;
   }
@@ -192,17 +207,23 @@ export class AlarmService {
         console.log('====alarm stopped===');
       }
     }
-    const deleteAlarm = await this.alarmsModel.findOneAndDelete({
-      _id: new Types.ObjectId(`${alarmId}`),
-      user: new Types.ObjectId(`${id}`),
-    });
+    const deleteAlarm = await this.alarmsModel.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(`${alarmId}`),
+        user: new Types.ObjectId(`${id}`),
+      },
+      { $set: { isActive: false } },
+      { new: true },
+    );
 
     return deleteAlarm;
   }
 
   async onModuleInit(): Promise<void> {
     console.log("===================I'm running bitches===================");
-    const alarms: any[] = await this.alarmsModel.find({});
+    const alarms: any[] = await this.alarmsModel.find({
+      isActive: true,
+    });
 
     if (Array.isArray(alarms) && alarms.length > 0) {
       alarms.forEach(async (alarm) => {
@@ -224,6 +245,7 @@ export class AlarmService {
     const alarms = await this.alarmsModel
       .find({
         user: new Types.ObjectId(`${userId}`),
+        isActive: true,
         date: {
           $gte: startDate,
           $lt: endDate,

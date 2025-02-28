@@ -31,6 +31,12 @@ export class Alarm extends Document {
   date: Date; //details
 
   @Prop({
+    type: Boolean,
+    default: true
+  })
+  isActive: boolean; 
+
+  @Prop({
     type: String,
     required: false,
     maxlength: 600,

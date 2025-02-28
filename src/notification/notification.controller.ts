@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { Notification } from 'src/schemas/notification.schema';
 import { Id } from 'src/decorators/custom.decorator';
@@ -24,7 +24,10 @@ export class NotificationController {
   }
 
   @Patch('/unseen')
-  async unseenNotification(@Id() recipient: string) {
-    return await this.notificationService.resetUserUnseenCount(recipient);
+  async unseenNotification(
+    @Id() recipient: string,
+    @Body('important') important: boolean,
+  ) {
+    return await this.notificationService.resetUserUnseenCount(recipient, important);
   }
 }
