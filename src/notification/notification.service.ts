@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
-import { Notification } from 'src/schemas/notification.schema';
+import {
+  Notification,
+  notificationActionType,
+} from 'src/schemas/notification.schema';
 import { CreateNotificationDto } from './dto/notification.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { WebsocketGateway } from 'src/websocket/websocket.gateway';
@@ -34,6 +37,7 @@ export class NotificationService {
     recipient: string,
     page: number = 1,
     limit: number = 10,
+    important: boolean = true,
   ): Promise<any> {
     const skip = (page - 1) * limit;
 
@@ -41,6 +45,9 @@ export class NotificationService {
       {
         $match: {
           recipient: new Types.ObjectId(`${recipient}`),
+          actionType: important
+            ? { $ne: notificationActionType.ATTENDEE_REGISTRATION }
+            : notificationActionType.ATTENDEE_REGISTRATION,
         },
       },
       {

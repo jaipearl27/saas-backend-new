@@ -367,8 +367,8 @@ export class AttendeesService {
       {
         $match: {
           adminId: new Types.ObjectId(AdminId),
-          isAttended: isAttended,
           webinar: new Types.ObjectId(webinarId),
+          isAttended: isAttended,
           ...(filters.isAssigned &&
             (filters.isAssigned === 'true'
               ? { assignedTo: { $ne: null } }
@@ -608,10 +608,10 @@ export class AttendeesService {
                       $expr: {
                         $and: [
                           {
-                            $eq: ['$attendee', '$$tempMail'],
+                            $eq: ['$adminId', new Types.ObjectId(`${AdminId}`)],
                           },
                           {
-                            $eq: ['$adminId', new Types.ObjectId(`${AdminId}`)],
+                            $eq: ['$attendee', '$$tempMail'],
                           },
                         ],
                       },

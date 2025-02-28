@@ -95,6 +95,24 @@ export class Plans extends Document {
   })
   sortOrder: number;
 
+  @Prop({ type: Boolean, default: false })
+  whatsappNotificationOnAlarms: boolean;
+
+  @Prop({ type: Boolean, default: false })
+  employeeInactivity: boolean;
+
+  @Prop({ type: Boolean, default: false })
+  employeeRealTimeStatusUpdate: boolean;
+
+  @Prop({ type: Boolean, default: false })
+  calendarFeatures: boolean;
+
+  @Prop({ type: Boolean, default: false })
+  setAlarm: boolean;
+
+  @Prop({ type: Boolean, default: false })
+  productRevenueMetrics: boolean;
+
   @Prop({
     type: Map,
     of: new mongoose.Schema({

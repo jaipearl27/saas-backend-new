@@ -13,6 +13,8 @@ import { Alarm } from 'src/schemas/Alarm.schema';
 import { Model, Types } from 'mongoose';
 import { WebsocketGateway } from 'src/websocket/websocket.gateway';
 import { WhatsappService } from 'src/whatsapp/whatsapp.service';
+import { SubscriptionService } from 'src/subscription/subscription.service';
+import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class AlarmService {
   constructor(
@@ -22,6 +24,8 @@ export class AlarmService {
     private readonly websocketGateway: WebsocketGateway,
     @Inject(forwardRef(() => WhatsappService))
     private readonly whatsappService: WhatsappService,
+    private readonly subscriptionService: SubscriptionService,
+    private readonly configService: ConfigService,
   ) {}
 
   private readonly logger = new Logger(AlarmService.name);
@@ -66,8 +70,19 @@ export class AlarmService {
         this.logger.warn(
           `reminder for the alarm was set (${Date.now()}) for job ${reminderId} to run!`,
         );
-
-        if (alarmDetails?.user?.phone) {
+        const user = alarmDetails?.user;
+        let subscription: any = {};
+        if (String(user?.role) === this.configService.get('appRoles')['ADMIN']) {
+          subscription = await this.subscriptionService.getSubscription(user?._id);
+        } else {
+          subscription = await this.subscriptionService.getSubscription(user?.adminId);
+        }
+        console.log("usvcripton", subscription)
+  
+        const whatsappNotificationOnAlarms =
+          subscription?.plan?.whatsappNotificationOnAlarms;
+          console.log("whtsapp",whatsappNotificationOnAlarms)
+        if (alarmDetails?.user?.phone && whatsappNotificationOnAlarms) {
           const msgData = {
             phone: alarmDetails.user.phone,
             attendeeEmail: alarmDetails.email,
@@ -97,7 +112,19 @@ export class AlarmService {
         message: '!!! Alarm played !!!',
         deleteResult,
       });
-      if (alarmDetails?.user?.phone) {
+      const user = alarmDetails?.user;
+      let subscription: any = {};
+      if (String(user?.role) === this.configService.get('appRoles')['ADMIN']) {
+        subscription = await this.subscriptionService.getSubscription(user?._id);
+      } else {
+        subscription = await this.subscriptionService.getSubscription(user?.adminId);
+      }
+      console.log("usvcripton", subscription)
+
+      const whatsappNotificationOnAlarms =
+        subscription?.plan?.whatsappNotificationOnAlarms;
+        console.log("whtsapp",whatsappNotificationOnAlarms)
+      if (alarmDetails?.user?.phone && whatsappNotificationOnAlarms) {
         const msgData = {
           phone: alarmDetails.user.phone,
           attendeeEmail: alarmDetails.email,

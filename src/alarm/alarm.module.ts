@@ -12,6 +12,8 @@ import { Alarm, AlarmSchema } from 'src/schemas/Alarm.schema';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { WebsocketGateway } from 'src/websocket/websocket.gateway';
 import { WhatsappModule } from 'src/whatsapp/whatsapp.module';
+import { SubscriptionModule } from 'src/subscription/subscription.module';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -24,9 +26,10 @@ import { WhatsappModule } from 'src/whatsapp/whatsapp.module';
     ]),
 
     forwardRef(() => AlarmModule),
+    SubscriptionModule
   ],
   controllers: [AlarmController],
-  providers: [AlarmService, WebsocketGateway, SchedulerRegistry],
+  providers: [AlarmService, WebsocketGateway, SchedulerRegistry, ConfigService],
   exports: [AlarmService],
 })
 export class AlarmModule {

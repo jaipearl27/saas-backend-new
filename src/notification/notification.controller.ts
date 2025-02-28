@@ -7,20 +7,24 @@ import { Id } from 'src/decorators/custom.decorator';
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
-  @Get('/:recipient') 
+  @Get('/:recipient')
   async getNotification(
-    @Param('recipient') recipient: string,@Query() query: { page?: string; limit?: string },
+    @Param('recipient') recipient: string,
+    @Query() query: { page?: string; limit?: string; important: string },
   ): Promise<Notification[]> {
     const page = Number(query.page) ? Number(query.page) : 1;
     const limit = Number(query.limit) ? Number(query.limit) : 10;
 
-    return await this.notificationService.getUsernotifications(recipient, page, limit);
+    return await this.notificationService.getUsernotifications(
+      recipient,
+      page,
+      limit,
+      query.important === 'true',
+    );
   }
 
   @Patch('/unseen')
-  async unseenNotification(
-    @Id() recipient: string
-  ) {
+  async unseenNotification(@Id() recipient: string) {
     return await this.notificationService.resetUserUnseenCount(recipient);
   }
 }
