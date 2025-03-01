@@ -88,14 +88,22 @@ export class AlarmService {
         const whatsappNotificationOnAlarms =
           subscription?.plan?.whatsappNotificationOnAlarms;
         console.log('whtsapp', whatsappNotificationOnAlarms);
+        const msgData = {
+          phone: alarmDetails.user.phone,
+          attendeeEmail: alarmDetails.email,
+          userName: alarmDetails.user.userName,
+          note: alarmDetails.note,
+        };
         if (alarmDetails?.user?.phone && whatsappNotificationOnAlarms) {
-          const msgData = {
-            phone: alarmDetails.user.phone,
-            attendeeEmail: alarmDetails.email,
-            userName: alarmDetails.user.userName,
-            note: alarmDetails.note,
-          };
           this.whatsappService.sendReminderMsg(msgData);
+        }
+        console.log('setting secondary alarm', createAlarmDto.secondaryNumber);
+
+        if (createAlarmDto.secondaryNumber && whatsappNotificationOnAlarms) {
+          this.whatsappService.sendReminderMsg({
+            ...msgData,
+            phone: createAlarmDto.secondaryNumber,
+          });
         }
       });
 
@@ -245,13 +253,12 @@ export class AlarmService {
     const alarms = await this.alarmsModel
       .find({
         user: new Types.ObjectId(`${userId}`),
-        isActive: true,
         date: {
           $gte: startDate,
           $lt: endDate,
         },
       })
-      .select('date email note _id attendeeId')
+      .select('date email note _id attendeeId isActive')
       .exec();
 
     return alarms;
