@@ -32,6 +32,7 @@ import {
 import { NotificationService } from 'src/notification/notification.service';
 import { WebinarService } from 'src/webinar/webinar.service';
 import { SubscriptionService } from 'src/subscription/subscription.service';
+import { WebsocketGateway } from 'src/websocket/websocket.gateway';
 
 @Injectable()
 export class AttendeesService {
@@ -47,11 +48,23 @@ export class AttendeesService {
     private readonly webinarService: WebinarService,
     @Inject(forwardRef(() => SubscriptionService))
     private readonly subscriptionService: SubscriptionService,
+    private readonly websocketGateway: WebsocketGateway,
   ) {}
 
   async addAttendees(attendees: [CreateAttendeeDto]): Promise<any> {
     const result = await this.attendeeModel.create(attendees);
     return result;
+  }
+
+  emitProgress(socketId: null | string, value: number) {
+    if (socketId) {
+      console.log('before - > ', socketId);
+
+      this.websocketGateway.server.to(socketId).emit('import-export', {
+        actionType: 'import',
+        value: value,
+      });
+    }
   }
 
   async addPostAttendees(
@@ -72,6 +85,9 @@ export class AttendeesService {
     }
     let tempAttendees = attendees;
 
+    const socketId = this.websocketGateway.activeUsers.get(String(adminId));
+    this.emitProgress(socketId, 10);
+
     let attendeesForUpdate: CreateAttendeeDto[] = [];
     if (!isAttended || (postWebinarExists && isAttended)) {
       const prevAttendees = await this.attendeeModel.find({
@@ -79,6 +95,7 @@ export class AttendeesService {
         adminId: new Types.ObjectId(`${adminId}`),
         isAttended: isAttended,
       });
+      this.emitProgress(socketId, 15);
 
       if (prevAttendees.length > 0) {
         const prevAttendeesMap = new Map(
@@ -109,6 +126,7 @@ export class AttendeesService {
           new Types.ObjectId(`${webinar}`),
           attendees.map((a) => a.email),
         );
+      this.emitProgress(socketId, 20);
 
       if (unattendedAttendees.length > 0) {
         tempAttendees = [...tempAttendees, ...unattendedAttendees];
@@ -119,6 +137,7 @@ export class AttendeesService {
       tempAttendees.map((a) => a.email),
       new Types.ObjectId(`${adminId}`),
     );
+    this.emitProgress(socketId, 25);
     const uniqueEmailsCount = tempAttendees.length - nonUniqueEmailCount;
 
     if (uniqueEmailsCount > contactCountDiff) {
@@ -126,11 +145,13 @@ export class AttendeesService {
     }
 
     const attendeesWithoutPhone = tempAttendees.filter((a) => !a.phone);
+
     if (attendeesWithoutPhone.length > 0) {
       const phoneNumbers = await this.getAttendeePhoneNumbers(
         new Types.ObjectId(`${adminId}`),
         attendeesWithoutPhone.map((a) => a.email),
       );
+      this.emitProgress(socketId, 30);
 
       const phoneMap = new Map(phoneNumbers.map((a) => [a._id, a.phone]));
 
@@ -145,9 +166,16 @@ export class AttendeesService {
     try {
       await session.withTransaction(async () => {
         if (attendeesForUpdate.length > 0) {
+          const totalAttendees = attendeesForUpdate.length;
+
           await Promise.all(
-            attendeesForUpdate.map((attendee) =>
-              this.attendeeModel.updateOne(
+            attendeesForUpdate.map(async (attendee, index) => {
+              let progress = Math.floor(
+                30 + ((70 - 30) * (index + 1)) / totalAttendees,
+              );
+
+
+              await this.attendeeModel.updateOne(
                 { _id: attendee.attendeeId },
                 {
                   $set: {
@@ -160,8 +188,11 @@ export class AttendeesService {
                   },
                 },
                 { session },
-              ),
-            ),
+              );
+              console.log('index', index)
+              this.emitProgress(socketId, progress);
+
+            }),
           );
         }
 
@@ -231,6 +262,7 @@ export class AttendeesService {
             empData.assignMents,
             { session },
           );
+
           const updatedAttendees = await this.attendeeModel.updateMany(
             { _id: { $in: empData.attendees.map((a) => a._id) } },
             { $set: { assignedTo: new Types.ObjectId(`${empId}`) } },
@@ -262,11 +294,13 @@ export class AttendeesService {
 
           this.notificationService.createNotification(notification);
         }
+        this.emitProgress(socketId, 90);
 
         await this.subscriptionService.incrementContactCount(
           subscription._id.toString(),
           uniqueEmailsCount,
         );
+        this.emitProgress(socketId, 100);
       });
     } catch (error) {
       throw error;
@@ -1202,64 +1236,65 @@ export class AttendeesService {
           ]
         : []),
 
-        ...(filters?.enrollments?.length
-          ? [
-              {
-                $lookup: {
-                  from: 'enrollments',
-                  let: { tempMail: '$_id' },
-                  pipeline: [
-                    {
-                      $match: {
-                        $expr: {
-                          $and: [
-                            {
-                              $eq: ['$attendee', '$$tempMail'],
-                            },
-                            {
-                              $eq: ['$adminId', new Types.ObjectId(`${adminId}`)],
-                            },
-                          ],
-                        },
+      ...(filters?.enrollments?.length
+        ? [
+            {
+              $lookup: {
+                from: 'enrollments',
+                let: { tempMail: '$_id' },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $and: [
+                          {
+                            $eq: ['$attendee', '$$tempMail'],
+                          },
+                          {
+                            $eq: ['$adminId', new Types.ObjectId(`${adminId}`)],
+                          },
+                        ],
                       },
                     },
-                    {
-                      $group: {
-                        _id: '$product',
-                        count: {
-                          $sum: 1,
-                        },
-                      },
-                    },
-                    {
-                      $lookup: {
-                        from: 'products',
-                        localField: '_id',
-                        foreignField: '_id',
-                        as: 'product',
-                      },
-                    },
-                    {
-                      $project: {
-                        _id: 1,
-                        count: 1,
-                        productName: {
-                          $arrayElemAt: ['$product.name', 0],
-                        },
-                      },
-                    },
-                  ],
-                  as: 'enrollments',
-                },
-              },
-              {
-                $match: {
-                  'enrollments._id': {
-                    $in: filters.enrollments.map((id) => new Types.ObjectId(id)),
                   },
+                  {
+                    $group: {
+                      _id: '$product',
+                      count: {
+                        $sum: 1,
+                      },
+                    },
+                  },
+                  {
+                    $lookup: {
+                      from: 'products',
+                      localField: '_id',
+                      foreignField: '_id',
+                      as: 'product',
+                    },
+                  },
+                  {
+                    $project: {
+                      _id: 1,
+                      count: 1,
+                      productName: {
+                        $arrayElemAt: ['$product.name', 0],
+                      },
+                    },
+                  },
+                ],
+                as: 'enrollments',
+              },
+            },
+            {
+              $match: {
+                'enrollments._id': {
+                  $in: filters.enrollments.map((id) => new Types.ObjectId(id)),
                 },
               },
-            ] : []),
+            },
+          ]
+        : []),
     ];
 
     const countPipeline: PipelineStage[] = [
@@ -1433,7 +1468,7 @@ export class AttendeesService {
         },
       },
     ];
-    console.log(mainPipeline)
+    console.log(mainPipeline);
 
     const [countResult, mainResult] = await Promise.all([
       this.attendeeModel.aggregate(countPipeline).exec(),
