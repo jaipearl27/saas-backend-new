@@ -19,6 +19,7 @@ import { AuthTokenMiddleware } from 'src/middlewares/authToken.Middleware';
 import { GetAdminIdForUserActivityMiddleware } from 'src/middlewares/getAdminIdForUserActivity.Middleware';
 import { NotificationModule } from 'src/notification/notification.module';
 import { TagsModule } from 'src/tags/tags.module';
+import { EnrollmentsModule } from 'src/enrollments/enrollments.module';
 
 @Module({
   imports: [
@@ -42,7 +43,8 @@ import { TagsModule } from 'src/tags/tags.module';
       },
     ]),
     NotificationModule,
-    TagsModule
+    TagsModule,
+    EnrollmentsModule,
   ],
   providers: [AssignmentService, WebinarService],
   controllers: [AssignmentController],

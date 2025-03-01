@@ -6,6 +6,10 @@ export class RevenueDto {
   
   @IsDateString()
   end: string;
+
+  @IsOptional()
+  @IsString()
+  limit?: string;
 }
 
 export class RevenueTrendDto extends RevenueDto {

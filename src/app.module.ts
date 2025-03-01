@@ -46,6 +46,7 @@ import { NotificationModule } from './notification/notification.module';
 import { LocationModule } from './location/location.module';
 import { RevenueModule } from './revenue/revenue.module';
 import { TagsModule } from './tags/tags.module';
+import { ProductRevenueModule } from './product-revenue/product-revenue.module';
 
 @Module({
   imports: [
@@ -110,6 +111,7 @@ import { TagsModule } from './tags/tags.module';
     LocationModule,
     RevenueModule,
     TagsModule,
+    ProductRevenueModule,
   ],
   controllers: [AppController],
   providers: [AppService, CalendarService],

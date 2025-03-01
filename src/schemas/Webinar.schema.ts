@@ -31,11 +31,10 @@ export class Webinar extends Document {
   assignedEmployees: Types.ObjectId[]; // Assigned Employees
 
   @Prop({
-    type: Types.ObjectId,
-    ref: Products.name,
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: Products.name }],
     required: false,
   })
-  productId: Types.ObjectId;
+  productIds: Types.ObjectId[];
 }
 
 export const WebinarSchema = SchemaFactory.createForClass(Webinar);
@@ -46,8 +45,10 @@ WebinarSchema.pre('save', function (next) {
     this.adminId = new Types.ObjectId(`${this.adminId}`);
   }
 
-  if (typeof this.productId === 'string') {
-    this.productId = new Types.ObjectId(`${this.productId}`);
+  if (Array.isArray(this.productIds)) {
+    this.productIds = this.productIds.map((productId) =>
+      typeof productId === 'string' ? new Types.ObjectId(`${productId}`) : productId
+    );
   }
 
   if (Array.isArray(this.assignedEmployees)) {

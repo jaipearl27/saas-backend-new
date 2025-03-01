@@ -13,6 +13,8 @@ import { Alarm } from 'src/schemas/Alarm.schema';
 import { Model, Types } from 'mongoose';
 import { WebsocketGateway } from 'src/websocket/websocket.gateway';
 import { WhatsappService } from 'src/whatsapp/whatsapp.service';
+import { SubscriptionService } from 'src/subscription/subscription.service';
+import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class AlarmService {
   constructor(
@@ -22,6 +24,8 @@ export class AlarmService {
     private readonly websocketGateway: WebsocketGateway,
     @Inject(forwardRef(() => WhatsappService))
     private readonly whatsappService: WhatsappService,
+    private readonly subscriptionService: SubscriptionService,
+    private readonly configService: ConfigService,
   ) {}
 
   private readonly logger = new Logger(AlarmService.name);
@@ -66,15 +70,40 @@ export class AlarmService {
         this.logger.warn(
           `reminder for the alarm was set (${Date.now()}) for job ${reminderId} to run!`,
         );
+        const user = alarmDetails?.user;
+        let subscription: any = {};
+        if (
+          String(user?.role) === this.configService.get('appRoles')['ADMIN']
+        ) {
+          subscription = await this.subscriptionService.getSubscription(
+            user?._id,
+          );
+        } else {
+          subscription = await this.subscriptionService.getSubscription(
+            user?.adminId,
+          );
+        }
+        console.log('usvcripton', subscription);
 
-        if (alarmDetails?.user?.phone) {
-          const msgData = {
-            phone: alarmDetails.user.phone,
-            attendeeEmail: alarmDetails.email,
-            userName: alarmDetails.user.userName,
-            note: alarmDetails.note,
-          };
+        const whatsappNotificationOnAlarms =
+          subscription?.plan?.whatsappNotificationOnAlarms;
+        console.log('whtsapp', whatsappNotificationOnAlarms);
+        const msgData = {
+          phone: alarmDetails.user.phone,
+          attendeeEmail: alarmDetails.email,
+          userName: alarmDetails.user.userName,
+          note: alarmDetails.note,
+        };
+        if (alarmDetails?.user?.phone && whatsappNotificationOnAlarms) {
           this.whatsappService.sendReminderMsg(msgData);
+        }
+        console.log('setting secondary alarm', createAlarmDto.secondaryNumber);
+
+        if (createAlarmDto.secondaryNumber && whatsappNotificationOnAlarms) {
+          this.whatsappService.sendReminderMsg({
+            ...msgData,
+            phone: createAlarmDto.secondaryNumber,
+          });
         }
       });
 
@@ -97,7 +126,23 @@ export class AlarmService {
         message: '!!! Alarm played !!!',
         deleteResult,
       });
-      if (alarmDetails?.user?.phone) {
+      const user = alarmDetails?.user;
+      let subscription: any = {};
+      if (String(user?.role) === this.configService.get('appRoles')['ADMIN']) {
+        subscription = await this.subscriptionService.getSubscription(
+          user?._id,
+        );
+      } else {
+        subscription = await this.subscriptionService.getSubscription(
+          user?.adminId,
+        );
+      }
+      console.log('usvcripton', subscription);
+
+      const whatsappNotificationOnAlarms =
+        subscription?.plan?.whatsappNotificationOnAlarms;
+      console.log('whtsapp', whatsappNotificationOnAlarms);
+      if (alarmDetails?.user?.phone && whatsappNotificationOnAlarms) {
         const msgData = {
           phone: alarmDetails.user.phone,
           attendeeEmail: alarmDetails.email,
@@ -124,7 +169,11 @@ export class AlarmService {
   }
 
   async deleteAlarm(id: string): Promise<any> {
-    const alarm = await this.alarmsModel.findByIdAndDelete(id);
+    const alarm = await this.alarmsModel.findByIdAndUpdate(
+      id,
+      { $set: { isActive: false } },
+      { new: true },
+    );
     return alarm;
   }
 
@@ -132,6 +181,7 @@ export class AlarmService {
     const alarm = await this.alarmsModel.findOne({
       user: new Types.ObjectId(`${user}`),
       email: email,
+      isActive: true,
     });
     return alarm;
   }
@@ -165,17 +215,23 @@ export class AlarmService {
         console.log('====alarm stopped===');
       }
     }
-    const deleteAlarm = await this.alarmsModel.findOneAndDelete({
-      _id: new Types.ObjectId(`${alarmId}`),
-      user: new Types.ObjectId(`${id}`),
-    });
+    const deleteAlarm = await this.alarmsModel.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(`${alarmId}`),
+        user: new Types.ObjectId(`${id}`),
+      },
+      { $set: { isActive: false } },
+      { new: true },
+    );
 
     return deleteAlarm;
   }
 
   async onModuleInit(): Promise<void> {
     console.log("===================I'm running bitches===================");
-    const alarms: any[] = await this.alarmsModel.find({});
+    const alarms: any[] = await this.alarmsModel.find({
+      isActive: true,
+    });
 
     if (Array.isArray(alarms) && alarms.length > 0) {
       alarms.forEach(async (alarm) => {
@@ -202,7 +258,7 @@ export class AlarmService {
           $lt: endDate,
         },
       })
-      .select('date email note _id attendeeId')
+      .select('date email note _id attendeeId isActive')
       .exec();
 
     return alarms;

@@ -36,7 +36,7 @@ export class TagsService {
 
   async getTags(
     adminId: Types.ObjectId,
-    usecase: Usecase | undefined,
+    usecase?: Usecase | undefined,
   ): Promise<Tag[]> {
     const query = { adminId };
     if (usecase) {

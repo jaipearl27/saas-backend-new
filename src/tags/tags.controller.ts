@@ -1,6 +1,6 @@
 import { Controller, Post, Body, Get, UseGuards, Query } from '@nestjs/common';
 import { CreateTagDto } from './dto/tags.dto';
-import { Id } from 'src/decorators/custom.decorator';
+import { AdminId, Id } from 'src/decorators/custom.decorator';
 import { TagsService } from './tags.service';
 import { Types } from 'mongoose';
 import { Usecase } from 'src/schemas/tags.schema';
@@ -23,7 +23,7 @@ export class TagsController {
 
   @Get()
   async getTags(
-    @Id() adminId: string,
+    @AdminId() adminId: string,
     @Query('usecase') usecase: Usecase | undefined,
   ) {
     const tags = await this.tagsService.getTags(

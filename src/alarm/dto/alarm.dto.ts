@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 
 export class CreateAlarmDto {
   @IsOptional()
@@ -21,4 +21,14 @@ export class CreateAlarmDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\+91\d{10}$/, {
+    message: 'Must start with +91 followed by 10 digits'
+  })
+  @MaxLength(13, {
+    message: 'Phone number must be 13 characters including +91'
+  })
+  secondaryNumber?: string;
 }

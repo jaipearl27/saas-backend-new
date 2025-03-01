@@ -174,6 +174,17 @@ export class AttendeesFilterDto {
   @IsOptional()
   @IsString()
   status?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsMongoId({each: true})
+  enrollments?: string[];
+
 }
 
 export class GroupedAttendeesFilterDto {
@@ -196,6 +207,19 @@ export class GroupedAttendeesFilterDto {
   @IsOptional()
   @IsObject()
   registeredWebinarCount?: RangeNumberDto;
+
+  @IsOptional()
+  @IsMongoId()
+  lastAssignedTo?: string;
+
+  @IsOptional()
+  @IsString()
+  lastStatus?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsMongoId({each: true})
+  enrollments?: string[]
 }
 
 export enum SortOrder {

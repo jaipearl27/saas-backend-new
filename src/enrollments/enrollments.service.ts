@@ -1,20 +1,39 @@
-import { Injectable, NotAcceptableException } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  NotAcceptableException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, PipelineStage, Types } from 'mongoose';
 import { Enrollment } from 'src/schemas/Enrollments.schema';
-import { CreateEnrollmentDto, UpdateEnrollmentDto } from './dto/enrollment.dto';
-import { Type } from 'class-transformer';
+import {
+  CreateEnrollmentDto,
+  EnrollmentsByLevelOrProductDTO,
+  UpdateEnrollmentDto,
+} from './dto/enrollment.dto';
+import { ProductsService } from 'src/products/products.service';
 
 @Injectable()
 export class EnrollmentsService {
   constructor(
     @InjectModel(Enrollment.name)
     private readonly enrollmentModel: Model<Enrollment>,
+    @Inject(forwardRef(() => ProductsService))
+    private readonly productsService: ProductsService,
   ) {}
 
   async createEnrollment(
     createEnrollmentDto: CreateEnrollmentDto,
   ): Promise<any> {
+    const product = await this.productsService.getProduct(
+      new Types.ObjectId(`${createEnrollmentDto.product}`),
+    );
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
     const pipeline = {
       webinar: new Types.ObjectId(`${createEnrollmentDto.webinar}`),
       attendee: createEnrollmentDto.attendee,
@@ -24,7 +43,10 @@ export class EnrollmentsService {
 
     if (isExist) throw new NotAcceptableException('Enrollment already exists');
 
-    const result = await this.enrollmentModel.create(createEnrollmentDto);
+    const result = await this.enrollmentModel.create({
+      ...createEnrollmentDto,
+      price: product.price,
+    });
     return result;
   }
 
@@ -222,7 +244,11 @@ export class EnrollmentsService {
     return result;
   }
 
-  async getEnrollmentsByProductLevel(adminId: string, email: string, productLevel: number) {
+  async getEnrollmentsByProductLevel(
+    adminId: string,
+    email: string,
+    productLevel: number,
+  ) {
     const pipeline: PipelineStage[] = [
       {
         $match: {
@@ -235,20 +261,20 @@ export class EnrollmentsService {
           from: 'products',
           localField: 'product',
           foreignField: '_id',
-          as: 'product'
-        }
+          as: 'product',
+        },
       },
       {
         $unwind: {
           path: '$product',
-        }
+        },
       },
       {
         $match: {
           $expr: {
-            $eq: ['$product.level', productLevel]
-          }
-        }
+            $eq: ['$product.level', productLevel],
+          },
+        },
       },
       {
         $lookup: {
@@ -266,7 +292,7 @@ export class EnrollmentsService {
       {
         $project: {
           _id: 1,
-          webinarName : '$webinar.webinarName',
+          webinarName: '$webinar.webinarName',
           webinarDate: '$webinar.webinarDate',
           productName: '$product.name',
           productLevel: '$product.level',
@@ -283,5 +309,110 @@ export class EnrollmentsService {
 
     const result = await this.enrollmentModel.aggregate(pipeline);
     return result;
+  }
+
+  async getEnrollmentByWebinarAndAttendee(
+    adminId: string,
+    webinar: string,
+    attendee: string,
+    product: string,
+  ) {
+    const result = await this.enrollmentModel.findOne({
+      adminId: new Types.ObjectId(`${adminId}`),
+      webinar: new Types.ObjectId(`${webinar}`),
+      attendee: attendee,
+      product: new Types.ObjectId(`${product}`),
+    });
+    return result;
+  }
+
+  async getEnrollmentsByLevelOrProduct(
+    productData: EnrollmentsByLevelOrProductDTO,
+    adminId: string,
+  ) {
+    const page = parseInt(productData.page) || 1;
+    const limit = parseInt(productData.limit) || 10;
+    const level = parseInt(productData.productLevel) || undefined;
+
+    console.log(page,limit, level, productData.productId)
+    const skip = (page - 1) * limit;
+
+    const basePipeline: PipelineStage[] = [
+      {
+        $match: {
+          adminId: new Types.ObjectId(`${adminId}`),
+        },
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'product',
+          foreignField: '_id',
+          as: 'productData',
+        },
+      },
+      { $unwind: '$productData' },
+      {
+        $match: {
+          ...(isNaN(level)
+            ? {}
+            : {
+              'productData.level': level,
+            }),
+          ...(productData?.productId
+            ? {
+                'productData._id': new Types.ObjectId(productData?.productId),
+              }
+            : {}),
+        },
+      },
+      {
+        $sort: {
+          attendee: 1
+        }
+      }
+    ];
+    const countPipeline: PipelineStage[] = [
+      ...basePipeline,
+      { $count: 'total' },
+    ];
+    const mainPipeline: PipelineStage[] = [
+      ...basePipeline,
+      {
+        $skip: skip,
+      },
+      {
+        $limit: limit,
+      },
+      {
+        $lookup: {
+          from: 'webinars',
+          localField: 'webinar',
+          foreignField: '_id',
+          as: 'webinarDetails',
+        },
+      },
+      { $unwind: '$webinarDetails' },
+      {
+        $project: {
+          attendee: 1,
+          webinarName: '$webinarDetails.webinarName',
+          productName: '$productData.name',
+          productLevel: '$productData.level',
+          createdAt: 1,
+          price: 1
+        },
+      },
+    ];
+
+    const [countResult, mainResult] = await Promise.all([
+      this.enrollmentModel.aggregate(countPipeline).exec(),
+      this.enrollmentModel.aggregate(mainPipeline).exec(),
+    ]);
+    const total = countResult[0]?.total || 0;
+    const totalPages = Math.ceil(total / limit) || 1;
+    const pagination = { page, totalPages, total };
+    console.log(pagination, limit);
+    return { data: mainResult || [], pagination };
   }
 }

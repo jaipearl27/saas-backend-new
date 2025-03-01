@@ -58,7 +58,7 @@ export class Notification extends Document {
 
 export const NotificationSchema = SchemaFactory.createForClass(Notification);
 
-NotificationSchema.index({ recipient: 1 });
+NotificationSchema.index({ recipient: 1, actionType: 1 });
 
 NotificationSchema.pre('save', function (next) {
   if (typeof this.recipient === 'string') {

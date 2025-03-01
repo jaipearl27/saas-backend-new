@@ -50,6 +50,24 @@ export class CreatePlansDto {
   @IsArray()
   @IsMongoId({ each: true })
   assignedUsers: string[];
+
+  @IsBoolean()
+  whatsappNotificationOnAlarms: boolean;
+
+  @IsBoolean()
+  employeeInactivity: boolean;
+
+  @IsBoolean()
+  employeeRealTimeStatusUpdate: boolean;
+
+  @IsBoolean()
+  calendarFeatures: boolean;
+
+  @IsBoolean()
+  productRevenueMetrics: boolean;
+
+  @IsBoolean()
+  setAlarm: boolean;
 }
 
 class PlanDTO {
@@ -73,7 +91,6 @@ export class PlanOrderDTO {
 }
 
 export class IdParamsDTO {
-  
   @IsMongoId()
   id: string;
 }

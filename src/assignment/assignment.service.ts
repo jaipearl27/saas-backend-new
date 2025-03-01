@@ -29,6 +29,8 @@ import {
   notificationType,
 } from 'src/schemas/notification.schema';
 import { TagsService } from 'src/tags/tags.service';
+import { Usecase } from 'src/schemas/tags.schema';
+import { EnrollmentsService } from 'src/enrollments/enrollments.service';
 
 @Injectable()
 export class AssignmentService {
@@ -44,6 +46,7 @@ export class AssignmentService {
     private readonly attendeeService: AttendeesService,
     private readonly userService: UsersService,
     private readonly tagsService: TagsService,
+    private readonly enrollmentService: EnrollmentsService,
   ) {}
 
   async getAssignments(
@@ -97,6 +100,7 @@ export class AssignmentService {
           timeInSession: '$attendee.timeInSession',
           webinar: '$attendee.webinar',
           createdAt: '$createdAt',
+          tags: '$attendee.tags',
         },
       },
       {
@@ -267,6 +271,122 @@ export class AssignmentService {
     return cleanedPhoneNumber;
   }
 
+  async handleTags(
+    attendeeId: Types.ObjectId,
+    attendeeEmail: string,
+    webinarId: string,
+    adminId: Types.ObjectId,
+    tags: string[],
+    assignedProducts: any[] = [],
+    assignedEmployees: any[] = [],
+  ): Promise<boolean> {
+    const existingTags = await this.tagsService.getTags(adminId);
+    const tagsUsecaseMap = existingTags.reduce((acc, tag) => {
+      acc[tag.name] = tag.usecase;
+      return acc;
+    }, {});
+
+    for (const tag of tags) {
+      if (tagsUsecaseMap[tag] === Usecase.PRODUCT) {
+        const product = assignedProducts.find((product) => product.tag === tag);
+        if (product) {
+          const existingEnrollment =
+            await this.enrollmentService.getEnrollmentByWebinarAndAttendee(
+              adminId.toString(),
+              webinarId,
+              attendeeEmail,
+              product._id,
+            );
+          if (existingEnrollment) {
+            console.log('Attendee already enrolled');
+          } else {
+            const enrollment = await this.enrollmentService.createEnrollment({
+              attendee: attendeeEmail,
+              product: product._id,
+              adminId: adminId.toString(),
+              webinar: webinarId,
+            });
+            console.log('Enrollment created');
+          }
+        }
+      } else {
+        const taggedEmployee = assignedEmployees.find((employee) =>
+          Array.isArray(employee.tags) && employee.tags.includes(tag),
+        );
+        if (
+          taggedEmployee &&
+          taggedEmployee.role.toString() ===
+            this.configService.get('appRoles').EMPLOYEE_REMINDER &&
+          taggedEmployee.dailyContactLimit > taggedEmployee.dailyContactCount
+        ) {
+          const existingAssignment = await this.assignmentsModel.findOne({
+            adminId: adminId,
+            webinar: new Types.ObjectId(`${webinarId}`),
+            attendee: attendeeId,
+            user: taggedEmployee._id,
+            recordType: 'preWebinar',
+          });
+          if (existingAssignment) {
+          } else {
+            const newAssignment = await this.assignmentsModel.create({
+              adminId: adminId,
+              webinar: new Types.ObjectId(webinarId),
+              attendee: attendeeId,
+              user: taggedEmployee._id,
+              recordType: 'preWebinar',
+            });
+
+            if (!newAssignment) {
+              throw new InternalServerErrorException(
+                'Failed to create assignment.',
+              );
+            }
+
+            // Increment the employee's daily contact count
+            const isIncremented = await this.userService.incrementCount(
+              taggedEmployee._id.toString(),
+            );
+
+            if (!isIncremented) {
+              throw new InternalServerErrorException(
+                'Failed to update employee contact count.',
+              );
+            }
+
+            const updatedAttendee =
+              await this.attendeeService.updateAttendeeAssign(
+                attendeeId.toString(),
+                taggedEmployee._id.toString(),
+                true,
+              );
+            if (!updatedAttendee) {
+              throw new InternalServerErrorException(
+                'Failed to update employee contact count.',
+              );
+            }
+
+            const notification = {
+              recipient: taggedEmployee._id.toString(),
+              title: 'New Task Assigned',
+              message: `You have been assigned a new task. Please check your task list for details.`,
+              type: notificationType.INFO,
+              actionType: notificationActionType.ASSIGNMENT,
+              metadata: {
+                webinarId,
+                attendeeId: attendeeId.toString(),
+                assignmentId: newAssignment._id.toString(),
+              },
+            };
+
+            await this.notificationService.createNotification(notification);
+          }
+        }
+      }
+    }
+
+    return true;
+  }
+
   async addPreWebinarAssignments(
     adminId: string,
     webinarId: string,
@@ -278,17 +398,6 @@ export class AssignmentService {
 
     if (!webinar) {
       throw new NotFoundException('Webinar not found.');
-    }
-
-    // Check if an attendee with the same email is already added to this webinar
-    const existingAttendee = await this.attendeeModel.findOne({
-      email: attendee.email,
-      webinar: new Types.ObjectId(webinarId),
-    });
-    if (existingAttendee) {
-      throw new BadRequestException(
-        'Attendee already exists for this webinar.',
-      );
     }
 
     // Fetch the subscription details for the admin
@@ -307,6 +416,35 @@ export class AssignmentService {
       throw new ForbiddenException(
         'Contact limit reached or subscription expired.',
       );
+    }
+
+    // Check if an attendee with the same email is already added to this webinar
+    const existingAttendee: Attendee | null = await this.attendeeModel.findOne({
+      email: attendee.email,
+      webinar: new Types.ObjectId(webinarId),
+    });
+    if (existingAttendee) {
+      const newTags = attendee.tags.filter(
+        (tag) => !existingAttendee.tags.includes(tag),
+      );
+
+      if (existingAttendee.tags.length === 0) {
+        existingAttendee.tags = newTags;
+      } else {
+        existingAttendee.tags = [...existingAttendee.tags, ...newTags];
+      }
+      await this.handleTags(
+        existingAttendee._id as Types.ObjectId,
+        attendee.email,
+        webinarId,
+        new Types.ObjectId(adminId),
+        newTags,
+        webinar.productIds,
+        webinar.assignedEmployees,
+      );
+
+      await existingAttendee.save();
+      return { success: true, message: 'Attendee updated successfully' };
     }
 
     const attendeeCount = await this.attendeeService.getNonUniqueAttendeesCount(
@@ -369,6 +507,20 @@ export class AssignmentService {
     }, 1000);
 
     const newAttendee = newAttendees[0];
+
+    const executeFurther: boolean = await this.handleTags(
+      newAttendee._id as Types.ObjectId,
+      newAttendee.email,
+      webinarId,
+      new Types.ObjectId(adminId),
+      newAttendee.tags,
+      webinar.productIds,
+      webinar.assignedEmployees,
+    );
+
+    if (!executeFurther) {
+      return { success: true, message: 'Attendee updated successfully' };
+    }
 
     // Validate webinar assigned employees
     if (!Array.isArray(webinar.assignedEmployees)) {

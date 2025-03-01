@@ -9,7 +9,12 @@ import {
   Query,
 } from '@nestjs/common';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
-import { CreateEnrollmentDto, GetEnrollmentsByProductLevelDto, UpdateEnrollmentDto } from './dto/enrollment.dto';
+import {
+  CreateEnrollmentDto,
+  EnrollmentsByLevelOrProductDTO,
+  GetEnrollmentsByProductLevelDto,
+  UpdateEnrollmentDto,
+} from './dto/enrollment.dto';
 import { EnrollmentsService } from './enrollments.service';
 
 @Controller('enrollments')
@@ -62,7 +67,7 @@ export class EnrollmentsController {
     );
 
     return enrollment;
-  } 
+  }
 
   @Get('product-level-counts')
   async getProductLevelCounts(
@@ -84,7 +89,6 @@ export class EnrollmentsController {
     @AdminId() adminId: string,
     @Query() query: GetEnrollmentsByProductLevelDto,
   ): Promise<any> {
-
     const productLevel = Number(query.productLevel);
     if (isNaN(productLevel)) {
       throw new BadRequestException('Invalid product level');
@@ -96,6 +100,17 @@ export class EnrollmentsController {
       productLevel,
     );
     return result;
+  }
+
+  @Get('level-or-product')
+  async getEnrollmentsByLevelOrProduct(
+    @AdminId() adminId: string,
+    @Query() query: EnrollmentsByLevelOrProductDTO,
+  ): Promise<any> {
+    return await this.enrollmentsService.getEnrollmentsByLevelOrProduct(
+      query,
+      adminId,
+    );
   }
 
   @Patch(':id')
