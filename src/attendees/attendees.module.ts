@@ -18,6 +18,7 @@ import { Assignments, AssignmentsSchema } from 'src/schemas/Assignments.schema';
 import { WebinarModule } from 'src/webinar/webinar.module';
 import { NotificationModule } from 'src/notification/notification.module';
 import { CompressionMiddleware } from '@nest-middlewares/compression';
+import { WebsocketGateway } from 'src/websocket/websocket.gateway';
 
 @Module({
   imports: [
@@ -37,7 +38,7 @@ import { CompressionMiddleware } from '@nest-middlewares/compression';
     NotificationModule,
   ],
   controllers: [AttendeesController],
-  providers: [AttendeesService],
+  providers: [AttendeesService,WebsocketGateway],
   exports: [AttendeesService],
 })
 export class AttendeesModule {

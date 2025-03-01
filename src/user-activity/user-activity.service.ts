@@ -30,6 +30,7 @@ export class UserActivityService {
     }
 
     return this.userActivityModel.create({
+      ...dto,
       user: new Types.ObjectId(user),
       adminId: new Types.ObjectId(adminId),
       action: dto.action,
@@ -83,5 +84,36 @@ export class UserActivityService {
     await this.notificationService.createNotification(notification);
 
     return [];
+  }
+
+  async getUserActivitiesByAdmin(adminId: string, email?: string, page:number=1, limit:number=10) {
+    const skip = (page - 1) * limit;
+    const query: any = {
+      $or: [
+        { adminId: new Types.ObjectId(adminId) },
+        { user: new Types.ObjectId(adminId) },
+      ],
+      ...(email ? { item: email } : {}),
+    };
+
+    const activities = await this.userActivityModel
+      .find(query)
+      .populate('user', 'userName email')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const totalLogs = await this.userActivityModel.countDocuments(query);
+
+    return {
+      data: activities,
+      pagination: {
+        totalLogs,
+        totalPages: Math.ceil(totalLogs / limit),
+        currentPage: page,
+        pageSize: activities.length,
+      },
+      message: 'User activities retrieved',
+    };
   }
 }

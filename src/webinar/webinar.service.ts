@@ -24,6 +24,7 @@ export class WebinarService {
 
   async createWebiar(createWebinarDto: CreateWebinarDto): Promise<any> {
     // Create webinar
+    console.log(createWebinarDto);
 
     const result = await this.webinarModel.create(createWebinarDto);
 
@@ -91,14 +92,6 @@ export class WebinarService {
         },
       },
       {
-        $lookup: {
-          from: 'products',
-          localField: 'productId',
-          foreignField: '_id',
-          as: 'product',
-        },
-      },
-      {
         $project: {
           _id: 1,
           webinarName: 1,
@@ -107,7 +100,6 @@ export class WebinarService {
           adminId: 1,
           createdAt: 1,
           updatedAt: 1,
-          productName: { $arrayElemAt: ['$product.name', 0] },
           totalAttendees: {
             $size: {
               $filter: {
@@ -141,6 +133,7 @@ export class WebinarService {
               },
             },
           },
+          productIds: 1,
         },
       },
       {
@@ -218,6 +211,7 @@ export class WebinarService {
     const result = await this.webinarModel
       .findById(id)
       .populate('assignedEmployees')
+      .populate('productIds')
       .lean();
     return result;
   }
@@ -228,6 +222,7 @@ export class WebinarService {
     updateWebinarDto: UpdateWebinarDto,
   ): Promise<any> {
     //update webinar
+    console.log(updateWebinarDto);
     const result = await this.webinarModel.findOneAndUpdate(
       {
         _id: new Types.ObjectId(`${id}`),
@@ -236,9 +231,6 @@ export class WebinarService {
       {
         $set: {
           ...updateWebinarDto,
-          productId: updateWebinarDto.productId
-            ? new Types.ObjectId(`${updateWebinarDto.productId}`)
-            : null,
         },
       },
     );

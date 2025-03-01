@@ -26,8 +26,38 @@ export class ProductsService {
     private readonly productLevelModel: Model<ProductLevel>,
   ) {}
 
+  private generateShortId(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let id = '';
+    for (let i = 0; i < 9; i++) {
+      id += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return id;
+  }
+
   async createProduct(createProductsDto: CreateProductsDto): Promise<any> {
-    const result = await this.productsModel.create(createProductsDto);
+    let attempts = 0;
+    let uniqueId: string;
+    let existingProduct;
+
+    // Generate unique ID with collision check
+    do {
+      uniqueId = this.generateShortId();
+      existingProduct = await this.productsModel.findOne({ uniqueId });
+      attempts++;
+      
+      if (attempts > 5) {
+        throw new NotAcceptableException('Could not generate unique ID after 5 attempts');
+      }
+    } while (existingProduct);
+
+    const productData = {
+      ...createProductsDto,
+      uniqueId,
+      adminId: new Types.ObjectId(`${createProductsDto.adminId}`)
+    };
+
+    const result = await this.productsModel.create(productData);
     return result;
   }
 
@@ -50,6 +80,10 @@ export class ProductsService {
       .skip(skip)
       .limit(limit);
     return { page, totalPages, result };
+  }
+
+  async getProduct(productId: Types.ObjectId){
+    return this.productsModel.findById(productId);
   }
 
   async getAllProductsByAdminId(adminId: string): Promise<any> {

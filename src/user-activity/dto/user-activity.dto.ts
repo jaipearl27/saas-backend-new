@@ -8,6 +8,10 @@ export class CreateUserActivityDto {
   @IsOptional()
   @IsString()
   details?: string;
+
+  @IsOptional()
+  @IsString()
+  item?: string;
 }
 
 export class InactiviUserDTO {

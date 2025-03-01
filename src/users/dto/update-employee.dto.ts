@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsBoolean,
   IsEmail,
   IsEnum,
@@ -65,4 +66,9 @@ export class UpdateEmployeeDto {
     message: 'Status change note is required when isActive is provided.',
   })
   statusChangeNote?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 }

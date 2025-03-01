@@ -173,6 +173,12 @@ export class User extends Document {
     enum: Object.values(DateFormat),
   })
   dateFormat: DateFormat;
+
+  @Prop({
+    type: [String],
+    required: false,
+  })
+  tags: string[];
 }
 
 const UserSchema = SchemaFactory.createForClass(User);

@@ -11,9 +11,16 @@ export class Products extends Document {
 
   @Prop({
     type: Number,
+    min: 0,
     required: [true, 'Product price is required'],
   })
   price: number;
+
+  @Prop({
+    type: String,
+    required: [true, 'Product uniqueId is required'],
+  })
+  uniqueId: string;
 
   @Prop({
     type: Types.ObjectId,

@@ -29,7 +29,6 @@ export class CreateProductsDto {
 
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
   tag: string;
 }
 

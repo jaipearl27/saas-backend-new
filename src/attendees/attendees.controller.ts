@@ -76,6 +76,7 @@ export class AttendeesController {
     @Id() adminId: string,
     @Body() body: FetchGroupedAttendeesDTO,
   ) {
+    const start = Date.now();
     let page = Number(query?.page) > 0 ? Number(query?.page) : 1;
     let limit = Number(query?.limit) > 0 ? Number(query?.limit) : 25;
     const result = await this.attendeesService.fetchGroupedAttendees(
@@ -85,8 +86,9 @@ export class AttendeesController {
       body.filters,
       body.sort,
     );
-
-    return result;
+    const processingTime = Date.now() - start;
+    console.log(`Processing time: ${processingTime} milliseconds`);
+    return {...result, processingTime};
   }
 
   @Post()

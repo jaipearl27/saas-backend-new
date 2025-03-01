@@ -30,5 +30,4 @@ export class AttendeeAssociation extends Document {
 
 export const AttendeeAssociationSchema = SchemaFactory.createForClass(AttendeeAssociation);
 
-AttendeeAssociationSchema.index({ adminId: 1, email: 1 });
 AttendeeAssociationSchema.index({ adminId: 1, email: 1, leadType: 1 });
