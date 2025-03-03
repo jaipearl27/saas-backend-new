@@ -22,7 +22,6 @@ import {
   WebinarAttendeesSortBy,
   WebinarAttendeesSortObject,
 } from './dto/attendees.dto';
-import { Assignments } from 'src/schemas/Assignments.schema';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from 'src/users/users.service';
 import {
@@ -36,7 +35,7 @@ import { WebsocketGateway } from 'src/websocket/websocket.gateway';
 import { ClientSession } from 'mongoose';
 import { DeleteResult } from 'mongodb';
 import { AssignmentService } from 'src/assignment/assignment.service';
-import { query } from 'express';
+import async from 'async';
 
 @Injectable()
 export class AttendeesService {
@@ -89,7 +88,13 @@ export class AttendeesService {
 
     console.log(this.websocketGateway.activeUsers);
     const socketId = this.websocketGateway.activeUsers.get(String(adminId));
-    this.emitProgress(socketId, 10);
+    let lastProgress = 0;
+    const updateProgress = (current) => {
+      if (current - lastProgress >= 5) { // 5% increments
+        this.emitProgress(socketId, current);
+        lastProgress = current;
+      }
+    };
 
     let attendeesForUpdate: CreateAttendeeDto[] = [];
     if (!isAttended || (postWebinarExists && isAttended)) {
@@ -98,7 +103,7 @@ export class AttendeesService {
         adminId: new Types.ObjectId(`${adminId}`),
         isAttended: isAttended,
       });
-      this.emitProgress(socketId, 15);
+      updateProgress(15);
       if (prevAttendees.length > 0) {
         const prevAttendeesMap = new Map(
           prevAttendees.map((a) => [a.email, a]),
@@ -139,7 +144,7 @@ export class AttendeesService {
           new Types.ObjectId(`${webinar}`),
           attendees.map((a) => a.email),
         );
-      this.emitProgress(socketId, 20);
+      updateProgress(20);
 
       if (unattendedAttendees.length > 0) {
         tempAttendees = [...tempAttendees, ...unattendedAttendees];
@@ -150,7 +155,7 @@ export class AttendeesService {
       tempAttendees.map((a) => a.email),
       new Types.ObjectId(`${adminId}`),
     );
-    this.emitProgress(socketId, 25);
+    updateProgress(25);
     const uniqueEmailsCount = tempAttendees.length - nonUniqueEmailCount;
 
     if (uniqueEmailsCount > contactCountDiff) {
@@ -164,7 +169,7 @@ export class AttendeesService {
         new Types.ObjectId(`${adminId}`),
         attendeesWithoutPhone.map((a) => a.email),
       );
-      this.emitProgress(socketId, 30);
+      updateProgress(30);
 
       const phoneMap = new Map(phoneNumbers.map((a) => [a._id, a.phone]));
 
@@ -179,28 +184,24 @@ export class AttendeesService {
     try {
       await session.withTransaction(async () => {
         if (attendeesForUpdate.length > 0) {
-          const totalAttendees = attendeesForUpdate.length;
-
-          await Promise.all(
-            attendeesForUpdate.map(async (attendee, index) => {
-              await this.attendeeModel.updateOne(
-                { _id: attendee.attendeeId },
-                {
-                  $set: {
-                    firstName: attendee.firstName || null,
-                    lastName: attendee.lastName || null,
-                    phone: attendee.phone,
-                    gender: attendee.gender || null,
-                    timeInSession: attendee.timeInSession || 0,
-                    location: attendee.location || null,
-                  },
+          const bulkOps = attendeesForUpdate.map(attendee => ({
+            updateOne: {
+              filter: { _id: attendee.attendeeId },
+              update: {
+                $set: {
+                  firstName: attendee.firstName || null,
+                  lastName: attendee.lastName || null,
+                  phone: attendee.phone,
+                  gender: attendee.gender || null,
+                  timeInSession: attendee.timeInSession || 0,
+                  location: attendee.location || null,
                 },
-                { session },
-              );
-            }),
-          );
+              }
+            }
+          }));
+          await this.attendeeModel.bulkWrite(bulkOps, { session });
         }
-        this.emitProgress(socketId, 70);
+        updateProgress(70);
 
         const newAttendees = await this.attendeeModel.insertMany(
           tempAttendees,
@@ -208,7 +209,7 @@ export class AttendeesService {
             session,
           },
         );
-        this.emitProgress(socketId, 75);
+        updateProgress(75);
         const assignedEmployees =
           await this.webinarService.getAssignedEmployees(webinar);
 
@@ -238,7 +239,7 @@ export class AttendeesService {
           isAttended,
           empData.map((a) => a.id),
         );
-        this.emitProgress(socketId, 80);
+        updateProgress(80);
 
         const empDataMap = new Map(empData.map((a) => [a.id.toString(), a]));
 
@@ -265,7 +266,8 @@ export class AttendeesService {
           }
         });
 
-        for (const [empId, empData] of empDataMap) {
+        // Use parallel processing
+        await async.eachLimit(Array.from(empDataMap), 5, async ([empId, empData]) => {
           const newAssignments = await this.assignService.createManyAssignments(empData.assignMents, session);
 
           const updatedAttendees = await this.attendeeModel.updateMany(
@@ -297,15 +299,15 @@ export class AttendeesService {
             },
           };
 
-          this.notificationService.createNotification(notification);
-        }
-        this.emitProgress(socketId, 90);
+          await this.notificationService.createNotification(notification);
+        });
+        updateProgress(90);
 
         await this.subscriptionService.incrementContactCount(
           subscription._id.toString(),
           uniqueEmailsCount,
         );
-        this.emitProgress(socketId, 100);
+        updateProgress(100);
       });
     } catch (error) {
       return {
@@ -1027,12 +1029,6 @@ export class AttendeesService {
     return 0;
   }
 
-  async fillPhoneNumbers(
-    attendees: [CreateAttendeeDto],
-    adminId: Types.ObjectId,
-  ) {
-    const filteredAttendees = attendees.filter((attendee) => !attendee.phone);
-  }
 
   async getPreWebinarUnattendedData(
     adminId: Types.ObjectId,
@@ -1710,41 +1706,6 @@ export class AttendeesService {
         },
       },
     ];
-    // [
-    //   {
-    //     $match: {
-    //       webinar: ObjectId('67ac6c372c36f738cf6c03b7')
-    //     }
-    //   },
-    // {
-    //   $lookup: {
-    //     from: 'enrollments',
-    //     let: { tempMail: '$email' },
-    //     pipeline: [
-    //       {
-    //         $match: {
-    //           $expr: {
-    //             $and: [
-    //               {
-    //                 $eq: ['$attendee', '$$tempMail']
-    //               }
-    //             ]
-    //           }
-    //         }
-    //       },
-    //       {
-    //         $lookup: {
-    //           from: 'products',
-    //           localField: 'product',
-    //           foreignField: '_id',
-    //           as: 'productDetaills'
-    //         }
-    //       }
-    //     ],
-    //     as: 'enrollments'
-    //   }
-    // }
-    // ]
 
     const result = await this.attendeeModel.aggregate(exportPipeline).exec();
 
