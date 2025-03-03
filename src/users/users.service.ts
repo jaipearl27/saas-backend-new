@@ -1066,7 +1066,7 @@ export class UsersService {
     const role = this.configService.get('appRoles').SUPER_ADMIN;
     const superAdmin = await this.userModel
       .findOne({ role: new Types.ObjectId(`${role}`) })
-      .select('companyName email')
+      .select('companyName email address')
       .exec();
     return superAdmin;
   }
@@ -1083,5 +1083,13 @@ export class UsersService {
       }));
     }
     return [];
+  }
+
+
+  async getEmployeesForNotes(adminId: Types.ObjectId){
+    return this.userModel.find(
+      { adminId },
+      '_id email userName',
+    );
   }
 }

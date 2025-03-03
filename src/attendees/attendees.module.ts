@@ -19,6 +19,7 @@ import { WebinarModule } from 'src/webinar/webinar.module';
 import { NotificationModule } from 'src/notification/notification.module';
 import { CompressionMiddleware } from '@nest-middlewares/compression';
 import { WebsocketGateway } from 'src/websocket/websocket.gateway';
+import { AssignmentModule } from 'src/assignment/assignment.module';
 
 @Module({
   imports: [
@@ -28,13 +29,10 @@ import { WebsocketGateway } from 'src/websocket/websocket.gateway';
       {
         name: Attendee.name,
         schema: AttendeeSchema,
-      },
-      {
-        name: Assignments.name,
-        schema: AssignmentsSchema,
-      },
+      }
     ]),
     forwardRef(() => WebinarModule),
+    forwardRef(() => AssignmentModule),
     NotificationModule,
   ],
   controllers: [AttendeesController],

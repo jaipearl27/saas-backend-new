@@ -1,12 +1,14 @@
 import {
   BadRequestException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model, PipelineStage, Types } from 'mongoose';
+import { ClientSession, Connection, Model, PipelineStage, Types } from 'mongoose';
 import {
   Assignments,
   AssignmentStatus,
@@ -36,14 +38,16 @@ import { EnrollmentsService } from 'src/enrollments/enrollments.service';
 export class AssignmentService {
   constructor(
     @InjectModel(Assignments.name) private assignmentsModel: Model<Assignments>,
-    @InjectModel(Attendee.name) private attendeeModel: Model<Attendee>,
     @InjectConnection() private readonly mongoConnection: Connection,
 
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
     private readonly webinarService: WebinarService,
+    @Inject(forwardRef(() => SubscriptionService))
     private readonly subscriptionService: SubscriptionService,
+    @Inject(forwardRef(() => AttendeesService))
     private readonly attendeeService: AttendeesService,
+    @Inject(forwardRef(() => UsersService))
     private readonly userService: UsersService,
     private readonly tagsService: TagsService,
     private readonly enrollmentService: EnrollmentsService,
@@ -186,22 +190,22 @@ export class AssignmentService {
   async addAssignment(data: AssignmentDto, adminId: string) {
     const attendeeIds = data.attendees.map((a) => new Types.ObjectId(`${a}`));
 
-    const attendeeData = await this.attendeeModel.find({
-      _id: { $in: attendeeIds },
-      assignedTo: { $ne: null },
-    });
+    const attendeeData = await this.attendeeService.fetchAssigned(attendeeIds);
 
     if (attendeeData && attendeeData.length > 0) {
       throw new BadRequestException('Attendee already assigned');
     }
 
-    const session = await this.attendeeModel.startSession();
+    const session = await this.assignmentsModel.startSession();
     try {
       await session.withTransaction(async () => {
-        const updatedAttendees = await this.attendeeModel.updateMany(
-          { _id: { $in: attendeeIds } },
-          { $set: { assignedTo: new Types.ObjectId(`${data.user}`) } },
-          { session },
+        const updatedAttendees = await this.attendeeService.updateAttendees(
+          {
+            _id: { $in: attendeeIds },
+            adminId: new Types.ObjectId(`${adminId}`),
+          },
+          { assignedTo: new Types.ObjectId(`${data.user}`) },
+          session,
         );
 
         if (updatedAttendees.matchedCount !== attendeeIds.length) {
@@ -310,8 +314,9 @@ export class AssignmentService {
           }
         }
       } else {
-        const taggedEmployee = assignedEmployees.find((employee) =>
-          Array.isArray(employee.tags) && employee.tags.includes(tag),
+        const taggedEmployee = assignedEmployees.find(
+          (employee) =>
+            Array.isArray(employee.tags) && employee.tags.includes(tag),
         );
         if (
           taggedEmployee &&
@@ -419,10 +424,12 @@ export class AssignmentService {
     }
 
     // Check if an attendee with the same email is already added to this webinar
-    const existingAttendee: Attendee | null = await this.attendeeModel.findOne({
-      email: attendee.email,
-      webinar: new Types.ObjectId(webinarId),
-    });
+    const existingAttendee: Attendee | null =
+      await this.attendeeService.fetchAttendeeByWebinar(
+        attendee.email,
+        webinarId,
+      );
+
     if (existingAttendee) {
       const newTags = attendee.tags.filter(
         (tag) => !existingAttendee.tags.includes(tag),
@@ -1062,14 +1069,15 @@ export class AssignmentService {
           (assignment) => assignment.attendee,
         );
 
-        const updatedAttendeesResult = await this.attendeeModel.updateMany(
-          {
-            adminId: new Types.ObjectId(`${adminId}`),
-            _id: { $in: attendeeIds },
-          },
-          { $set: { isPulledback: true } },
-          { session },
-        );
+        const updatedAttendeesResult =
+          await this.attendeeService.updateAttendees(
+            {
+              _id: { $in: attendeeIds },
+              adminId: new Types.ObjectId(`${adminId}`),
+            },
+            { isPulledback: true },
+            session,
+          );
 
         if (updatedAttendeesResult.matchedCount !== attendeeIds.length) {
           throw new NotFoundException('Some attendees were not found');
@@ -1172,7 +1180,7 @@ export class AssignmentService {
         ? { tempAssignedTo: employee._id }
         : { assignedTo: employee._id, tempAssignedTo: null };
 
-      const updatedAttendeesResult = await this.attendeeModel.updateMany(
+      const updatedAttendeesResult = await this.attendeeService.updateAttendees(
         {
           _id: { $in: attendeeIds },
           adminId: new Types.ObjectId(`${adminId}`),
@@ -1181,7 +1189,7 @@ export class AssignmentService {
             data.recordType === RecordType.POST_WEBINAR ? true : false,
         },
         { $set: { isPulledback: false, ...query } },
-        { session },
+        session,
       );
 
       if (updatedAttendeesResult.matchedCount !== data.assignments.length) {
@@ -1263,7 +1271,7 @@ export class AssignmentService {
 
     if (!employeeId) {
       try {
-        const updatedAttendeesResult = await this.attendeeModel.updateMany(
+        const updatedAttendeesResult = await this.attendeeService.updateAttendees(
           {
             adminId: new Types.ObjectId(adminId),
             webinar: new Types.ObjectId(webinarId),
@@ -1272,7 +1280,6 @@ export class AssignmentService {
             _id: { $in: attendeeIds },
           },
           { $set: { isPulledback: true } },
-          { new: true },
         );
 
         if (updatedAttendeesResult.matchedCount !== attendeeIds.length) {
@@ -1292,7 +1299,7 @@ export class AssignmentService {
         );
 
         if (updatedAssignmentsResult.matchedCount !== attendeeIds.length) {
-          await this.attendeeModel.updateMany(
+          await this.attendeeService.updateAttendees(
             { _id: { $in: attendeeIds } },
             { $set: { isPulledback: false } },
           );
@@ -1337,5 +1344,66 @@ export class AssignmentService {
         adminId,
       );
     }
+  }
+
+  async createManyAssignments(assignments:any, session: ClientSession){
+    return this.assignmentsModel.insertMany(
+      assignments,
+      { session },
+    );
+  }
+
+  async fetchTotalAssignmentsForNotes(employeeId: string, startDate: string, endDate: string){
+    return this.assignmentsModel.aggregate([
+      {
+        $match: {
+          user: new Types.ObjectId(`${employeeId}`),
+          createdAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          uniqueValues: {
+            $addToSet: '$attendee',
+          },
+        },
+      },
+      {
+        $project: {
+          totalAssignments: { $size: '$uniqueValues' },
+        },
+      },
+    ]);
+  }
+
+  async fetchAssignmentsForNotes(employeeId: Types.ObjectId, startDate: string, endDate: string){
+    return this.assignmentsModel.aggregate([
+      {
+        $match: {
+          user: employeeId,
+          createdAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          uniqueValues: {
+            $addToSet: '$attendee',
+          },
+        },
+      },
+      {
+        $project: {
+          totalAssignments: { $size: '$uniqueValues' },
+        },
+      },
+    ]);
   }
 }

@@ -46,7 +46,10 @@ export class UpdateUserInfoDto {
       message: 'Date format must be one of the allowed values.',
     })
     dateFormat?: DateFormat;
-  
+
+    @IsOptional()
+    @IsString()
+    address?: string
 }
 
 

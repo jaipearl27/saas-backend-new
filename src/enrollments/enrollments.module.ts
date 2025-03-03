@@ -17,7 +17,7 @@ import { UsersModule } from 'src/users/users.module';
       },
     ]),
     forwardRef(() =>ProductsModule),
-    UsersModule,
+    forwardRef(() =>UsersModule),
   ],
   providers: [EnrollmentsService],
   controllers: [EnrollmentsController],

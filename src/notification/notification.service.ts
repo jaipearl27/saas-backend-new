@@ -7,6 +7,7 @@ import {
 import { CreateNotificationDto } from './dto/notification.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { WebsocketGateway } from 'src/websocket/websocket.gateway';
+import { ClientSession } from 'mongoose';
 
 @Injectable()
 export class NotificationService {
@@ -131,5 +132,15 @@ export class NotificationService {
         $set: { isSeen: true },
       },
     );
+  }
+  
+
+  async deleteNotificationsByWebinar(
+    webinarId: Types.ObjectId,
+    session: ClientSession
+  ) {
+    return this.notificationModel.deleteMany(
+      { 'metadata.webinarId': webinarId },
+    ).session(session);
   }
 }
