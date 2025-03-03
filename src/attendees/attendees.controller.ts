@@ -123,6 +123,7 @@ export class AttendeesController {
       data[i].webinar = new Types.ObjectId(`${body.webinarId}`);
       data[i].isAttended = body.isAttended;
       data[i].adminId = new Types.ObjectId(`${adminId}`);
+      data[i].email = (data[i].email || "").toLowerCase();
     }
 
     const result = await this.attendeesService.addPostAttendees(

@@ -58,8 +58,6 @@ export class AttendeesService {
 
   emitProgress(socketId: null | string, value: number) {
     if (socketId) {
-      console.log('before - > ', socketId);
-
       this.websocketGateway.server.to(socketId).emit('import-export', {
         actionType: 'import',
         value: value,
@@ -85,6 +83,7 @@ export class AttendeesService {
     }
     let tempAttendees = attendees;
 
+    console.log(this.websocketGateway.activeUsers);
     const socketId = this.websocketGateway.activeUsers.get(String(adminId));
     this.emitProgress(socketId, 10);
 
@@ -96,7 +95,6 @@ export class AttendeesService {
         isAttended: isAttended,
       });
       this.emitProgress(socketId, 15);
-
       if (prevAttendees.length > 0) {
         const prevAttendeesMap = new Map(
           prevAttendees.map((a) => [a.email, a]),
@@ -110,7 +108,18 @@ export class AttendeesService {
         const prevAttendeesToUpdate = attendees.filter((a) =>
           prevAttendeesMap.has(a.email),
         );
-        attendeesForUpdate = prevAttendeesToUpdate.map((attendee) => ({
+
+        // Deduplicate by email
+        const uniqueEmails = new Set();
+        const uniquePrevAttendeesToUpdate = prevAttendeesToUpdate.filter(a => {
+          if (uniqueEmails.has(a.email)) {
+            return false;
+          }
+          uniqueEmails.add(a.email);
+          return true;
+        });
+
+        attendeesForUpdate = uniquePrevAttendeesToUpdate.map((attendee) => ({
           ...attendee,
           phone: attendee.phone || prevAttendeesMap.get(attendee.email).phone,
           attendeeId: prevAttendeesMap.get(attendee.email)
@@ -202,6 +211,7 @@ export class AttendeesService {
             session,
           },
         );
+        this.emitProgress(socketId, 75);
         const assignedEmployees =
           await this.webinarService.getAssignedEmployees(webinar);
 
@@ -231,6 +241,7 @@ export class AttendeesService {
           isAttended,
           empData.map((a) => a.id),
         );
+        this.emitProgress(socketId, 80);
 
         const empDataMap = new Map(empData.map((a) => [a.id.toString(), a]));
 
@@ -390,7 +401,6 @@ export class AttendeesService {
       sortOrder: SortOrder.ASC,
     },
   ): Promise<any> {
-    console.log(filters, page, limit);
     const skip = (page - 1) * limit;
 
     const hasFilters = Object.keys(filters).some(
@@ -1083,7 +1093,6 @@ export class AttendeesService {
       sortOrder: SortOrder.ASC,
     },
   ) {
-    console.log(filters);
     const skip = (page - 1) * limit;
     const basePipeline: PipelineStage[] = [
       {
@@ -1468,17 +1477,14 @@ export class AttendeesService {
         },
       },
     ];
-    console.log(mainPipeline);
 
     const [countResult, mainResult] = await Promise.all([
       this.attendeeModel.aggregate(countPipeline).exec(),
       this.attendeeModel.aggregate(mainPipeline).exec(),
     ]);
-    console.log(countResult);
     const total = countResult[0]?.total || 0;
     const totalPages = Math.ceil(total / limit) || 1;
     const pagination = { page, totalPages, total };
-    console.log(pagination, limit);
     return { data: mainResult || [], pagination };
   }
 
@@ -1491,15 +1497,6 @@ export class AttendeesService {
     validCall?: string,
     assignmentType?: string,
   ): Promise<any> {
-    console.log(
-      webinarId,
-      AdminId,
-      isAttended,
-      limit,
-      filters,
-      validCall,
-      assignmentType,
-    );
 
     const hasFilters = Object.keys(filters).some(
       (key) => filters[key] !== null && filters[key] !== undefined,
