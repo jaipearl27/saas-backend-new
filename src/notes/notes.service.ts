@@ -4,28 +4,27 @@ import { Model, PipelineStage, Types } from 'mongoose';
 import { Notes } from 'src/schemas/Notes.schema';
 import { CreateNoteDto } from './dto/notes.dto';
 import { UsersService } from 'src/users/users.service';
-import { User } from 'src/schemas/User.schema';
-import { Attendee } from 'src/schemas/Attendee.schema';
-import { Assignments } from 'src/schemas/Assignments.schema';
+import { AssignmentService } from 'src/assignment/assignment.service';
+import { AttendeesService } from 'src/attendees/attendees.service';
 
 @Injectable()
 export class NotesService {
   constructor(
     @InjectModel(Notes.name) private readonly notesModel: Model<Notes>,
-    @InjectModel(User.name) private readonly usersModel: Model<User>,
-    @InjectModel(Attendee.name) private readonly attendeeModel: Model<Attendee>,
-    @InjectModel(Assignments.name)
-    private readonly assignmentsModel: Model<Assignments>,
     private readonly usersService: UsersService,
+    private readonly assignService: AssignmentService,
+    private readonly attendeeService: AttendeesService,
   ) {}
 
   async createNote(
-    body: CreateNoteDto,
+    body: CreateNoteDto, 
     createdBy: string,
+    adminId: string,
   ): Promise<Notes | null> {
     //check if note's callduration >= user's validCallTime to add validCall: true in attendee
 
     const user = await this.usersService.getUserById(createdBy);
+    let validCall = false;
 
     if (user && user?.validCallTime) {
       const callDuration = body.callDuration;
@@ -33,16 +32,18 @@ export class NotesService {
         Number(callDuration.hr) * 60 * 60 +
         Number(callDuration.min) * 60 +
         Number(callDuration.sec);
-      const attendee = await this.attendeeModel.findOne({
-        _id: new Types.ObjectId(`${body.attendee}`),
-      });
-      attendee.status = body.status;
-      console.log(attendee.status, body.status)
       if (totalCallDuration >= user.validCallTime) {
-        attendee.validCall = true;
+        validCall = true;
       }
-      await attendee.save();
     }
+
+    await this.attendeeService.updateAttendee(
+      body.attendee,
+      adminId,
+      createdBy,
+      { status: body.status, ...(validCall ? { validCall } : {}) },
+    );
+
     const note = await this.notesModel.create({
       ...body,
       createdBy,
@@ -132,30 +133,12 @@ export class NotesService {
     ];
     const notes = await this.notesModel.aggregate(pipeline).exec();
 
-    const totalAssignmentsAggregation = await this.assignmentsModel.aggregate([
-      {
-        $match: {
-          user: new Types.ObjectId(`${employeeId}`),
-          createdAt: {
-            $gte: new Date(startDate),
-            $lte: new Date(endDate),
-          },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          uniqueValues: {
-            $addToSet: '$attendee',
-          },
-        },
-      },
-      {
-        $project: {
-          totalAssignments: { $size: '$uniqueValues' },
-        },
-      },
-    ]);
+    const totalAssignmentsAggregation =
+      await this.assignService.fetchTotalAssignmentsForNotes(
+        employeeId,
+        startDate,
+        endDate,
+      );
 
     const totalWorkedPipeline: PipelineStage[] = [
       {
@@ -240,10 +223,9 @@ export class NotesService {
   ): Promise<any> {
     const adminId = new Types.ObjectId(`${id}`);
     // Step 1: Retrieve employees under the given adminId
-    const employees = await this.usersModel.find(
-      { adminId },
-      '_id email userName',
-    ); // Retrieve _id and name for employees
+    const employees = await this.usersService.getEmployeesForNotes(
+      adminId
+    )// Retrieve _id and name for employees
     // Step 2: Aggregate notes for each employee
     const results = await Promise.all(
       employees.map(async (employee) => {
@@ -312,30 +294,11 @@ export class NotesService {
         ]);
 
         const totalAssignmentsAggregation =
-          await this.assignmentsModel.aggregate([
-            {
-              $match: {
-                user: new Types.ObjectId(`${employee._id}`),
-                createdAt: {
-                  $gte: new Date(startDate),
-                  $lte: new Date(endDate),
-                },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                uniqueValues: {
-                  $addToSet: '$attendee',
-                },
-              },
-            },
-            {
-              $project: {
-                totalAssignments: { $size: '$uniqueValues' },
-              },
-            },
-          ]);
+          await this.assignService.fetchAssignmentsForNotes(
+            employee._id as Types.ObjectId,
+            startDate,
+            endDate,
+          );
 
         const totalWorkedPipeline: PipelineStage[] = [
           {

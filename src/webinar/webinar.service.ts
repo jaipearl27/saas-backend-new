@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, PipelineStage, Types } from 'mongoose';
 import { Webinar } from 'src/schemas/Webinar.schema';
@@ -11,6 +11,8 @@ import {
   notificationActionType,
   notificationType,
 } from 'src/schemas/notification.schema';
+import { AssignmentService } from 'src/assignment/assignment.service';
+import { NotesService } from 'src/notes/notes.service';
 
 @Injectable()
 export class WebinarService {
@@ -20,6 +22,8 @@ export class WebinarService {
     @Inject(forwardRef(() => AttendeesService))
     private readonly attendeesService: AttendeesService,
     private readonly notificationService: NotificationService,
+    // private readonly notesService: NotesService,
+
   ) {}
 
   async createWebiar(createWebinarDto: CreateWebinarDto): Promise<any> {
@@ -238,21 +242,41 @@ export class WebinarService {
   }
 
   async deleteWebinar(id: string, adminId: string): Promise<any> {
-    const pipeline = {
-      _id: new Types.ObjectId(`${id}`),
-      adminId: new Types.ObjectId(`${adminId}`),
-    };
+    const webinarId = new Types.ObjectId(id);
+    const session = await this.webinarModel.db.startSession();
+    
+    try {
+      session.startTransaction();
+      
+      // Delete webinar
+      const deletedWebinar = await this.webinarModel.findOneAndDelete({
+        _id: webinarId,
+        adminId: new Types.ObjectId(adminId)
+      }).session(session);
 
-    const deletedWebinar = await this.webinarModel.findOneAndDelete(pipeline);
-    const deletedAttendees = await this.attendeesService.deleteAttendees(
-      id,
-      adminId,
-    );
-    return {
-      message: 'Webinar Deleted successfully',
-      deletedWebinar,
-      deletedAttendees,
-    };
+      if (!deletedWebinar) {
+        throw new NotFoundException('Webinar not found');
+      }
+
+      const attendees: any = await this.attendeesService.getAttendeeForDeletion(webinarId);
+
+      // Delete related data
+      await Promise.all([
+        this.attendeesService.deleteAttendees(id, adminId, session),
+        // this.attendeesService.deleteAssignmentsbyWebinar(webinarId, session),
+        // this.notesService.deleteNotesByAttendees(attendees.map(a => a._id), session),
+        this.notificationService.deleteNotificationsByWebinar(webinarId, session)
+      ]);
+
+      await session.commitTransaction();
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+
+    return { message: 'Webinar deleted successfully' };
   }
 
   async getEmployeeWebinars(
@@ -280,4 +304,5 @@ export class WebinarService {
       result.assignedEmployees.filter((employee) => employee?.isActive) || []
     );
   }
+
 }

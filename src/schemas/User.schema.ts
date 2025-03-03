@@ -74,6 +74,12 @@ export class User extends Document {
   adminId: Types.ObjectId; //adminId
 
   @Prop({
+    type: String,
+    maxlength: 1000
+  })
+  address: string;
+
+  @Prop({
     type: Types.ObjectId,
     ref: 'roles',
     required: [true, 'role is required'],
@@ -164,6 +170,7 @@ export class User extends Document {
   @Prop({
     type: String,
     required: false,
+    uppercase: true
   })
   gst: string;
 

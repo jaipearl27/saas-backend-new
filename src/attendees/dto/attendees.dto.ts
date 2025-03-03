@@ -6,6 +6,7 @@ import {
   IsMongoId,
   IsNotEmpty,
   IsOptional,
+  isArray,
   IsString,
   IsNumber,
   MaxLength,
@@ -110,7 +111,7 @@ export class UpdateAttendeeDto {
   @IsOptional()
   @IsBoolean({ message: 'IsAttended must be a boolean' })
   @IsNotEmpty({ message: 'IsAttended is required' })
-  isAttended: boolean;
+  isAttended?: boolean;
 
   @IsOptional()
   @IsEnum(['male', 'female', 'others'], {
@@ -126,7 +127,15 @@ export class UpdateAttendeeDto {
 
   @IsOptional()
   @IsMongoId({ message: 'assignedTo must be a valid MongoId' })
-  assignedTo: Types.ObjectId;
+  assignedTo?: Types.ObjectId;
+
+  @IsOptional()
+  @IsBoolean()
+  validCall?: boolean;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
 
   // @IsOptional()
   // @IsArray({ message: 'Products must be an array' })

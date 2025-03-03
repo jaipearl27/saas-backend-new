@@ -16,21 +16,22 @@ import { CreateNoteDto } from './dto/notes.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { unlinkSync } from 'fs';
-import { Id, Role } from 'src/decorators/custom.decorator';
+import { AdminId, Id, Role } from 'src/decorators/custom.decorator';
 import { ConfigService } from '@nestjs/config';
 import { Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Attendee } from 'src/schemas/Attendee.schema';
 import { UsersService } from 'src/users/users.service';
+import { AttendeesService } from 'src/attendees/attendees.service';
 
 @Controller('notes')
 export class NotesController {
   constructor(
-    @InjectModel(Attendee.name) private readonly attendeeModel: Model<Attendee>,
     private readonly notesService: NotesService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly configService: ConfigService,
     private readonly usersService: UsersService,
+    private readonly attendeeService: AttendeesService
   ) {}
 
   @Post()
@@ -39,14 +40,13 @@ export class NotesController {
     @UploadedFiles() files: { image: Express.Multer.File[] },
     @Body() body: CreateNoteDto,
     @Id() createdBy: string,
+    @AdminId() adminId: string
   ) {
     if (!createdBy) {
       throw new BadRequestException('UserID is required.');
     }
 
-    const attendee = await this.attendeeModel.findOne({
-      _id: new Types.ObjectId(`${body.attendee}`),
-    });
+    const attendee = await this.attendeeService.fetchAttendeeById(new Types.ObjectId(`${body.attendee}`));
 
     if (
       attendee &&
@@ -63,7 +63,7 @@ export class NotesController {
         body.image = { url: response.url, public_id: response.public_id };
         unlinkSync(files.image[0].path);
       }
-      const note = await this.notesService.createNote(body, createdBy);
+      const note = await this.notesService.createNote(body, createdBy, adminId);
       if (!note) {
         throw new InternalServerErrorException(
           'Faced an error creating note, Please try again later.',

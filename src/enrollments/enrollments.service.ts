@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, PipelineStage, Types } from 'mongoose';
+import { ClientSession, Model, PipelineStage, Types } from 'mongoose';
 import { Enrollment } from 'src/schemas/Enrollments.schema';
 import {
   CreateEnrollmentDto,
@@ -414,5 +414,13 @@ export class EnrollmentsService {
     const pagination = { page, totalPages, total };
     console.log(pagination, limit);
     return { data: mainResult || [], pagination };
+  }
+
+
+  async deleteAssignmentsByWebinar(
+    webinarId: Types.ObjectId,
+    session: ClientSession
+  ) {
+    return await this.enrollmentModel.deleteMany({ webinar: webinarId }).session(session);
   }
 }

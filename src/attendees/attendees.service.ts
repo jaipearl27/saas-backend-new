@@ -33,12 +33,14 @@ import { NotificationService } from 'src/notification/notification.service';
 import { WebinarService } from 'src/webinar/webinar.service';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 import { WebsocketGateway } from 'src/websocket/websocket.gateway';
+import { ClientSession } from 'mongoose';
+import { DeleteResult } from 'mongodb';
+import { AssignmentService } from 'src/assignment/assignment.service';
+import { query } from 'express';
 
 @Injectable()
 export class AttendeesService {
   constructor(
-    @InjectModel(Assignments.name)
-    private readonly assignmentsModel: Model<Assignments>,
     @InjectModel(Attendee.name) private attendeeModel: Model<Attendee>,
     private readonly configService: ConfigService,
     @Inject(forwardRef(() => UsersService))
@@ -46,6 +48,8 @@ export class AttendeesService {
     private readonly notificationService: NotificationService,
     @Inject(forwardRef(() => WebinarService))
     private readonly webinarService: WebinarService,
+    @Inject(forwardRef(() => AssignmentService))
+    private readonly assignService: AssignmentService,
     @Inject(forwardRef(() => SubscriptionService))
     private readonly subscriptionService: SubscriptionService,
     private readonly websocketGateway: WebsocketGateway,
@@ -179,11 +183,6 @@ export class AttendeesService {
 
           await Promise.all(
             attendeesForUpdate.map(async (attendee, index) => {
-              let progress = Math.floor(
-                30 + ((70 - 30) * (index + 1)) / totalAttendees,
-              );
-
-
               await this.attendeeModel.updateOne(
                 { _id: attendee.attendeeId },
                 {
@@ -198,12 +197,10 @@ export class AttendeesService {
                 },
                 { session },
               );
-              console.log('index', index)
-              this.emitProgress(socketId, progress);
-
             }),
           );
         }
+        this.emitProgress(socketId, 70);
 
         const newAttendees = await this.attendeeModel.insertMany(
           tempAttendees,
@@ -269,10 +266,7 @@ export class AttendeesService {
         });
 
         for (const [empId, empData] of empDataMap) {
-          const newAssignments = await this.assignmentsModel.insertMany(
-            empData.assignMents,
-            { session },
-          );
+          const newAssignments = await this.assignService.createManyAssignments(empData.assignMents, session);
 
           const updatedAttendees = await this.attendeeModel.updateMany(
             { _id: { $in: empData.attendees.map((a) => a._id) } },
@@ -314,7 +308,11 @@ export class AttendeesService {
         this.emitProgress(socketId, 100);
       });
     } catch (error) {
-      throw error;
+      return {
+        success: false,
+        message: 'Importing failed',
+        error: error?.message || 'something went wrong, check logs',
+      };
     } finally {
       session.endSession();
     }
@@ -890,14 +888,17 @@ export class AttendeesService {
     );
   }
 
-  async deleteAttendees(webinarId: string, AdminId: string): Promise<any> {
-    const pipeline = {
-      adminId: new Types.ObjectId(`${AdminId}`),
-      webinar: new Types.ObjectId(`${webinarId}`),
+  async deleteAttendees(
+    webinarId: string,
+    adminId: string,
+    session: ClientSession,
+  ): Promise<DeleteResult> {
+    const filter = {
+      adminId: new Types.ObjectId(adminId),
+      webinar: new Types.ObjectId(webinarId),
     };
-    const result = await this.attendeeModel.deleteMany(pipeline);
 
-    return { message: 'Deleted data successfully!', result: result };
+    return this.attendeeModel.deleteMany(filter).session(session).exec();
   }
 
   async checkPreviousAssignment(email: string): Promise<Attendee | null> {
@@ -1748,5 +1749,39 @@ export class AttendeesService {
     const result = await this.attendeeModel.aggregate(exportPipeline).exec();
 
     return result;
+  }
+
+  async getAttendeeForDeletion(webinarId: Types.ObjectId) {
+    return await this.attendeeModel.find({ webinar: webinarId });
+  }
+
+  async fetchAssigned(attendeeIds: Types.ObjectId[]) {
+    return this.attendeeModel.find({
+      _id: { $in: attendeeIds },
+      assignedTo: { $ne: null },
+    });
+  }
+
+  async updateAttendees(
+    query: any,
+    set: any,
+    session?: ClientSession,
+  ) {
+    return this.attendeeModel.updateMany(
+      query,
+      { $set: set },
+      { ...(session ? { session } : {}) },
+    );
+  }
+
+  async fetchAttendeeByWebinar(email: string, webinarId: string) {
+    return this.attendeeModel.findOne({
+      email,
+      webinar: new Types.ObjectId(webinarId),
+    });
+  }
+
+  async fetchAttendeeById(id: Types.ObjectId){
+    return this.attendeeModel.findById(id)
   }
 }

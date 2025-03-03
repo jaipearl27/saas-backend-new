@@ -23,8 +23,8 @@ import { ProductLevel, ProductLevelSchema } from 'src/schemas/product-level.sche
       { name: Products.name, schema: ProductsSchema },
       { name: ProductLevel.name, schema: ProductLevelSchema },
     ]),
-    UsersModule,
     forwardRef(() => EnrollmentsModule),
+    forwardRef(() => UsersModule),
 
   ],
   controllers: [ProductsController],

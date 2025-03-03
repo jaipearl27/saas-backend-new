@@ -13,6 +13,7 @@ import { AttendeesModule } from 'src/attendees/attendees.module';
 import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
 import { UsersModule } from 'src/users/users.module';
 import { NotificationModule } from 'src/notification/notification.module';
+import { NotesModule } from 'src/notes/notes.module';
 
 @Module({
   imports: [
@@ -24,7 +25,9 @@ import { NotificationModule } from 'src/notification/notification.module';
       },
     ]),
     forwardRef(() => AttendeesModule),
-    NotificationModule
+   NotificationModule,
+    // NotesModule,
+
   ],
   providers: [WebinarService],
   controllers: [WebinarController],

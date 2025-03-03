@@ -11,6 +11,9 @@ import { UsersModule } from 'src/users/users.module';
 import { User, UserSchema } from 'src/schemas/User.schema';
 import { Attendee, AttendeeSchema } from 'src/schemas/Attendee.schema';
 import { Assignments, AssignmentsSchema } from 'src/schemas/Assignments.schema';
+import { AssignmentModule } from 'src/assignment/assignment.module';
+import { AttendeesModule } from 'src/attendees/attendees.module';
+import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
 
 @Module({
   imports: [
@@ -20,19 +23,9 @@ import { Assignments, AssignmentsSchema } from 'src/schemas/Assignments.schema';
         name: Notes.name,
         schema: NotesSchema,
       },
-      {
-        name: User.name,
-        schema: UserSchema,
-      },
-      {
-        name: Attendee.name,
-        schema: AttendeeSchema,
-      },
-      {
-        name: Assignments.name,
-        schema: AssignmentsSchema,
-      },
     ]),
+    AssignmentModule,
+    AttendeesModule,
 
     MulterModule.register({
       storage: diskStorage({
@@ -50,7 +43,7 @@ import { Assignments, AssignmentsSchema } from 'src/schemas/Assignments.schema';
 export class NotesModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(AuthTokenMiddleware)
+      .apply(GetAdminIdMiddleware)
       .forRoutes(NotesController);
 
  
