@@ -1,10 +1,11 @@
 import { parentPort, workerData } from 'worker_threads';
 import * as ExcelJS from 'exceljs';
 import * as path from 'path';
+import * as fs from 'fs';
 
 (async () => {
   try {
-    const { data, columns } = workerData;
+    const { data, columns, filePath } = workerData;
     console.log('in worker');
 
     if (!data || !Array.isArray(data) || !columns || !Array.isArray(columns)) {
@@ -45,8 +46,6 @@ import * as path from 'path';
       ];
     }
 
-    console.log(data, newColumns, maxPhoneColumns);
-
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Data');
 
@@ -64,11 +63,23 @@ import * as path from 'path';
 
     worksheet.addRows(data);
 
-    const filePath = path.resolve(`./exports/data_${Date.now()}.xlsx`);
+    const tempfilePath = filePath
+      ? path.resolve(filePath)
+      : path.resolve(`./exports/data_${Date.now()}.xlsx`);
+    
+      console.log(" ------- > ",tempfilePath);
+    
 
-    await workbook.xlsx.writeFile(filePath);
+    await workbook.xlsx.writeFile(tempfilePath);
 
-    parentPort.postMessage({ success: true, filePath });
+    // Get file stats
+    const stats = fs.statSync(tempfilePath);
+    
+    parentPort.postMessage({ 
+      success: true,
+      filePath: tempfilePath,
+      fileSize: stats.size,
+    });
   } catch (error) {
     console.error('Worker encountered an error:', error.message);
     parentPort.postMessage({ success: false, error: error.message });

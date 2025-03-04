@@ -25,11 +25,13 @@ import {
 } from './dto/attendees.dto';
 import { Types } from 'mongoose';
 import { WebinarService } from 'src/webinar/webinar.service';
+import { AssignmentService } from 'src/assignment/assignment.service';
 
 @Controller('attendees')
 export class AttendeesController {
   constructor(
     private readonly attendeesService: AttendeesService,
+    private readonly assignService: AssignmentService,
     @Inject(forwardRef(() => WebinarService))
     private readonly webinarService: WebinarService,
   ) {}
@@ -124,6 +126,7 @@ export class AttendeesController {
       data[i].isAttended = body.isAttended;
       data[i].adminId = new Types.ObjectId(`${adminId}`);
       data[i].email = (data[i].email || "").toLowerCase();
+      data[i].phone = this.assignService.formatPhoneNumber(data[i].phone) || "";
     }
 
     const result = await this.attendeesService.addPostAttendees(

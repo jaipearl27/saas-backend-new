@@ -21,6 +21,54 @@ import { EmployeeFilterDTO } from 'src/users/dto/employee-filter.dto';
 export class ExportExcelController {
   constructor(private readonly exportExcelService: ExportExcelService) {}
 
+    @Get('/user-documents')
+    async getUserDocuments(
+      @Id() userId: string,
+      @Query('page') page: string = '1',
+      @Query('limit') limit: string = '10',
+    ) {
+      if (!userId)
+        throw new BadRequestException('User ID is required to fetch user documents.');
+      
+      return await this.exportExcelService.getUserDocuments(
+        userId,
+        parseInt(page),
+        parseInt(limit),
+      );
+    }
+
+    @Get('/user-documents/:id')
+    async getUserDocument(
+      @Id() userId: string,
+      @Param('id') id: string,
+      @Res() res: Response,
+    ) {
+      if (!userId || !id)
+        throw new BadRequestException('User ID and Document ID are required to fetch user documents.');
+      
+      const userDocument = await this.exportExcelService.getUserDocument(
+        userId,
+        id,
+      );
+      if(!userDocument)
+        throw new BadRequestException('User document not found.');
+      
+      const filePath = userDocument.filePath;
+    // check if file exists
+    if(!fs.existsSync(filePath))
+      throw new BadRequestException('File not found.');
+
+    // Stream the file to the client
+    res.setHeader('Content-Disposition', `attachment; filename="users.xlsx"`);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+    }
+
   @Post('/client')
   async downloadExcel(
     @Body() filters: GetClientsFilterDto,
@@ -42,13 +90,8 @@ export class ExportExcelController {
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       );
 
-      const fileStream = fs.createReadStream(filePath);
+      const fileStream = fs.createReadStream(filePath.filePath);
       fileStream.pipe(res);
-
-      // Delete the file after streaming
-      fileStream.on('end', () => {
-        fs.unlinkSync(filePath);
-      });
     } catch (error) {
       res.status(500).json({
         message: 'Failed to download Excel file. Please try again later.',
@@ -65,8 +108,6 @@ export class ExportExcelController {
     @Res() res: Response,
   ): Promise<void> {
     try {
-      console.log('body', body, adminId);
-
       const filePath =
         await this.exportExcelService.generateExcelForWebinarAttendees(
           body.limit,
@@ -86,12 +127,12 @@ export class ExportExcelController {
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       );
 
-      const fileStream = fs.createReadStream(filePath);
+      const fileStream = fs.createReadStream(filePath.filePath);
       fileStream.pipe(res);
 
       // Delete the file after streaming
       fileStream.on('end', () => {
-        fs.unlinkSync(filePath);
+        // fs.unlinkSync(filePath);'
       });
     } catch (error) {
       res.status(500).json({
@@ -128,13 +169,8 @@ export class ExportExcelController {
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       );
 
-      const fileStream = fs.createReadStream(filePath);
+      const fileStream = fs.createReadStream(filePath.filePath);
       fileStream.pipe(res);
-
-      // Delete the file after streaming
-      fileStream.on('end', () => {
-        fs.unlinkSync(filePath);
-      });
     } catch (error) {
       res.status(500).json({
         message: 'Failed to download Excel file. Please try again later.',
@@ -170,13 +206,8 @@ export class ExportExcelController {
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       );
 
-      const fileStream = fs.createReadStream(filePath);
+      const fileStream = fs.createReadStream(filePath.filePath);
       fileStream.pipe(res);
-
-      // Delete the file after streaming
-      fileStream.on('end', () => {
-        fs.unlinkSync(filePath);
-      });
     } catch (error) {
       res.status(500).json({
         message: 'Failed to download Excel file. Please try again later.',

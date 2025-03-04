@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Worker } from 'worker_threads';
@@ -11,23 +11,73 @@ import { AttendeesService } from 'src/attendees/attendees.service';
 import { WebinarFilterDTO } from 'src/webinar/dto/webinar-filter.dto';
 import { WebinarService } from 'src/webinar/webinar.service';
 import { EmployeeFilterDTO } from 'src/users/dto/employee-filter.dto';
-
+import { UserDocuments } from 'src/schemas/user-documents.schema';
+import * as fs from 'fs';
+import {
+  CreateUserDocumentDto,
+  UserDocumentResponse,
+} from 'src/documents/dto/user-documents.dto';
 @Injectable()
 export class ExportExcelService {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<User>,
+    @InjectModel(UserDocuments.name)
+    private readonly userDocumentsModel: Model<UserDocuments>,
     private readonly usersService: UsersService,
     private readonly attendeeService: AttendeesService,
     private readonly webinarService: WebinarService,
   ) {}
 
-  async generateExcel(workerData: any, workerPath: string): Promise<string> {
+  async createUserDocuments(payload: CreateUserDocumentDto) {
+    const userDocuments = new this.userDocumentsModel(payload);
+    return userDocuments.save();
+  }
+
+  async getUserDocuments(userId: string, page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+    const [data, total] = await Promise.all([
+      this.userDocumentsModel.find({ userId }).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      this.userDocumentsModel.countDocuments({ userId }),
+    ]);
+    const pagination = {
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+    };
+    return {
+      data,
+      pagination,
+      success: true,
+      message: 'User documents fetched successfully',
+    };
+  }
+
+  async getUserDocument(userId: string, id: string):Promise<UserDocuments> {
+    const userDocument = await this.userDocumentsModel.findOne({ userId, _id: id });
+    return userDocument;
+  }
+
+  getUserDirectory(userId: string) {
+    if (!userId) {
+      throw new NotFoundException('User ID is required');
+    }
+    const userDir = path.join('exports', userId);
+    if (!fs.existsSync(userDir)) {
+      fs.mkdirSync(userDir, { recursive: true });
+    }
+    return userDir;
+  }
+
+  async generateExcel(
+    workerData: any,
+    workerPath: string,
+  ): Promise<UserDocumentResponse> {
     return new Promise((resolve, reject) => {
       const worker = new Worker(workerPath, { workerData });
 
       worker.on('message', (message) => {
         if (message.success) {
-          resolve(message.filePath);
+          resolve(message);
         } else {
           console.error('Worker Error:', message.error);
           reject(new Error(message.error));
@@ -52,7 +102,7 @@ export class ExportExcelService {
     limit: number,
     columns: string[],
     filterData: GetClientsFilterDto,
-  ): Promise<string> {
+  ): Promise<UserDocumentResponse> {
     const data = [];
     const defaultColumns = [
       { header: 'Email', key: 'email', width: 50 },
@@ -114,7 +164,9 @@ export class ExportExcelService {
       assignmentType,
     );
 
-    console.log(aggregationResult);
+    const fileName = `webinar-attendees-${webinarId}-${Date.now()}.xlsx`;
+    const userDir = this.getUserDirectory(adminId);
+    const filePath = path.join(userDir, fileName);
 
     const payload = {
       data: aggregationResult || [],
@@ -123,10 +175,23 @@ export class ExportExcelService {
         key: col,
         width: 20,
       })),
+      filePath,
     };
+    console.log('payload', fileName, filePath);
 
-    const workerPath = path.resolve(__dirname, '../workers/generate-excel.worker.js');
-    return this.generateExcel(payload, workerPath);
+    const workerPath = path.resolve(
+      __dirname,
+      '../workers/generate-excel.worker.js',
+    );
+    const fileData = await this.generateExcel(payload, workerPath);
+    await this.createUserDocuments({
+      userId: adminId,
+      filePath: fileData.filePath,
+      fileName: fileName,
+      fileSize: fileData.fileSize,
+      filters: filterData,
+    });
+    return fileData;
   }
 
   async generateExcelForWebinar(
@@ -134,7 +199,7 @@ export class ExportExcelService {
     columns: string[],
     filterData: WebinarFilterDTO,
     adminId: string,
-  ): Promise<string> {
+  ): Promise<UserDocumentResponse> {
     const aggregationResult = await this.webinarService.getWebinars(
       adminId,
       1,
@@ -164,7 +229,7 @@ export class ExportExcelService {
     columns: string[],
     filterData: EmployeeFilterDTO,
     adminId: string,
-  ): Promise<string> {
+  ): Promise<UserDocumentResponse> {
     const aggregationResult = await this.usersService.getEmployees(
       adminId,
       1,

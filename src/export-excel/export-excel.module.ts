@@ -9,10 +9,17 @@ import { ValidateBodyFilters } from 'src/middlewares/validate-body-filters.Middl
 import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { WebinarModule } from 'src/webinar/webinar.module';
 import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
+import {
+  UserDocuments,
+  UserDocumentsSchema,
+} from 'src/schemas/user-documents.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: UserDocuments.name, schema: UserDocumentsSchema },
+    ]),
     UsersModule,
     SubscriptionModule,
     WebinarModule,
@@ -34,6 +41,8 @@ export class ExportExcelModule {
         path: 'export-excel/employees',
         method: RequestMethod.POST,
       },
+      { path: 'export-excel/user-documents', method: RequestMethod.GET },
+      { path: 'export-excel/user-documents/:id', method: RequestMethod.GET },
     );
   }
 }
