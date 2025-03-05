@@ -47,6 +47,7 @@ import { LocationModule } from './location/location.module';
 import { RevenueModule } from './revenue/revenue.module';
 import { TagsModule } from './tags/tags.module';
 import { ProductRevenueModule } from './product-revenue/product-revenue.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -112,6 +113,14 @@ import { ProductRevenueModule } from './product-revenue/product-revenue.module';
     RevenueModule,
     TagsModule,
     ProductRevenueModule,
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60,
+          limit: 10,
+        },
+      ],
+    }),
   ],
   controllers: [AppController],
   providers: [AppService, CalendarService],

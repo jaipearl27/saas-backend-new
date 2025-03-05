@@ -13,6 +13,7 @@ import {
   UserDocuments,
   UserDocumentsSchema,
 } from 'src/schemas/user-documents.schema';
+import { WebsocketGateway } from 'src/websocket/websocket.gateway';
 
 @Module({
   imports: [
@@ -26,7 +27,8 @@ import {
     AttendeesModule,
   ],
   controllers: [ExportExcelController],
-  providers: [ExportExcelService],
+  providers: [ExportExcelService, WebsocketGateway],
+  exports: [ExportExcelService]
 })
 export class ExportExcelModule {
   configure(consumer: MiddlewareConsumer) {
@@ -43,6 +45,7 @@ export class ExportExcelModule {
       },
       { path: 'export-excel/user-documents', method: RequestMethod.GET },
       { path: 'export-excel/user-documents/:id', method: RequestMethod.GET },
+      { path: 'export-excel/user-documents/:id', method: RequestMethod.DELETE },
     );
   }
 }

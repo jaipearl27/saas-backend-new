@@ -17,6 +17,7 @@ import {
   CreateUserDocumentDto,
   UserDocumentResponse,
 } from 'src/documents/dto/user-documents.dto';
+import { WebsocketGateway } from 'src/websocket/websocket.gateway';
 @Injectable()
 export class ExportExcelService {
   constructor(
@@ -26,17 +27,29 @@ export class ExportExcelService {
     private readonly usersService: UsersService,
     private readonly attendeeService: AttendeesService,
     private readonly webinarService: WebinarService,
+    private readonly websocketGateway: WebsocketGateway,
   ) {}
 
   async createUserDocuments(payload: CreateUserDocumentDto) {
-    const userDocuments = new this.userDocumentsModel(payload);
-    return userDocuments.save();
+    const userDocument = new this.userDocumentsModel(payload);
+    await userDocument.save();
+    const socketId = this.websocketGateway.activeUsers.get(`${payload.userId}`);
+    console.log(socketId, '--------');
+    if (socketId) {
+      this.websocketGateway.server
+        .to(socketId)
+        .emit('new-download', userDocument);
+    }
   }
 
   async getUserDocuments(userId: string, page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
     const [data, total] = await Promise.all([
-      this.userDocumentsModel.find({ userId }).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      this.userDocumentsModel
+        .find({ userId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
       this.userDocumentsModel.countDocuments({ userId }),
     ]);
     const pagination = {
@@ -52,8 +65,39 @@ export class ExportExcelService {
     };
   }
 
-  async getUserDocument(userId: string, id: string):Promise<UserDocuments> {
-    const userDocument = await this.userDocumentsModel.findOne({ userId, _id: id });
+  async deleteUserDocument(
+    userId: string,
+    id: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const document = await this.userDocumentsModel.findOneAndDelete({
+      userId,
+      _id: id,
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    if (document.filePath && fs.existsSync(document.filePath)) {
+      console.log('im deleting stuff');
+      try {
+        fs.unlinkSync(document.filePath);
+      } catch (err) {
+        console.error(`Error deleting file: ${document.filePath}`, err);
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Document and associated file deleted successfully',
+    };
+  }
+
+  async getUserDocument(userId: string, id: string): Promise<UserDocuments> {
+    const userDocument = await this.userDocumentsModel.findOne({
+      userId,
+      _id: id,
+    });
     return userDocument;
   }
 
@@ -184,7 +228,7 @@ export class ExportExcelService {
       '../workers/generate-excel.worker.js',
     );
     const fileData = await this.generateExcel(payload, workerPath);
-    await this.createUserDocuments({
+    this.createUserDocuments({
       userId: adminId,
       filePath: fileData.filePath,
       fileName: fileName,

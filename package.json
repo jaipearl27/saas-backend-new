@@ -33,6 +33,7 @@
     "@nestjs/platform-socket.io": "^10.4.15",
     "@nestjs/schedule": "^4.1.1",
     "@nestjs/serve-static": "^4.0.2",
+    "@nestjs/throttler": "^6.4.0",
     "@nestjs/websockets": "^10.4.15",
     "axios": "^1.7.9",
     "bcrypt": "^5.1.1",
