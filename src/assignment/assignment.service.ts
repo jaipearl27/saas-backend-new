@@ -42,6 +42,7 @@ export class AssignmentService {
 
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
+    @Inject(forwardRef(() => WebinarService))
     private readonly webinarService: WebinarService,
     @Inject(forwardRef(() => SubscriptionService))
     private readonly subscriptionService: SubscriptionService,
@@ -1405,5 +1406,12 @@ export class AssignmentService {
         },
       },
     ]);
+  }
+
+  async deleteAssignmentsByWebinar(adminId: Types.ObjectId, webinarId: Types.ObjectId,session: ClientSession) {
+    return this.assignmentsModel.deleteMany({
+      adminId: adminId,
+      webinar: webinarId,
+    },{session}).exec();
   }
 }

@@ -30,6 +30,15 @@ export class ExportExcelService {
     private readonly websocketGateway: WebsocketGateway,
   ) {}
 
+  emitProgress(socketId: null | string, value: number) {
+    if (socketId) {
+      this.websocketGateway.server.to(socketId).emit('import-export', {
+        actionType: 'import',
+        value: value,
+      });
+    }
+  }
+
   async createUserDocuments(payload: CreateUserDocumentDto) {
     const userDocument = new this.userDocumentsModel(payload);
     await userDocument.save();
@@ -198,6 +207,17 @@ export class ExportExcelService {
     validCall?: string | undefined,
     assignmentType?: string | undefined,
   ) {
+
+    const socketId = this.websocketGateway.activeUsers.get(String(adminId));
+    let lastProgress = 0;
+    const updateProgress = (current) => {
+      if (current - lastProgress >= 5) { // 5% increments
+        this.emitProgress(socketId, current);
+        lastProgress = current;
+      }
+    };
+    
+    updateProgress(10);
     const aggregationResult = await this.attendeeService.getAttendeesForExport(
       webinarId,
       adminId,
@@ -222,19 +242,23 @@ export class ExportExcelService {
       filePath,
     };
     console.log('payload', fileName, filePath);
+    updateProgress(50);
 
     const workerPath = path.resolve(
       __dirname,
       '../workers/generate-excel.worker.js',
     );
     const fileData = await this.generateExcel(payload, workerPath);
+    updateProgress(80);
     this.createUserDocuments({
       userId: adminId,
-      filePath: fileData.filePath,
+      filePath: filePath,
       fileName: fileName,
       fileSize: fileData.fileSize,
       filters: filterData,
     });
+
+    updateProgress(100);
     return fileData;
   }
 

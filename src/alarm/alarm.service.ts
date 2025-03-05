@@ -10,7 +10,7 @@ import { CreateAlarmDto } from './dto/alarm.dto';
 import { CronJob } from 'cron';
 import { InjectModel } from '@nestjs/mongoose';
 import { Alarm } from 'src/schemas/Alarm.schema';
-import { Model, Types } from 'mongoose';
+import { ClientSession, Model, Types } from 'mongoose';
 import { WebsocketGateway } from 'src/websocket/websocket.gateway';
 import { WhatsappService } from 'src/whatsapp/whatsapp.service';
 import { SubscriptionService } from 'src/subscription/subscription.service';
@@ -24,6 +24,8 @@ export class AlarmService {
     private readonly websocketGateway: WebsocketGateway,
     @Inject(forwardRef(() => WhatsappService))
     private readonly whatsappService: WhatsappService,
+    @Inject(forwardRef(() => SubscriptionService))
+
     private readonly subscriptionService: SubscriptionService,
     private readonly configService: ConfigService,
   ) {}
@@ -262,5 +264,9 @@ export class AlarmService {
       .exec();
 
     return alarms;
+  }
+
+  async deleteAlarmsByAttendeeIds(attendeeIds: Types.ObjectId[],session: ClientSession) {
+    return this.alarmsModel.deleteMany({ attendeeId: { $in: attendeeIds } },{session}).exec();
   }
 }

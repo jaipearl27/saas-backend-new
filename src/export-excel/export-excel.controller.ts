@@ -19,6 +19,7 @@ import { ExportWebinarAttendeesDTO } from 'src/attendees/dto/attendees.dto';
 import { WebinarFilterDTO } from 'src/webinar/dto/webinar-filter.dto';
 import { EmployeeFilterDTO } from 'src/users/dto/employee-filter.dto';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import * as path from 'path';
 
 @Controller('export-excel')
 export class ExportExcelController {
@@ -62,7 +63,8 @@ export class ExportExcelController {
     if (!userDocument)
       throw new BadRequestException('User document not found.');
 
-    const filePath = userDocument.filePath;
+    const filePath = path.resolve(userDocument.filePath);
+    console.log(filePath);
     // check if file exists
     if (!fs.existsSync(filePath))
       throw new BadRequestException('File not found.');

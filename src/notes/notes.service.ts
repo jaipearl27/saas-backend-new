@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, forwardRef, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, PipelineStage, Types } from 'mongoose';
+import { ClientSession, Model, PipelineStage, Types } from 'mongoose';
 import { Notes } from 'src/schemas/Notes.schema';
 import { CreateNoteDto } from './dto/notes.dto';
 import { UsersService } from 'src/users/users.service';
@@ -11,8 +11,10 @@ import { AttendeesService } from 'src/attendees/attendees.service';
 export class NotesService {
   constructor(
     @InjectModel(Notes.name) private readonly notesModel: Model<Notes>,
+    @Inject(forwardRef(() => UsersService))
     private readonly usersService: UsersService,
     private readonly assignService: AssignmentService,
+    @Inject(forwardRef(() => AttendeesService))
     private readonly attendeeService: AttendeesService,
   ) {}
 
@@ -381,5 +383,10 @@ export class NotesService {
     );
 
     return results;
+  }
+
+  async deleteNotesByAttendees(attendees: Types.ObjectId[],session: ClientSession){
+    return this.notesModel.deleteMany({attendee: {$in: attendees}}).session(session).exec();
+    // TODO: Delete images from cloudinary
   }
 }

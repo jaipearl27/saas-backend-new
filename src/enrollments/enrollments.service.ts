@@ -418,9 +418,10 @@ export class EnrollmentsService {
 
 
   async deleteAssignmentsByWebinar(
+    adminId: Types.ObjectId,
     webinarId: Types.ObjectId,
     session: ClientSession
   ) {
-    return await this.enrollmentModel.deleteMany({ webinar: webinarId }).session(session);
+    return this.enrollmentModel.deleteMany({ adminId: adminId, webinar: webinarId }).session(session).exec();
   }
 }

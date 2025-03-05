@@ -890,14 +890,14 @@ export class AttendeesService {
     );
   }
 
-  async deleteAttendees(
-    webinarId: string,
-    adminId: string,
+  async deleteAttendeesByWebinar(
+    webinarId: Types.ObjectId,
+    adminId: Types.ObjectId,
     session: ClientSession,
   ): Promise<DeleteResult> {
     const filter = {
-      adminId: new Types.ObjectId(adminId),
-      webinar: new Types.ObjectId(webinarId),
+      adminId: adminId,
+      webinar: webinarId,
     };
 
     return this.attendeeModel.deleteMany(filter).session(session).exec();
@@ -1712,8 +1712,8 @@ export class AttendeesService {
     return result;
   }
 
-  async getAttendeeForDeletion(webinarId: Types.ObjectId) {
-    return await this.attendeeModel.find({ webinar: webinarId });
+  async getAttendeeForDeletion(webinarId: Types.ObjectId, session: ClientSession) {
+    return await this.attendeeModel.find({ webinar: webinarId }).session(session);
   }
 
   async fetchAssigned(attendeeIds: Types.ObjectId[]) {
