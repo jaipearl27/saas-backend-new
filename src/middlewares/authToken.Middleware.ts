@@ -34,6 +34,7 @@ export class AuthTokenMiddleware implements NestMiddleware {
         req.id = decodedToken.id;
         req.role = decodedToken.role;
         req.plan = decodedToken.plan;
+        req.adminId = decodedToken.adminId;
         next();
       } else {
         throw new UnauthorizedException('Unauthorized, Invalid access token.');

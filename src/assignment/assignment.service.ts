@@ -349,7 +349,7 @@ export class AssignmentService {
             attendee: attendeeId,
             user: taggedEmployee._id,
             recordType: 'preWebinar',
-            isTemporary: true
+            isTemporary: true,
           });
 
           if (!newAssignment) {
@@ -1216,7 +1216,7 @@ export class AssignmentService {
         attendee: new Types.ObjectId(assignment.attendeeId),
         recordType: data.recordType,
         status: AssignmentStatus.ACTIVE,
-        ...(data.isTemp ? {isTemporary: true}: {})
+        ...(data.isTemp ? { isTemporary: true } : {}),
       }));
 
       const createdAssignments = await this.assignmentsModel.insertMany(
@@ -1439,5 +1439,288 @@ export class AssignmentService {
         { session },
       )
       .exec();
+  }
+
+  validateDate(start: string, end: string): { startDate: Date; endDate: Date } {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new BadRequestException('Invalid date format');
+    }
+
+    if (startDate > endDate) {
+      throw new BadRequestException(
+        'Start date cannot be greater than end date',
+      );
+    }
+    console.log(startDate, endDate);
+    return { startDate, endDate };
+  }
+
+  getPipelineStage(startDate: Date, endDate: Date): PipelineStage[] {
+    return [
+      {
+        $match: {
+          $expr: {
+            $and: [
+              {
+                $gte: [
+                  {
+                    $dateFromParts: {
+                      year: {
+                        $year: { date: '$createdAt', timezone: 'Asia/Kolkata' },
+                      },
+                      month: {
+                        $month: {
+                          date: '$createdAt',
+                          timezone: 'Asia/Kolkata',
+                        },
+                      },
+                      day: {
+                        $dayOfMonth: {
+                          date: '$createdAt',
+                          timezone: 'Asia/Kolkata',
+                        },
+                      },
+                      timezone: 'Asia/Kolkata',
+                    },
+                  },
+                  startDate,
+                ],
+              },
+              {
+                $lte: [
+                  {
+                    $dateFromParts: {
+                      year: {
+                        $year: { date: '$createdAt', timezone: 'Asia/Kolkata' },
+                      },
+                      month: {
+                        $month: {
+                          date: '$createdAt',
+                          timezone: 'Asia/Kolkata',
+                        },
+                      },
+                      day: {
+                        $dayOfMonth: {
+                          date: '$createdAt',
+                          timezone: 'Asia/Kolkata',
+                        },
+                      },
+                      timezone: 'Asia/Kolkata',
+                    },
+                  },
+                  endDate,
+                ],
+              },
+            ],
+          },
+        },
+      },
+    ];
+  }
+
+  async getAssignmentCountByDateRange(
+    userId: string,
+    adminId: string,
+    startDate: Date,
+    endDate: Date,
+  ) {
+    const result = await this.assignmentsModel.aggregate([
+      {
+        $match: {
+          user: new Types.ObjectId(userId),
+          adminId: new Types.ObjectId(adminId),
+          createdAt: { $gte: startDate, $lte: endDate },
+        },
+      },
+      // ...this.getPipelineStage(startDate, endDate),
+      {
+        $lookup: {
+          from: 'attendees',
+          localField: 'attendee',
+          foreignField: '_id',
+          as: 'attendeeDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$attendeeDetails',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalAssignments: { $sum: 1 },
+          completed: {
+            $sum: {
+              $cond: [{ $ne: ['$attendeeDetails.status', null] }, 1, 0],
+            },
+          },
+          active: {
+            $sum: {
+              $cond: [{ $eq: ['$attendeeDetails.status', null] }, 1, 0],
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalAssignments: 1,
+          completed: 1,
+          active: 1,
+          startDate: { $dateToString: { date: startDate, format: '%Y-%m-%d' } },
+          endDate: { $dateToString: { date: endDate, format: '%Y-%m-%d' } },
+        },
+      },
+    ]);
+
+    return {
+      success: true,
+      data: result,
+      message: 'Assignment count by date range fetched successfully',
+    };
+  }
+
+  async getDailyAssignmentStats(
+    userId: string,
+    adminId: string,
+    startDate: Date,
+    endDate: Date,
+  ) {
+    const result = await this.assignmentsModel.aggregate([
+      {
+        $match: {
+          user: new Types.ObjectId(userId),
+          adminId: new Types.ObjectId(adminId),
+          createdAt: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $lookup: {
+          from: 'attendees',
+          localField: 'attendee',
+          foreignField: '_id',
+          as: 'attendeeDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$attendeeDetails',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+          },
+          count: { $sum: 1 },
+          completed: {
+            $sum: {
+              $cond: [{ $ne: ['$attendeeDetails.status', null] }, 1, 0],
+            },
+          },
+        },
+      },
+      {
+        $sort: { _id: 1 },
+      },
+      {
+        $project: {
+          date: '$_id',
+          count: 1,
+          completed: 1,
+          _id: 0,
+        },
+      },
+    ]);
+
+    return {
+      success: true,
+      data: result,
+      message: 'Daily assignment stats fetched successfully',
+    };
+  }
+
+  async getAllAssignmentsByDateRange(
+    adminId: string,
+    startDate: Date,
+    endDate: Date,
+  ) {
+    console.log(startDate, endDate, adminId,'skdjfljflskfj');
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          adminId: new Types.ObjectId(adminId),
+          createdAt: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $lookup: {
+          from: 'attendees',
+          localField: 'attendee',
+          foreignField: '_id',
+          as: 'attendeeDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$attendeeDetails',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            date: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: '$createdAt',
+                timezone: '+05:30'
+              }
+            },
+            user: '$user',
+          },
+          count: { $sum: 1 },
+          completed: {
+            $sum: {
+              $cond: [{ $ne: ['$attendeeDetails.status', null] }, 1, 0],
+            },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id.user',
+          foreignField: '_id',
+          as: 'userDetails',
+        },
+      },
+      {
+        $project: {
+          count: 1,
+          completed: 1,
+          date: '$_id.date',
+          userName: {
+            $arrayElemAt: ['$userDetails.userName', 0],
+          },
+        },
+      },
+      {
+        $sort: { _id: 1 },
+      },
+    ];
+
+    const result = await this.assignmentsModel.aggregate(pipeline);
+    return {
+      success: true,
+      data: result,
+      message: 'Assignments fetched successfully',
+    };
   }
 }

@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsDateString,
   IsEnum,
   IsMongoId,
   IsNotEmpty,
@@ -146,4 +147,12 @@ export class MoveToPullbacksDTO {
 
   @IsMongoId()
   webinarId: string;
+}
+
+export class DateRangeDto {
+  @IsDateString()
+  start: string;
+  
+  @IsDateString()
+  end: string;
 }

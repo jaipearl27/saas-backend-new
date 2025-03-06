@@ -60,12 +60,30 @@ export class AssignmentModule {
           path: 'assignment/reassign',
           method: RequestMethod.PATCH,
         },
+        {
+          path: 'assignment/metrics/daily',
+          method: RequestMethod.GET,
+        },
+        {
+          path: 'assignment/metrics/count',
+          method: RequestMethod.GET,
+        },
       )
       .forRoutes({ path: 'assignment*', method: RequestMethod.ALL });
 
     consumer.apply(AuthTokenMiddleware).forRoutes({
       path: 'assignment/activityInactivity',
       method: RequestMethod.GET,
-    });
+    },
+    {
+      path: 'assignment/metrics/daily',
+      method: RequestMethod.GET,
+    },
+    {
+      path: 'assignment/metrics/count',
+      method: RequestMethod.GET,
+    },
+  
+  );
   }
 }
