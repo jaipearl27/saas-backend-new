@@ -17,6 +17,7 @@ import { NotesModule } from 'src/notes/notes.module';
 import { AlarmModule } from 'src/alarm/alarm.module';
 import { AssignmentModule } from 'src/assignment/assignment.module';
 import { EnrollmentsModule } from 'src/enrollments/enrollments.module';
+import { SubscriptionModule } from 'src/subscription/subscription.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { EnrollmentsModule } from 'src/enrollments/enrollments.module';
     NotificationModule,
     forwardRef(() => AssignmentModule),
     forwardRef(() => NotesModule),
+    forwardRef(() => SubscriptionModule),
     EnrollmentsModule,
 
   ],

@@ -15,6 +15,7 @@ import { NotesService } from 'src/notes/notes.service';
 import { AlarmService } from 'src/alarm/alarm.service';
 import { EnrollmentsService } from 'src/enrollments/enrollments.service';
 import { Logger } from '@nestjs/common';
+import { SubscriptionService } from 'src/subscription/subscription.service';
 
 @Injectable()
 export class WebinarService {
@@ -31,7 +32,9 @@ export class WebinarService {
     private readonly alarmService: AlarmService,
     @Inject(forwardRef(() => AssignmentService))
     private readonly assignmentService: AssignmentService,
-    private readonly enrollmentService: EnrollmentsService
+    private readonly enrollmentService: EnrollmentsService,
+    @Inject(forwardRef(() => SubscriptionService))
+    private readonly subscriptionService: SubscriptionService
 
   ) {}
 
@@ -312,6 +315,12 @@ export class WebinarService {
           session
         );
       }
+      const contactCount = await this.attendeesService.getNonUniqueAttendeesCount([], adminId, session);
+
+      await this.subscriptionService.updateContactCount(adminId, contactCount, session)
+
+
+
 
       await session.commitTransaction();
     } catch (error) {

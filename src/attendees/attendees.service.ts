@@ -90,7 +90,8 @@ export class AttendeesService {
     const socketId = this.websocketGateway.activeUsers.get(String(adminId));
     let lastProgress = 0;
     const updateProgress = (current) => {
-      if (current - lastProgress >= 5) { // 5% increments
+      if (current - lastProgress >= 5) {
+        // 5% increments
         this.emitProgress(socketId, current);
         lastProgress = current;
       }
@@ -120,13 +121,15 @@ export class AttendeesService {
 
         // Deduplicate by email
         const uniqueEmails = new Set();
-        const uniquePrevAttendeesToUpdate = prevAttendeesToUpdate.filter(a => {
-          if (uniqueEmails.has(a.email)) {
-            return false;
-          }
-          uniqueEmails.add(a.email);
-          return true;
-        });
+        const uniquePrevAttendeesToUpdate = prevAttendeesToUpdate.filter(
+          (a) => {
+            if (uniqueEmails.has(a.email)) {
+              return false;
+            }
+            uniqueEmails.add(a.email);
+            return true;
+          },
+        );
 
         attendeesForUpdate = uniquePrevAttendeesToUpdate.map((attendee) => ({
           ...attendee,
@@ -184,7 +187,7 @@ export class AttendeesService {
     try {
       await session.withTransaction(async () => {
         if (attendeesForUpdate.length > 0) {
-          const bulkOps = attendeesForUpdate.map(attendee => ({
+          const bulkOps = attendeesForUpdate.map((attendee) => ({
             updateOne: {
               filter: { _id: attendee.attendeeId },
               update: {
@@ -196,8 +199,8 @@ export class AttendeesService {
                   timeInSession: attendee.timeInSession || 0,
                   location: attendee.location || null,
                 },
-              }
-            }
+              },
+            },
           }));
           await this.attendeeModel.bulkWrite(bulkOps, { session });
         }
@@ -267,40 +270,48 @@ export class AttendeesService {
         });
 
         // Use parallel processing
-        await async.eachLimit(Array.from(empDataMap), 5, async ([empId, empData]) => {
-          const newAssignments = await this.assignService.createManyAssignments(empData.assignMents, session);
+        await async.eachLimit(
+          Array.from(empDataMap),
+          5,
+          async ([empId, empData]) => {
+            const newAssignments =
+              await this.assignService.createManyAssignments(
+                empData.assignMents,
+                session,
+              );
 
-          const updatedAttendees = await this.attendeeModel.updateMany(
-            { _id: { $in: empData.attendees.map((a) => a._id) } },
-            { $set: { assignedTo: new Types.ObjectId(`${empId}`) } },
-            { session },
-          );
+            const updatedAttendees = await this.attendeeModel.updateMany(
+              { _id: { $in: empData.attendees.map((a) => a._id) } },
+              { $set: { assignedTo: new Types.ObjectId(`${empId}`) } },
+              { session },
+            );
 
-          await this.userService.incrementCount(
-            empId,
-            empData.contactCount,
-            session,
-          );
-          if (
-            newAssignments.length !== updatedAttendees.modifiedCount ||
-            newAssignments.length !== empData.contactCount
-          ) {
-            throw new Error('Consistency check failed: mismatch in counts.');
-          }
+            await this.userService.incrementCount(
+              empId,
+              empData.contactCount,
+              session,
+            );
+            if (
+              newAssignments.length !== updatedAttendees.modifiedCount ||
+              newAssignments.length !== empData.contactCount
+            ) {
+              throw new Error('Consistency check failed: mismatch in counts.');
+            }
 
-          const notification = {
-            recipient: empId,
-            title: 'New Tasks Assigned',
-            message: `You have been assigned ${empData.contactCount} new tasks. Please check your task list for details.`,
-            type: notificationType.INFO,
-            actionType: notificationActionType.ASSIGNMENT,
-            metadata: {
-              webinarId: webinar,
-            },
-          };
+            const notification = {
+              recipient: empId,
+              title: 'New Tasks Assigned',
+              message: `You have been assigned ${empData.contactCount} new tasks. Please check your task list for details.`,
+              type: notificationType.INFO,
+              actionType: notificationActionType.ASSIGNMENT,
+              metadata: {
+                webinarId: webinar,
+              },
+            };
 
-          await this.notificationService.createNotification(notification);
-        });
+            await this.notificationService.createNotification(notification);
+          },
+        );
         updateProgress(90);
 
         await this.subscriptionService.incrementContactCount(
@@ -986,6 +997,7 @@ export class AttendeesService {
   async getNonUniqueAttendeesCount(
     emails: string[],
     adminId: Types.ObjectId,
+    session?: ClientSession
   ): Promise<number> {
     const pipiline: PipelineStage[] = [
       {
@@ -993,11 +1005,15 @@ export class AttendeesService {
           adminId: adminId,
         },
       },
-      {
-        $match: {
-          email: { $in: emails },
-        },
-      },
+      ...(emails.length > 0
+        ? [
+            {
+              $match: {
+                email: { $in: emails },
+              },
+            },
+          ]
+        : []),
       {
         $group: {
           _id: '$email',
@@ -1008,7 +1024,13 @@ export class AttendeesService {
       },
     ];
 
-    const result = await this.attendeeModel.aggregate(pipiline);
+    const aggregation = this.attendeeModel.aggregate(pipiline);
+    
+    if (session) {
+      aggregation.session(session);
+    }
+
+    const result = await aggregation.exec();
 
     if (Array.isArray(result) && result.length > 0) {
       return result[0]?.emailCount || 0;
@@ -1028,7 +1050,6 @@ export class AttendeesService {
     }
     return 0;
   }
-
 
   async getPreWebinarUnattendedData(
     adminId: Types.ObjectId,
@@ -1494,7 +1515,6 @@ export class AttendeesService {
     validCall?: string,
     assignmentType?: string,
   ): Promise<any> {
-
     const hasFilters = Object.keys(filters).some(
       (key) => filters[key] !== null && filters[key] !== undefined,
     );
@@ -1712,8 +1732,13 @@ export class AttendeesService {
     return result;
   }
 
-  async getAttendeeForDeletion(webinarId: Types.ObjectId, session: ClientSession) {
-    return await this.attendeeModel.find({ webinar: webinarId }).session(session);
+  async getAttendeeForDeletion(
+    webinarId: Types.ObjectId,
+    session: ClientSession,
+  ) {
+    return await this.attendeeModel
+      .find({ webinar: webinarId })
+      .session(session);
   }
 
   async fetchAssigned(attendeeIds: Types.ObjectId[]) {
@@ -1723,11 +1748,7 @@ export class AttendeesService {
     });
   }
 
-  async updateAttendees(
-    query: any,
-    set: any,
-    session?: ClientSession,
-  ) {
+  async updateAttendees(query: any, set: any, session?: ClientSession) {
     return this.attendeeModel.updateMany(
       query,
       { $set: set },
@@ -1742,7 +1763,7 @@ export class AttendeesService {
     });
   }
 
-  async fetchAttendeeById(id: Types.ObjectId){
-    return this.attendeeModel.findById(id)
+  async fetchAttendeeById(id: Types.ObjectId) {
+    return this.attendeeModel.findById(id);
   }
 }

@@ -251,7 +251,8 @@ export class SubscriptionService {
 
     if (String(subscription.plan) === String(planId) && !isPlanExpired) {
       subscription.expiryDate = new Date(
-        subscription.expiryDate.getTime() + durationConfig.duration * 24 * 60 * 60 * 1000,
+        subscription.expiryDate.getTime() +
+          durationConfig.duration * 24 * 60 * 60 * 1000,
       );
     } else {
       subscription.startDate = new Date();
@@ -264,7 +265,6 @@ export class SubscriptionService {
     subscription.contactLimit = plan.contactLimit;
     subscription.employeeLimit = plan.employeeCount;
     subscription.toggleLimit = plan.toggleLimit;
-
 
     const { totalWithGST, itemAmount, discountAmount, gst } =
       await this.generatePriceForPlan(
@@ -303,6 +303,18 @@ export class SubscriptionService {
     subscription.contactCount = subscription.contactCount + count;
     await subscription.save();
     return subscription;
+  }
+
+  async updateContactCount(
+    adminId: Types.ObjectId,
+    count: number,
+    session: ClientSession,
+  ) {
+    return this.SubscriptionModel.updateOne(
+      { admin: adminId },
+      { $set: { contactCount: count } },
+      { session },
+    );
   }
 
   async generatePriceForPlan(

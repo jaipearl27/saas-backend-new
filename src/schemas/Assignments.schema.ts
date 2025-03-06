@@ -64,6 +64,11 @@ export class Assignments extends Document {
     maxlength: 1000,
   })
   requestReason?: string;
+
+  @Prop({
+    type: Boolean,
+  })
+  isTemporary?: boolean;
 }
 
 export const AssignmentsSchema = SchemaFactory.createForClass(Assignments);
