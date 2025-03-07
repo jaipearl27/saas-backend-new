@@ -319,9 +319,6 @@ export class WebinarService {
 
       await this.subscriptionService.updateContactCount(adminId, contactCount, session)
 
-
-
-
       await session.commitTransaction();
     } catch (error) {
       await session.abortTransaction();

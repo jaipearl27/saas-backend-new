@@ -92,6 +92,4 @@ AssignmentsSchema.pre('save', function (next) {
   next();
 });
 
-AssignmentsSchema.index({ adminId: 1 });
-AssignmentsSchema.index({ webinar: 1 });
-AssignmentsSchema.index({ attendee: 1 });
+AssignmentsSchema.index({ adminId: 1, webinar: 1, attendee: 1 });

@@ -311,7 +311,6 @@ export class AssignmentService {
                 product._id,
               );
             if (existingEnrollment) {
-              console.log('Attendee already enrolled');
             } else {
               const enrollment = await this.enrollmentService.createEnrollment({
                 attendee: attendeeEmail,
@@ -319,7 +318,6 @@ export class AssignmentService {
                 adminId: adminId.toString(),
                 webinar: webinarId,
               });
-              console.log('Enrollment created');
             }
           });
       }
@@ -1454,7 +1452,6 @@ export class AssignmentService {
         'Start date cannot be greater than end date',
       );
     }
-    console.log(startDate, endDate);
     return { startDate, endDate };
   }
 
@@ -1521,84 +1518,25 @@ export class AssignmentService {
     ];
   }
 
-  async getAssignmentCountByDateRange(
-    userId: string,
-    adminId: string,
-    startDate: Date,
-    endDate: Date,
-  ) {
-    const result = await this.assignmentsModel.aggregate([
-      {
-        $match: {
-          user: new Types.ObjectId(userId),
-          adminId: new Types.ObjectId(adminId),
-          createdAt: { $gte: startDate, $lte: endDate },
-        },
-      },
-      // ...this.getPipelineStage(startDate, endDate),
-      {
-        $lookup: {
-          from: 'attendees',
-          localField: 'attendee',
-          foreignField: '_id',
-          as: 'attendeeDetails',
-        },
-      },
-      {
-        $unwind: {
-          path: '$attendeeDetails',
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalAssignments: { $sum: 1 },
-          completed: {
-            $sum: {
-              $cond: [{ $ne: ['$attendeeDetails.status', null] }, 1, 0],
-            },
-          },
-          active: {
-            $sum: {
-              $cond: [{ $eq: ['$attendeeDetails.status', null] }, 1, 0],
-            },
-          },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          totalAssignments: 1,
-          completed: 1,
-          active: 1,
-          startDate: { $dateToString: { date: startDate, format: '%Y-%m-%d' } },
-          endDate: { $dateToString: { date: endDate, format: '%Y-%m-%d' } },
-        },
-      },
-    ]);
-
-    return {
-      success: true,
-      data: result,
-      message: 'Assignment count by date range fetched successfully',
-    };
-  }
-
   async getDailyAssignmentStats(
-    userId: string,
-    adminId: string,
+    user: string,
+    admin: string,
     startDate: Date,
     endDate: Date,
+    webinarId?: string,
   ) {
+    const userId = new Types.ObjectId(`${user}`);
+    const adminId = new Types.ObjectId(`${admin}`);
+
     const result = await this.assignmentsModel.aggregate([
       {
         $match: {
-          user: new Types.ObjectId(userId),
-          adminId: new Types.ObjectId(adminId),
-          createdAt: { $gte: startDate, $lte: endDate },
+          adminId,
+          ...(webinarId ? { webinar: new Types.ObjectId(webinarId) } : {}),
+          user: userId,
         },
       },
+      ...(this.getPipelineStage(startDate, endDate)),
       {
         $lookup: {
           from: 'attendees',
@@ -1616,7 +1554,11 @@ export class AssignmentService {
       {
         $group: {
           _id: {
-            $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: '$createdAt',
+              timezone: '+05:30',
+            },
           },
           count: { $sum: 1 },
           completed: {
@@ -1650,15 +1592,17 @@ export class AssignmentService {
     adminId: string,
     startDate: Date,
     endDate: Date,
+    webinarId?: string,
   ) {
-    console.log(startDate, endDate, adminId,'skdjfljflskfj');
     const pipeline: PipelineStage[] = [
       {
         $match: {
           adminId: new Types.ObjectId(adminId),
-          createdAt: { $gte: startDate, $lte: endDate },
+          ...(webinarId ? { webinar: new Types.ObjectId(webinarId) } : {}),
+          
         },
       },
+      ...(this.getPipelineStage(startDate, endDate)),
       {
         $lookup: {
           from: 'attendees',
@@ -1680,8 +1624,8 @@ export class AssignmentService {
               $dateToString: {
                 format: '%Y-%m-%d',
                 date: '$createdAt',
-                timezone: '+05:30'
-              }
+                timezone: '+05:30',
+              },
             },
             user: '$user',
           },

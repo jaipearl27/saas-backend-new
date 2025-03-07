@@ -258,25 +258,6 @@ export class AssignmentController {
     );
   }
 
-  @Get('metrics/count')
-  async getAssignmentCountByDateRange(
-    @Id() userId: string,
-    @AdminId() adminId: string,
-    @Query() query: DateRangeDto,
-    @Role() role: string
-  ) {
-    const { startDate, endDate } = this.assignmentService.validateDate(
-      query.start,
-      query.end,
-    );
-
-    return this.assignmentService.getAssignmentCountByDateRange(
-      userId,
-      adminId,
-      startDate,
-      endDate
-    );
-  }
 
   @Get('metrics/daily')
   async getDailyAssignmentStats(
@@ -285,16 +266,21 @@ export class AssignmentController {
     @Query() query: DateRangeDto,
     @Role() role: string
   ) {
+    if(!query.employeeId){
+      throw new BadRequestException("EmployeeId Is Required");
+    }
+
     const { startDate, endDate } = this.assignmentService.validateDate(
       query.start,
       query.end,
     );
 
     return this.assignmentService.getDailyAssignmentStats(
-      userId,
+      query.employeeId,
       adminId,
       startDate,
-      endDate
+      endDate,
+      query.webinarId
     );
   }
 
@@ -312,6 +298,7 @@ export class AssignmentController {
       adminId,
       startDate,
       endDate,
+      query.webinarId
     );
   }
 }

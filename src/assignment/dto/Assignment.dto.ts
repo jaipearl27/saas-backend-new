@@ -155,4 +155,12 @@ export class DateRangeDto {
   
   @IsDateString()
   end: string;
+
+  @IsOptional()
+  @IsMongoId()
+  webinarId: string;
+
+  @IsOptional()
+  @IsMongoId()
+  employeeId: string;
 }

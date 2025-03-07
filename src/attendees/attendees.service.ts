@@ -68,6 +68,13 @@ export class AttendeesService {
     }
   }
 
+  emitNoteCreation(adminId: string){
+    const socketId = this.websocketGateway.activeUsers.get(String(adminId));
+    if(socketId){
+      this.websocketGateway.server.to(socketId).emit('note-creation', {});
+    }
+  }
+
   async addPostAttendees(
     attendees: CreateAttendeeDto[],
     webinar: string,

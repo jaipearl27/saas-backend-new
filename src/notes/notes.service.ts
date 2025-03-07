@@ -51,6 +51,8 @@ export class NotesService {
       createdBy,
       isWorked: body.isWorked === 'true' ? true : false,
     });
+
+    this.attendeeService.emitNoteCreation(adminId);
     return note;
   }
 
