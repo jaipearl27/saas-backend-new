@@ -1344,7 +1344,7 @@ export class AttendeesService {
         },
       },
       { $skip: skip },
-      { $limit: limit },
+      ...(limit ? [{ $limit: limit }] : []),
       ...(filters.leadType
         ? []
         : [
@@ -1508,7 +1508,7 @@ export class AttendeesService {
       this.attendeeModel.aggregate(mainPipeline).exec(),
     ]);
     const total = countResult[0]?.total || 0;
-    const totalPages = Math.ceil(total / limit) || 1;
+    const totalPages = limit ? Math.ceil(total / limit) || 1 : 1;
     const pagination = { page, totalPages, total };
     return { data: mainResult || [], pagination };
   }

@@ -15,7 +15,7 @@ import { Response } from 'express';
 import * as fs from 'fs';
 import { GetClientsFilterDto } from 'src/users/dto/filters.dto';
 import { AdminId, Id } from 'src/decorators/custom.decorator';
-import { ExportWebinarAttendeesDTO } from 'src/attendees/dto/attendees.dto';
+import { ExportGroupedAttendeesDTO, ExportWebinarAttendeesDTO, GroupedAttendeesFilterDto } from 'src/attendees/dto/attendees.dto';
 import { WebinarFilterDTO } from 'src/webinar/dto/webinar-filter.dto';
 import { EmployeeFilterDTO } from 'src/users/dto/employee-filter.dto';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
@@ -180,7 +180,43 @@ export class ExportExcelController {
           'Admin ID is required to download webinars Excel file.',
         );
       const filePath = await this.exportExcelService.generateExcelForWebinar(
-        parseInt(limit) || 100,
+        parseInt(limit),
+        body.columns,
+        body.filters,
+        adminId,
+      );
+
+      // Stream the file to the client
+      res.setHeader('Content-Disposition', `attachment; filename="users.xlsx"`);
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+
+      const fileStream = fs.createReadStream(filePath.filePath);
+      fileStream.pipe(res);
+    } catch (error) {
+      res.status(500).json({
+        message: 'Failed to download Excel file. Please try again later.',
+        error: error.message,
+      });
+    }
+  }
+
+  @Post('/attendees')
+  async downloadAttendees(
+    @Body()
+    body: ExportGroupedAttendeesDTO,
+    @Id() adminId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      if (!adminId)
+        throw new BadRequestException(
+          'Admin ID is required to download webinars Excel file.',
+        );
+      const filePath = await this.exportExcelService.generateExcelForAttendees(
+        body.limit,
         body.columns,
         body.filters,
         adminId,

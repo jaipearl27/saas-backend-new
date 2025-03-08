@@ -355,3 +355,22 @@ export class ExportWebinarAttendeesDTO extends GetAttendeesDTO {
   @Min(0, { message: 'Export limit must be a non-negative integer.' })
   limit: number;
 }
+
+
+export class ExportGroupedAttendeesDTO {
+
+
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => GroupedAttendeesFilterDto)
+  filters: GroupedAttendeesFilterDto;
+
+  @IsArray()
+  @IsNotEmpty()
+  @IsString({ each: true })
+  columns: string[];
+
+  @IsNumber()
+  @Min(0, { message: 'Export limit must be a non-negative integer.' })
+  limit: number;
+}

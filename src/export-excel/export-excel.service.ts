@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Worker } from 'worker_threads';
 import * as path from 'path';
 import { User } from '../schemas/User.schema';
 import { GetClientsFilterDto } from 'src/users/dto/filters.dto';
 import { UsersService } from 'src/users/users.service';
-import { AttendeesFilterDto } from 'src/attendees/dto/attendees.dto';
+import { AttendeesFilterDto, GroupedAttendeesSortObject } from 'src/attendees/dto/attendees.dto';
 import { AttendeesService } from 'src/attendees/attendees.service';
 import { WebinarFilterDTO } from 'src/webinar/dto/webinar-filter.dto';
 import { WebinarService } from 'src/webinar/webinar.service';
@@ -262,12 +262,84 @@ export class ExportExcelService {
     return fileData;
   }
 
+  async generateExcelForAttendees(
+    limit: number,
+    columns: string[],
+    filterData: AttendeesFilterDto,
+    adminId: string,
+    sort?: GroupedAttendeesSortObject
+  ) {
+
+    const socketId = this.websocketGateway.activeUsers.get(String(adminId));
+    let lastProgress = 0;
+    const updateProgress = (current) => {
+      if (current - lastProgress >= 5) { // 5% increments
+        this.emitProgress(socketId, current);
+        lastProgress = current;
+      }
+    };
+    
+    updateProgress(10);
+    const aggregationResult = await this.attendeeService.fetchGroupedAttendees(
+      new Types.ObjectId(`${adminId}`),
+      1,
+      limit,
+      filterData,
+      sort
+    );
+
+    const fileName = `attendees-${Date.now()}.xlsx`;
+    const userDir = this.getUserDirectory(adminId);
+    const filePath = path.join(userDir, fileName);
+
+    const payload = {
+      data: aggregationResult?.data || [],
+      columns: columns.map((col) => ({
+        header: col,
+        key: col,
+        width: 20,
+      })),
+      filePath,
+    };
+    console.log('payload', fileName, filePath);
+    updateProgress(50);
+
+    const workerPath = path.resolve(
+      __dirname,
+      '../workers/generate-excel.worker.js',
+    );
+    const fileData = await this.generateExcel(payload, workerPath);
+    updateProgress(80);
+    this.createUserDocuments({
+      userId: adminId,
+      filePath: filePath,
+      fileName: fileName,
+      fileSize: fileData.fileSize,
+      filters: filterData,
+    });
+
+    updateProgress(100);
+    return fileData;
+  }
+
   async generateExcelForWebinar(
     limit: number,
     columns: string[],
     filterData: WebinarFilterDTO,
     adminId: string,
   ): Promise<UserDocumentResponse> {
+
+    const socketId = this.websocketGateway.activeUsers.get(String(adminId));
+    let lastProgress = 0;
+    const updateProgress = (current) => {
+      if (current - lastProgress >= 5) { // 5% increments
+        this.emitProgress(socketId, current);
+        lastProgress = current;
+      }
+    };
+    
+    updateProgress(10);
+
     const aggregationResult = await this.webinarService.getWebinars(
       adminId,
       1,
@@ -276,6 +348,12 @@ export class ExportExcelService {
       false,
     );
 
+    updateProgress(50);
+
+    const fileName = `webinars-${Date.now()}.xlsx`;
+    const userDir = this.getUserDirectory(adminId);
+    const filePath = path.join(userDir, fileName);
+
     const payload = {
       data: aggregationResult.result || [],
       columns: columns.map((col) => ({
@@ -283,13 +361,25 @@ export class ExportExcelService {
         key: col,
         width: 20,
       })),
+      filePath,
     };
 
     const workerPath = path.resolve(
       __dirname,
       '../workers/generate-excel.worker.js',
     );
-    return this.generateExcel(payload, workerPath);
+    const fileData = await this.generateExcel(payload, workerPath);
+    updateProgress(80);
+    this.createUserDocuments({
+      userId: adminId,
+      filePath: filePath,
+      fileName: fileName,
+      fileSize: fileData.fileSize,
+      filters: filterData,
+    });
+
+    updateProgress(100);
+    return fileData;
   }
 
   async generateExcelForEmployees(
