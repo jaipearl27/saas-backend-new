@@ -99,12 +99,14 @@ export class ExportExcelController {
     @Query('limit') limit: string,
     @Query('columns') columns: string,
     @Res() res: Response,
+    @Id() superAdminId: string
   ): Promise<void> {
     try {
       const filePath = await this.exportExcelService.generateExcelForClients(
-        parseInt(limit) || 1000,
+        parseInt(limit),
         columns ? columns.split(',') : [],
         filters,
+        superAdminId
       );
 
       // Stream the file to the client
@@ -142,6 +144,7 @@ export class ExportExcelController {
           adminId,
           body?.validCall,
           body?.assignmentType,
+          body.sort
         );
 
       // Stream the file to the client
@@ -213,13 +216,14 @@ export class ExportExcelController {
     try {
       if (!adminId)
         throw new BadRequestException(
-          'Admin ID is required to download webinars Excel file.',
+          'Admin ID is required to download Attendees Excel file.',
         );
       const filePath = await this.exportExcelService.generateExcelForAttendees(
         body.limit,
         body.columns,
         body.filters,
         adminId,
+        body.sort
       );
 
       // Stream the file to the client

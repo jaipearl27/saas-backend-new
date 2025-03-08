@@ -71,6 +71,8 @@ export class WebinarService {
     filters: WebinarFilterDTO = {},
     usePagination: boolean = true, // Flag to enable/disable pagination
   ): Promise<any> {
+    console.log("limterr-r ===> ", limit)
+    
     const skip = (page - 1) * limit;
 
     const query = { adminId: new Types.ObjectId(`${adminId}`) };
@@ -212,7 +214,7 @@ export class WebinarService {
         : { result: [], page, totalPages: 0 };
     } else {
       // Add skip and limit directly for consistent output without $facet
-      basePipeline.push({ $skip: skip }, { $limit: limit });
+      basePipeline.push({ $skip: skip }, ...(limit ? [{ $limit: limit }]: []));
 
       const result = await this.webinarModel.aggregate(basePipeline);
       return {

@@ -373,4 +373,9 @@ export class ExportGroupedAttendeesDTO {
   @IsNumber()
   @Min(0, { message: 'Export limit must be a non-negative integer.' })
   limit: number;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => GroupedAttendeesSortObject)
+  sort?: GroupedAttendeesSortObject;  
 }
