@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import {
   AssignmentDto,
+  DateRangeDto,
   FetchReAssignmentsDTO,
   GetAssignmentDTO,
   MoveToPullbacksDTO,
@@ -254,6 +255,50 @@ export class AssignmentController {
       query.recordType,
       new Types.ObjectId(`${adminId}`),
       new Types.ObjectId(`${query.webinarId}`),
+    );
+  }
+
+
+  @Get('metrics/daily')
+  async getDailyAssignmentStats(
+    @Id() userId: string,
+    @AdminId() adminId: string,
+    @Query() query: DateRangeDto,
+    @Role() role: string
+  ) {
+    if(!query.employeeId){
+      throw new BadRequestException("EmployeeId Is Required");
+    }
+
+    const { startDate, endDate } = this.assignmentService.validateDate(
+      query.start,
+      query.end,
+    );
+
+    return this.assignmentService.getDailyAssignmentStats(
+      query.employeeId,
+      adminId,
+      startDate,
+      endDate,
+      query.webinarId
+    );
+  }
+
+  @Get('metrics/all')
+  async getAllAssignmentsByDateRange(
+    @Id() adminId: string,
+    @Query() query: DateRangeDto,
+  ) {
+    const { startDate, endDate } = this.assignmentService.validateDate(
+      query.start,
+      query.end,
+    );
+
+    return await this.assignmentService.getAllAssignmentsByDateRange(
+      adminId,
+      startDate,
+      endDate,
+      query.webinarId
     );
   }
 }

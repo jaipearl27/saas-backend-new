@@ -133,14 +133,18 @@ export class NotificationService {
       },
     );
   }
-  
 
   async deleteNotificationsByWebinar(
     webinarId: Types.ObjectId,
-    session: ClientSession
+    session: ClientSession,
   ) {
-    return this.notificationModel.deleteMany(
-      { 'metadata.webinarId': webinarId },
-    ).session(session);
+    return this.notificationModel
+      .deleteMany({
+        $or: [
+          { 'metadata.webinarId': webinarId },
+          { 'metadata.webinarId': webinarId.toString() },
+        ],
+      })
+      .session(session);  
   }
 }

@@ -1,4 +1,9 @@
-import { forwardRef, MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+import {
+  forwardRef,
+  MiddlewareConsumer,
+  Module,
+  RequestMethod,
+} from '@nestjs/common';
 import { AssignmentService } from './assignment.service';
 import { AssignmentController } from './assignment.controller';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -34,7 +39,7 @@ import { EnrollmentsModule } from 'src/enrollments/enrollments.module';
   ],
   providers: [AssignmentService],
   controllers: [AssignmentController],
-  exports: [AssignmentService]
+  exports: [AssignmentService],
 })
 export class AssignmentModule {
   configure(consumer: MiddlewareConsumer) {
@@ -60,11 +65,24 @@ export class AssignmentModule {
           path: 'assignment/reassign',
           method: RequestMethod.PATCH,
         },
+        {
+          path: 'assignment/metrics/daily',
+          method: RequestMethod.GET,
+        },
+        {
+          path: 'assignment/metrics/count',
+          method: RequestMethod.GET,
+        },
       )
       .forRoutes({ path: 'assignment*', method: RequestMethod.ALL });
 
     consumer.apply(AuthTokenMiddleware).forRoutes({
       path: 'assignment/activityInactivity',
+      method: RequestMethod.GET,
+    });
+
+    consumer.apply(GetAdminIdMiddleware).forRoutes({
+      path: 'assignment/metrics/daily',
       method: RequestMethod.GET,
     });
   }

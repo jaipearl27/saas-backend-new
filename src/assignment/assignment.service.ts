@@ -8,7 +8,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { ClientSession, Connection, Model, PipelineStage, Types } from 'mongoose';
+import {
+  ClientSession,
+  Connection,
+  Model,
+  PipelineStage,
+  Types,
+} from 'mongoose';
 import {
   Assignments,
   AssignmentStatus,
@@ -42,6 +48,7 @@ export class AssignmentService {
 
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
+    @Inject(forwardRef(() => WebinarService))
     private readonly webinarService: WebinarService,
     @Inject(forwardRef(() => SubscriptionService))
     private readonly subscriptionService: SubscriptionService,
@@ -289,107 +296,109 @@ export class AssignmentService {
       acc[tag.name] = tag.usecase;
       return acc;
     }, {});
+    let executeFurther = true;
 
     for (const tag of tags) {
       if (tagsUsecaseMap[tag] === Usecase.PRODUCT) {
-        const product = assignedProducts.find((product) => product.tag === tag);
-        if (product) {
-          const existingEnrollment =
-            await this.enrollmentService.getEnrollmentByWebinarAndAttendee(
-              adminId.toString(),
-              webinarId,
-              attendeeEmail,
-              product._id,
-            );
-          if (existingEnrollment) {
-            console.log('Attendee already enrolled');
-          } else {
-            const enrollment = await this.enrollmentService.createEnrollment({
-              attendee: attendeeEmail,
-              product: product._id,
-              adminId: adminId.toString(),
-              webinar: webinarId,
-            });
-            console.log('Enrollment created');
-          }
-        }
-      } else {
-        const taggedEmployee = assignedEmployees.find(
-          (employee) =>
-            Array.isArray(employee.tags) && employee.tags.includes(tag),
-        );
-        if (
-          taggedEmployee &&
-          taggedEmployee.role.toString() ===
-            this.configService.get('appRoles').EMPLOYEE_REMINDER &&
-          taggedEmployee.dailyContactLimit > taggedEmployee.dailyContactCount
-        ) {
-          const existingAssignment = await this.assignmentsModel.findOne({
+        assignedProducts
+          .filter((product) => product.tag === tag)
+          .forEach(async (product) => {
+            const existingEnrollment =
+              await this.enrollmentService.getEnrollmentByWebinarAndAttendee(
+                adminId.toString(),
+                webinarId,
+                attendeeEmail,
+                product._id,
+              );
+            if (existingEnrollment) {
+            } else {
+              const enrollment = await this.enrollmentService.createEnrollment({
+                attendee: attendeeEmail,
+                product: product._id,
+                adminId: adminId.toString(),
+                webinar: webinarId,
+              });
+            }
+          });
+      }
+
+      const taggedEmployee = assignedEmployees.find(
+        (employee) =>
+          Array.isArray(employee.tags) && employee.tags.includes(tag),
+      );
+      if (
+        executeFurther &&
+        taggedEmployee &&
+        taggedEmployee.role.toString() ===
+          this.configService.get('appRoles').EMPLOYEE_REMINDER &&
+        taggedEmployee.dailyContactLimit > taggedEmployee.dailyContactCount
+      ) {
+        const existingAssignment = await this.assignmentsModel.findOne({
+          adminId: adminId,
+          webinar: new Types.ObjectId(`${webinarId}`),
+          attendee: attendeeId,
+          recordType: 'preWebinar',
+        });
+        if (existingAssignment) {
+        } else {
+          const newAssignment = await this.assignmentsModel.create({
             adminId: adminId,
-            webinar: new Types.ObjectId(`${webinarId}`),
+            webinar: new Types.ObjectId(webinarId),
             attendee: attendeeId,
             user: taggedEmployee._id,
             recordType: 'preWebinar',
+            isTemporary: true,
           });
-          if (existingAssignment) {
-          } else {
-            const newAssignment = await this.assignmentsModel.create({
-              adminId: adminId,
-              webinar: new Types.ObjectId(webinarId),
-              attendee: attendeeId,
-              user: taggedEmployee._id,
-              recordType: 'preWebinar',
-            });
 
-            if (!newAssignment) {
-              throw new InternalServerErrorException(
-                'Failed to create assignment.',
-              );
-            }
-
-            // Increment the employee's daily contact count
-            const isIncremented = await this.userService.incrementCount(
-              taggedEmployee._id.toString(),
+          if (!newAssignment) {
+            throw new InternalServerErrorException(
+              'Failed to create assignment.',
             );
-
-            if (!isIncremented) {
-              throw new InternalServerErrorException(
-                'Failed to update employee contact count.',
-              );
-            }
-
-            const updatedAttendee =
-              await this.attendeeService.updateAttendeeAssign(
-                attendeeId.toString(),
-                taggedEmployee._id.toString(),
-                true,
-              );
-            if (!updatedAttendee) {
-              throw new InternalServerErrorException(
-                'Failed to update employee contact count.',
-              );
-            }
-
-            const notification = {
-              recipient: taggedEmployee._id.toString(),
-              title: 'New Task Assigned',
-              message: `You have been assigned a new task. Please check your task list for details.`,
-              type: notificationType.INFO,
-              actionType: notificationActionType.ASSIGNMENT,
-              metadata: {
-                webinarId,
-                attendeeId: attendeeId.toString(),
-                assignmentId: newAssignment._id.toString(),
-              },
-            };
-
-            await this.notificationService.createNotification(notification);
           }
+
+          // Increment the employee's daily contact count
+          const isIncremented = await this.userService.incrementCount(
+            taggedEmployee._id.toString(),
+          );
+
+          if (!isIncremented) {
+            throw new InternalServerErrorException(
+              'Failed to update employee contact count.',
+            );
+          }
+
+          const updatedAttendee =
+            await this.attendeeService.updateAttendeeAssign(
+              attendeeId.toString(),
+              taggedEmployee._id.toString(),
+              true,
+            );
+          if (!updatedAttendee) {
+            throw new InternalServerErrorException(
+              'Failed to update employee contact count.',
+            );
+          }
+
+          const notification = {
+            recipient: taggedEmployee._id.toString(),
+            title: 'New Task Assigned',
+            message: `You have been assigned a new task. Please check your task list for details.`,
+            type: notificationType.INFO,
+            actionType: notificationActionType.ASSIGNMENT,
+            metadata: {
+              webinarId,
+              attendeeId: attendeeId.toString(),
+              assignmentId: newAssignment._id.toString(),
+            },
+          };
+
+          await this.notificationService.createNotification(notification);
         }
+        executeFurther = false;
       }
     }
 
-    return true;
+    return executeFurther;
   }
 
   async addPreWebinarAssignments(
@@ -1205,6 +1214,7 @@ export class AssignmentService {
         attendee: new Types.ObjectId(assignment.attendeeId),
         recordType: data.recordType,
         status: AssignmentStatus.ACTIVE,
+        ...(data.isTemp ? { isTemporary: true } : {}),
       }));
 
       const createdAssignments = await this.assignmentsModel.insertMany(
@@ -1271,16 +1281,17 @@ export class AssignmentService {
 
     if (!employeeId) {
       try {
-        const updatedAttendeesResult = await this.attendeeService.updateAttendees(
-          {
-            adminId: new Types.ObjectId(adminId),
-            webinar: new Types.ObjectId(webinarId),
-            isAttended: recordType === RecordType.POST_WEBINAR,
-            assignedTo: { $ne: null },
-            _id: { $in: attendeeIds },
-          },
-          { $set: { isPulledback: true } },
-        );
+        const updatedAttendeesResult =
+          await this.attendeeService.updateAttendees(
+            {
+              adminId: new Types.ObjectId(adminId),
+              webinar: new Types.ObjectId(webinarId),
+              isAttended: recordType === RecordType.POST_WEBINAR,
+              assignedTo: { $ne: null },
+              _id: { $in: attendeeIds },
+            },
+            { $set: { isPulledback: true } },
+          );
 
         if (updatedAttendeesResult.matchedCount !== attendeeIds.length) {
           throw new NotFoundException(
@@ -1346,14 +1357,15 @@ export class AssignmentService {
     }
   }
 
-  async createManyAssignments(assignments:any, session: ClientSession){
-    return this.assignmentsModel.insertMany(
-      assignments,
-      { session },
-    );
+  async createManyAssignments(assignments: any, session: ClientSession) {
+    return this.assignmentsModel.insertMany(assignments, { session });
   }
 
-  async fetchTotalAssignmentsForNotes(employeeId: string, startDate: string, endDate: string){
+  async fetchTotalAssignmentsForNotes(
+    employeeId: string,
+    startDate: string,
+    endDate: string,
+  ) {
     return this.assignmentsModel.aggregate([
       {
         $match: {
@@ -1380,7 +1392,11 @@ export class AssignmentService {
     ]);
   }
 
-  async fetchAssignmentsForNotes(employeeId: Types.ObjectId, startDate: string, endDate: string){
+  async fetchAssignmentsForNotes(
+    employeeId: Types.ObjectId,
+    startDate: string,
+    endDate: string,
+  ) {
     return this.assignmentsModel.aggregate([
       {
         $match: {
@@ -1405,5 +1421,250 @@ export class AssignmentService {
         },
       },
     ]);
+  }
+
+  async deleteAssignmentsByWebinar(
+    adminId: Types.ObjectId,
+    webinarId: Types.ObjectId,
+    session: ClientSession,
+  ) {
+    return this.assignmentsModel
+      .deleteMany(
+        {
+          adminId: adminId,
+          webinar: webinarId,
+        },
+        { session },
+      )
+      .exec();
+  }
+
+  validateDate(start: string, end: string): { startDate: Date; endDate: Date } {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new BadRequestException('Invalid date format');
+    }
+
+    if (startDate > endDate) {
+      throw new BadRequestException(
+        'Start date cannot be greater than end date',
+      );
+    }
+    return { startDate, endDate };
+  }
+
+  getPipelineStage(startDate: Date, endDate: Date): PipelineStage[] {
+    return [
+      {
+        $match: {
+          $expr: {
+            $and: [
+              {
+                $gte: [
+                  {
+                    $dateFromParts: {
+                      year: {
+                        $year: { date: '$createdAt', timezone: 'Asia/Kolkata' },
+                      },
+                      month: {
+                        $month: {
+                          date: '$createdAt',
+                          timezone: 'Asia/Kolkata',
+                        },
+                      },
+                      day: {
+                        $dayOfMonth: {
+                          date: '$createdAt',
+                          timezone: 'Asia/Kolkata',
+                        },
+                      },
+                      timezone: 'Asia/Kolkata',
+                    },
+                  },
+                  startDate,
+                ],
+              },
+              {
+                $lte: [
+                  {
+                    $dateFromParts: {
+                      year: {
+                        $year: { date: '$createdAt', timezone: 'Asia/Kolkata' },
+                      },
+                      month: {
+                        $month: {
+                          date: '$createdAt',
+                          timezone: 'Asia/Kolkata',
+                        },
+                      },
+                      day: {
+                        $dayOfMonth: {
+                          date: '$createdAt',
+                          timezone: 'Asia/Kolkata',
+                        },
+                      },
+                      timezone: 'Asia/Kolkata',
+                    },
+                  },
+                  endDate,
+                ],
+              },
+            ],
+          },
+        },
+      },
+    ];
+  }
+
+  async getDailyAssignmentStats(
+    user: string,
+    admin: string,
+    startDate: Date,
+    endDate: Date,
+    webinarId?: string,
+  ) {
+    const userId = new Types.ObjectId(`${user}`);
+    const adminId = new Types.ObjectId(`${admin}`);
+
+    const result = await this.assignmentsModel.aggregate([
+      {
+        $match: {
+          adminId,
+          ...(webinarId ? { webinar: new Types.ObjectId(webinarId) } : {}),
+          user: userId,
+        },
+      },
+      ...(this.getPipelineStage(startDate, endDate)),
+      {
+        $lookup: {
+          from: 'attendees',
+          localField: 'attendee',
+          foreignField: '_id',
+          as: 'attendeeDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$attendeeDetails',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: '$createdAt',
+              timezone: '+05:30',
+            },
+          },
+          count: { $sum: 1 },
+          completed: {
+            $sum: {
+              $cond: [{ $ne: ['$attendeeDetails.status', null] }, 1, 0],
+            },
+          },
+        },
+      },
+      {
+        $sort: { _id: 1 },
+      },
+      {
+        $project: {
+          date: '$_id',
+          count: 1,
+          completed: 1,
+          _id: 0,
+        },
+      },
+    ]);
+
+    return {
+      success: true,
+      data: result,
+      message: 'Daily assignment stats fetched successfully',
+    };
+  }
+
+  async getAllAssignmentsByDateRange(
+    adminId: string,
+    startDate: Date,
+    endDate: Date,
+    webinarId?: string,
+  ) {
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          adminId: new Types.ObjectId(adminId),
+          ...(webinarId ? { webinar: new Types.ObjectId(webinarId) } : {}),
+          
+        },
+      },
+      ...(this.getPipelineStage(startDate, endDate)),
+      {
+        $lookup: {
+          from: 'attendees',
+          localField: 'attendee',
+          foreignField: '_id',
+          as: 'attendeeDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$attendeeDetails',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            date: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: '$createdAt',
+                timezone: '+05:30',
+              },
+            },
+            user: '$user',
+          },
+          count: { $sum: 1 },
+          completed: {
+            $sum: {
+              $cond: [{ $ne: ['$attendeeDetails.status', null] }, 1, 0],
+            },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id.user',
+          foreignField: '_id',
+          as: 'userDetails',
+        },
+      },
+      {
+        $project: {
+          count: 1,
+          completed: 1,
+          date: '$_id.date',
+          userName: {
+            $arrayElemAt: ['$userDetails.userName', 0],
+          },
+        },
+      },
+      {
+        $sort: { _id: 1 },
+      },
+    ];
+
+    const result = await this.assignmentsModel.aggregate(pipeline);
+    return {
+      success: true,
+      data: result,
+      message: 'Assignments fetched successfully',
+    };
   }
 }

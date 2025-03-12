@@ -24,9 +24,9 @@ import { ConfigService } from '@nestjs/config';
         schema: AlarmSchema,
       },
     ]),
+    forwardRef(() => SubscriptionModule),
 
-    forwardRef(() => AlarmModule),
-    SubscriptionModule
+    
   ],
   controllers: [AlarmController],
   providers: [AlarmService, WebsocketGateway, SchedulerRegistry, ConfigService],

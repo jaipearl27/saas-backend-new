@@ -13,6 +13,9 @@ import {
   UserDocuments,
   UserDocumentsSchema,
 } from 'src/schemas/user-documents.schema';
+import { WebsocketGateway } from 'src/websocket/websocket.gateway';
+import { CustomLeadTypeModule } from 'src/custom-lead-type/custom-lead-type.module';
+import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
 
 @Module({
   imports: [
@@ -24,17 +27,24 @@ import {
     SubscriptionModule,
     WebinarModule,
     AttendeesModule,
+    CustomLeadTypeModule,
   ],
   controllers: [ExportExcelController],
-  providers: [ExportExcelService],
+  providers: [ExportExcelService, WebsocketGateway],
+  exports: [ExportExcelService],
 })
 export class ExportExcelModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(AuthAdminTokenMiddleware, ValidateBodyFilters).forRoutes({
-      path: 'export-excel/webinar-attendees/',
-      method: RequestMethod.POST,
-    });
-
+    consumer.apply(AuthAdminTokenMiddleware, ValidateBodyFilters).forRoutes(
+      {
+        path: 'export-excel/webinar-attendees',
+        method: RequestMethod.POST,
+      },
+      {
+        path: 'export-excel/attendees',
+        method: RequestMethod.POST,
+      },
+    );
     consumer.apply(AuthAdminTokenMiddleware).forRoutes(
       { path: 'export-excel/webinars', method: RequestMethod.POST },
       {
@@ -43,6 +53,10 @@ export class ExportExcelModule {
       },
       { path: 'export-excel/user-documents', method: RequestMethod.GET },
       { path: 'export-excel/user-documents/:id', method: RequestMethod.GET },
+      { path: 'export-excel/user-documents/:id', method: RequestMethod.DELETE },
     );
+    consumer
+      .apply(AuthSuperAdminMiddleware)
+      .forRoutes({ path: 'export-excel/client', method: RequestMethod.POST });
   }
 }

@@ -14,6 +14,10 @@ import { GetAdminIdMiddleware } from 'src/middlewares/get-admin-id.middleware';
 import { UsersModule } from 'src/users/users.module';
 import { NotificationModule } from 'src/notification/notification.module';
 import { NotesModule } from 'src/notes/notes.module';
+import { AlarmModule } from 'src/alarm/alarm.module';
+import { AssignmentModule } from 'src/assignment/assignment.module';
+import { EnrollmentsModule } from 'src/enrollments/enrollments.module';
+import { SubscriptionModule } from 'src/subscription/subscription.module';
 
 @Module({
   imports: [
@@ -25,8 +29,12 @@ import { NotesModule } from 'src/notes/notes.module';
       },
     ]),
     forwardRef(() => AttendeesModule),
-   NotificationModule,
-    // NotesModule,
+    forwardRef(() => AlarmModule),
+    NotificationModule,
+    forwardRef(() => AssignmentModule),
+    forwardRef(() => NotesModule),
+    forwardRef(() => SubscriptionModule),
+    EnrollmentsModule,
 
   ],
   providers: [WebinarService],

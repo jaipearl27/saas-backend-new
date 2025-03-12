@@ -3,7 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, PipelineStage, Types } from 'mongoose';
 import { Webinar } from 'src/schemas/Webinar.schema';
 import { CreateWebinarDto, UpdateWebinarDto } from './dto/createWebinar.dto';
-import { ConfigService } from '@nestjs/config';
 import { AttendeesService } from 'src/attendees/attendees.service';
 import { WebinarFilterDTO } from './dto/webinar-filter.dto';
 import { NotificationService } from 'src/notification/notification.service';
@@ -13,16 +12,29 @@ import {
 } from 'src/schemas/notification.schema';
 import { AssignmentService } from 'src/assignment/assignment.service';
 import { NotesService } from 'src/notes/notes.service';
+import { AlarmService } from 'src/alarm/alarm.service';
+import { EnrollmentsService } from 'src/enrollments/enrollments.service';
+import { Logger } from '@nestjs/common';
+import { SubscriptionService } from 'src/subscription/subscription.service';
 
 @Injectable()
 export class WebinarService {
+  private readonly logger = new Logger(WebinarService.name);
+
   constructor(
     @InjectModel(Webinar.name) private webinarModel: Model<Webinar>,
-    private readonly configService: ConfigService,
     @Inject(forwardRef(() => AttendeesService))
     private readonly attendeesService: AttendeesService,
     private readonly notificationService: NotificationService,
-    // private readonly notesService: NotesService,
+    @Inject(forwardRef(() => NotesService))
+    private readonly notesService: NotesService,
+    @Inject(forwardRef(() => AlarmService))
+    private readonly alarmService: AlarmService,
+    @Inject(forwardRef(() => AssignmentService))
+    private readonly assignmentService: AssignmentService,
+    private readonly enrollmentService: EnrollmentsService,
+    @Inject(forwardRef(() => SubscriptionService))
+    private readonly subscriptionService: SubscriptionService
 
   ) {}
 
@@ -59,6 +71,8 @@ export class WebinarService {
     filters: WebinarFilterDTO = {},
     usePagination: boolean = true, // Flag to enable/disable pagination
   ): Promise<any> {
+    console.log("limterr-r ===> ", limit)
+    
     const skip = (page - 1) * limit;
 
     const query = { adminId: new Types.ObjectId(`${adminId}`) };
@@ -200,7 +214,7 @@ export class WebinarService {
         : { result: [], page, totalPages: 0 };
     } else {
       // Add skip and limit directly for consistent output without $facet
-      basePipeline.push({ $skip: skip }, { $limit: limit });
+      basePipeline.push({ $skip: skip }, ...(limit ? [{ $limit: limit }]: []));
 
       const result = await this.webinarModel.aggregate(basePipeline);
       return {
@@ -241,8 +255,9 @@ export class WebinarService {
     return result;
   }
 
-  async deleteWebinar(id: string, adminId: string): Promise<any> {
-    const webinarId = new Types.ObjectId(id);
+  async deleteWebinar(id: string, admin: string): Promise<any> {
+    const webinarId = new Types.ObjectId(`${id}`);
+    const adminId = new Types.ObjectId(`${admin}`);
     const session = await this.webinarModel.db.startSession();
     
     try {
@@ -258,20 +273,59 @@ export class WebinarService {
         throw new NotFoundException('Webinar not found');
       }
 
-      const attendees: any = await this.attendeesService.getAttendeeForDeletion(webinarId);
+      const attendees: any = await this.attendeesService.getAttendeeForDeletion(webinarId,session);
+      const attendeeIds = attendees.map(a => a._id);
 
-      // Delete related data
-      await Promise.all([
-        this.attendeesService.deleteAttendees(id, adminId, session),
-        // this.attendeesService.deleteAssignmentsbyWebinar(webinarId, session),
-        // this.notesService.deleteNotesByAttendees(attendees.map(a => a._id), session),
-        this.notificationService.deleteNotificationsByWebinar(webinarId, session)
-      ]);
+      // Configure deletion workflow
+      const DELETION_DEPENDENCIES = [
+        {
+          service: this.alarmService,
+          method: 'deleteAlarmsByAttendeeIds',
+          args: [attendeeIds]
+        },
+        {
+          service: this.assignmentService,
+          method: 'deleteAssignmentsByWebinar',
+          args: [adminId, webinarId]
+        },
+        {
+          service: this.attendeesService,
+          method: 'deleteAttendeesByWebinar',
+          args: [webinarId, adminId]
+        },
+        {
+          service: this.enrollmentService,
+          method: 'deleteAssignmentsByWebinar',
+          args: [adminId, webinarId]
+        },
+        {
+          service: this.notesService,
+          method: 'deleteNotesByAttendees',
+          args: [attendeeIds]
+        },
+        {
+          service: this.notificationService,
+          method: 'deleteNotificationsByWebinar',
+          args: [webinarId]
+        }
+      ];
+
+      // Execute deletions
+      for (const dependency of DELETION_DEPENDENCIES) {
+        await dependency.service[dependency.method](
+          ...dependency.args,
+          session
+        );
+      }
+      const contactCount = await this.attendeesService.getNonUniqueAttendeesCount([], adminId, session);
+
+      await this.subscriptionService.updateContactCount(adminId, contactCount, session)
 
       await session.commitTransaction();
     } catch (error) {
       await session.abortTransaction();
-      throw error;
+      this.logger.error(`Partial deletion failure: ${error.message}`, error.stack);
+      throw new Error('Partial deletion failure - check logs');
     } finally {
       await session.endSession();
     }

@@ -5,10 +5,10 @@ import * as fs from 'fs';
 
 (async () => {
   try {
-    const { data, columns, filePath } = workerData;
+    const { data, columns, filePath, isKey=false } = workerData;
     console.log('in worker');
 
-    if (!data || !Array.isArray(data) || !columns || !Array.isArray(columns)) {
+    if (!Array.isArray(data) || !Array.isArray(columns)) {
       throw new Error('Invalid data or columns received in worker');
     }
 
@@ -50,7 +50,11 @@ import * as fs from 'fs';
     const worksheet = workbook.addWorksheet('Data');
 
     worksheet.columns = newColumns.map((col) => ({
-      header: col.header.charAt(0).toUpperCase() + col.header.slice(1),
+      header: isKey 
+        ? col.header
+            .replace(/([A-Z])/g, ' $1')  // Add space before capital letters
+            .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+        : col.header,
       key: col.key,
       width: col.width || 20,
     }));

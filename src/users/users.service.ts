@@ -69,8 +69,8 @@ export class UsersService {
   createClientPipeline(
     filterData: GetClientsFilterDto,
     hasFilters: boolean = true,
-    skip: number = 0,
-    limit: number = 25,
+    skip: number,
+    limit: number,
   ): mongoose.PipelineStage[] {
     const matchFilters: Record<string, any> = {};
     if (filterData.email)
@@ -205,8 +205,8 @@ export class UsersService {
       ...(!hasFilters
         ? [
             { $sort: { createdAt: -1 as const } },
-            { $skip: skip || 0 },
-            { $limit: limit || 25 },
+            { $skip: skip },
+            ...(limit ? [{ $limit: limit }] : []),
           ]
         : []),
 
@@ -368,6 +368,7 @@ export class UsersService {
     skip: number,
     limit: number,
     filterData: GetClientsFilterDto,
+    usePagination: boolean = true,
   ): Promise<any> {
     const hasFilters = Object.keys(filterData).length > 0;
 
@@ -377,28 +378,41 @@ export class UsersService {
       skip,
       limit,
     );
-    const pipelineForCount = this.createClientPipeline(filterData);
 
-    const totalUsersPipeline = [...pipelineForCount, { $count: 'totalUsers' }];
+    const mainPipeline = [
+      ...pipeline,
+      ...(hasFilters
+        ? [
+            { $sort: { createdAt: -1 as const } },
+            { $skip: skip || 0 },
+            { $limit: limit },
+          ]
+        : []),
+    ];
 
-    const [result, totalUsersResult] = await Promise.all([
-      this.userModel.aggregate([
-        ...pipeline,
-        ...(hasFilters
-          ? [
-              { $sort: { createdAt: -1 as const } },
-              { $skip: skip || 0 },
-              { $limit: limit || 25 },
-            ]
-          : []),
-      ]),
-      this.userModel.aggregate(totalUsersPipeline),
-    ]);
+    if (usePagination) {
+      const totalUsersPipeline = [...pipeline, { $count: 'totalUsers' }];
 
-    const totalUsers = totalUsersResult[0]?.totalUsers || 0;
-    const totalPages = Math.ceil(totalUsers / limit);
+      const [result, totalUsersResult] = await Promise.all([
+        this.userModel.aggregate(mainPipeline),
+        this.userModel.aggregate(totalUsersPipeline),
+      ]);
 
-    return { result, totalPages };
+      const totalUsers = totalUsersResult[0]?.totalUsers || 0;
+      const totalPages = Math.ceil(totalUsers / limit);
+
+      return { result, totalPages };
+    } else {
+      const data = [];
+      const cursor = this.userModel
+        .aggregate([...pipeline, ...(limit ? [{ $limit: limit }] : [])])
+        .cursor();
+
+      for await (const doc of cursor) {
+        data.push(doc);
+      }
+      return data;
+    }
   }
 
   async getClient(id: string): Promise<any> {
@@ -1085,11 +1099,7 @@ export class UsersService {
     return [];
   }
 
-
-  async getEmployeesForNotes(adminId: Types.ObjectId){
-    return this.userModel.find(
-      { adminId },
-      '_id email userName',
-    );
+  async getEmployeesForNotes(adminId: Types.ObjectId) {
+    return this.userModel.find({ adminId }, '_id email userName');
   }
 }

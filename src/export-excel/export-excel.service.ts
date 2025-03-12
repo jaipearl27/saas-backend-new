@@ -1,12 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Worker } from 'worker_threads';
 import * as path from 'path';
 import { User } from '../schemas/User.schema';
 import { GetClientsFilterDto } from 'src/users/dto/filters.dto';
 import { UsersService } from 'src/users/users.service';
-import { AttendeesFilterDto } from 'src/attendees/dto/attendees.dto';
+import {
+  AttendeesFilterDto,
+  GroupedAttendeesSortObject,
+  WebinarAttendeesSortObject,
+} from 'src/attendees/dto/attendees.dto';
 import { AttendeesService } from 'src/attendees/attendees.service';
 import { WebinarFilterDTO } from 'src/webinar/dto/webinar-filter.dto';
 import { WebinarService } from 'src/webinar/webinar.service';
@@ -17,6 +21,8 @@ import {
   CreateUserDocumentDto,
   UserDocumentResponse,
 } from 'src/documents/dto/user-documents.dto';
+import { WebsocketGateway } from 'src/websocket/websocket.gateway';
+import { CustomLeadTypeService } from 'src/custom-lead-type/custom-lead-type.service';
 @Injectable()
 export class ExportExcelService {
   constructor(
@@ -26,17 +32,39 @@ export class ExportExcelService {
     private readonly usersService: UsersService,
     private readonly attendeeService: AttendeesService,
     private readonly webinarService: WebinarService,
+    private readonly websocketGateway: WebsocketGateway,
+    private readonly leadTypeService: CustomLeadTypeService,
   ) {}
 
+  emitProgress(socketId: null | string, value: number) {
+    if (socketId) {
+      this.websocketGateway.server.to(socketId).emit('import-export', {
+        actionType: 'import',
+        value: value,
+      });
+    }
+  }
+
   async createUserDocuments(payload: CreateUserDocumentDto) {
-    const userDocuments = new this.userDocumentsModel(payload);
-    return userDocuments.save();
+    const userDocument = new this.userDocumentsModel(payload);
+    await userDocument.save();
+    const socketId = this.websocketGateway.activeUsers.get(`${payload.userId}`);
+    console.log(socketId, '--------');
+    if (socketId) {
+      this.websocketGateway.server
+        .to(socketId)
+        .emit('new-download', userDocument);
+    }
   }
 
   async getUserDocuments(userId: string, page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
     const [data, total] = await Promise.all([
-      this.userDocumentsModel.find({ userId }).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      this.userDocumentsModel
+        .find({ userId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
       this.userDocumentsModel.countDocuments({ userId }),
     ]);
     const pagination = {
@@ -52,8 +80,39 @@ export class ExportExcelService {
     };
   }
 
-  async getUserDocument(userId: string, id: string):Promise<UserDocuments> {
-    const userDocument = await this.userDocumentsModel.findOne({ userId, _id: id });
+  async deleteUserDocument(
+    userId: string,
+    id: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const document = await this.userDocumentsModel.findOneAndDelete({
+      userId,
+      _id: id,
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    if (document.filePath && fs.existsSync(document.filePath)) {
+      console.log('im deleting stuff');
+      try {
+        fs.unlinkSync(document.filePath);
+      } catch (err) {
+        console.error(`Error deleting file: ${document.filePath}`, err);
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Document and associated file deleted successfully',
+    };
+  }
+
+  async getUserDocument(userId: string, id: string): Promise<UserDocuments> {
+    const userDocument = await this.userDocumentsModel.findOne({
+      userId,
+      _id: id,
+    });
     return userDocument;
   }
 
@@ -102,8 +161,8 @@ export class ExportExcelService {
     limit: number,
     columns: string[],
     filterData: GetClientsFilterDto,
+    adminId: string,
   ): Promise<UserDocumentResponse> {
-    const data = [];
     const defaultColumns = [
       { header: 'Email', key: 'email', width: 50 },
       { header: 'Company Name', key: 'companyName', width: 30 },
@@ -128,20 +187,50 @@ export class ExportExcelService {
       ? defaultColumns.filter((col) => columns.includes(col.key))
       : defaultColumns;
 
-    const pipeline = this.usersService.createClientPipeline(filterData);
-    const cursor = this.userModel
-      .aggregate([...pipeline, { $limit: limit }])
-      .cursor();
+    const socketId = this.websocketGateway.activeUsers.get(String(adminId));
+    let lastProgress = 0;
+    const updateProgress = (current) => {
+      if (current - lastProgress >= 5) {
+        // 5% increments
+        this.emitProgress(socketId, current);
+        lastProgress = current;
+      }
+    };
 
-    for await (const doc of cursor) {
-      data.push(doc);
-    }
+    updateProgress(10);
+    const data = await this.usersService.getClients(
+      0,
+      limit,
+      filterData,
+      false,
+    );
+
+    const fileName = `Clients-${Date.now()}.xlsx`;
+    const userDir = this.getUserDirectory(adminId);
+    const filePath = path.join(userDir, fileName);
 
     const workerPath = path.resolve(
       __dirname,
       '../workers/generate-excel.worker.js',
     );
-    return this.generateExcel({ data, columns: selectedColumns }, workerPath);
+    updateProgress(50);
+
+    const fileData = await this.generateExcel(
+      { data, columns: selectedColumns, filePath },
+      workerPath,
+    );
+
+    updateProgress(80);
+    this.createUserDocuments({
+      userId: adminId,
+      filePath: filePath,
+      fileName: fileName,
+      fileSize: fileData.fileSize,
+      filters: filterData,
+    });
+
+    updateProgress(100);
+    return fileData;
   }
 
   async generateExcelForWebinarAttendees(
@@ -153,44 +242,146 @@ export class ExportExcelService {
     adminId: string,
     validCall?: string | undefined,
     assignmentType?: string | undefined,
+    sort?: WebinarAttendeesSortObject,
   ) {
-    const aggregationResult = await this.attendeeService.getAttendeesForExport(
+    const socketId = this.websocketGateway.activeUsers.get(String(adminId));
+    let lastProgress = 0;
+    const updateProgress = (current) => {
+      if (current - lastProgress >= 5) {
+        // 5% increments
+        this.emitProgress(socketId, current);
+        lastProgress = current;
+      }
+    };
+
+    updateProgress(10);
+    const aggregationResult = await this.attendeeService.getAttendees(
       webinarId,
       adminId,
       isAttended,
+      1,
       limit,
       filterData,
       validCall,
       assignmentType,
+      sort,
+      false,
     );
+    console.log(aggregationResult);
+    const leadTypes = await this.leadTypeService.getLeadTypes(adminId);
+
+    const parsetResult = aggregationResult.map((attendee) => ({
+      ...attendee,
+      leadType:
+        leadTypes.find((lead) => String(lead._id) === String(attendee.leadType))
+          ?.label || ' - ',
+      tags: Array.isArray(attendee.tags) ? attendee.tags.join(' , ') : ' - ',
+      enrollments: Array.isArray(attendee.enrollments)
+        ? attendee.enrollments
+            .map((enrollment) =>
+              enrollment?.productName
+                ? `${enrollment.productName}-${enrollment.count}`
+                : '-',
+            )
+            .join(',')
+        : ' - ',
+    }));
 
     const fileName = `webinar-attendees-${webinarId}-${Date.now()}.xlsx`;
     const userDir = this.getUserDirectory(adminId);
     const filePath = path.join(userDir, fileName);
 
     const payload = {
-      data: aggregationResult || [],
+      data: parsetResult || [],
       columns: columns.map((col) => ({
         header: col,
         key: col,
         width: 20,
       })),
       filePath,
+      isKey: true,
     };
     console.log('payload', fileName, filePath);
+    updateProgress(50);
 
     const workerPath = path.resolve(
       __dirname,
       '../workers/generate-excel.worker.js',
     );
     const fileData = await this.generateExcel(payload, workerPath);
-    await this.createUserDocuments({
+    updateProgress(80);
+    this.createUserDocuments({
       userId: adminId,
-      filePath: fileData.filePath,
+      filePath: filePath,
       fileName: fileName,
       fileSize: fileData.fileSize,
       filters: filterData,
     });
+
+    updateProgress(100);
+    return fileData;
+  }
+
+  async generateExcelForAttendees(
+    limit: number,
+    columns: string[],
+    filterData: AttendeesFilterDto,
+    adminId: string,
+    sort?: GroupedAttendeesSortObject,
+  ) {
+    console.log(columns);
+    const socketId = this.websocketGateway.activeUsers.get(String(adminId));
+    let lastProgress = 0;
+    const updateProgress = (current) => {
+      if (current - lastProgress >= 5) {
+        // 5% increments
+        this.emitProgress(socketId, current);
+        lastProgress = current;
+      }
+    };
+
+    updateProgress(10);
+    const aggregationResult =
+      await this.attendeeService.fetchGroupedAttendeesForExport(
+        new Types.ObjectId(`${adminId}`),
+        1,
+        limit,
+        filterData,
+        sort,
+      );
+
+    const fileName = `attendees-${Date.now()}.xlsx`;
+    const userDir = this.getUserDirectory(adminId);
+    const filePath = path.join(userDir, fileName);
+
+    const payload = {
+      data: aggregationResult?.data || [],
+      columns: columns.map((col) => ({
+        header: col,
+        key: col,
+        width: 20,
+      })),
+      filePath,
+      isKey: true,
+    };
+    console.log('payload', fileName, filePath);
+    updateProgress(50);
+
+    const workerPath = path.resolve(
+      __dirname,
+      '../workers/generate-excel.worker.js',
+    );
+    const fileData = await this.generateExcel(payload, workerPath);
+    updateProgress(80);
+    this.createUserDocuments({
+      userId: adminId,
+      filePath: filePath,
+      fileName: fileName,
+      fileSize: fileData.fileSize,
+      filters: filterData,
+    });
+
+    updateProgress(100);
     return fileData;
   }
 
@@ -200,6 +391,18 @@ export class ExportExcelService {
     filterData: WebinarFilterDTO,
     adminId: string,
   ): Promise<UserDocumentResponse> {
+    const socketId = this.websocketGateway.activeUsers.get(String(adminId));
+    let lastProgress = 0;
+    const updateProgress = (current) => {
+      if (current - lastProgress >= 5) {
+        // 5% increments
+        this.emitProgress(socketId, current);
+        lastProgress = current;
+      }
+    };
+
+    updateProgress(10);
+
     const aggregationResult = await this.webinarService.getWebinars(
       adminId,
       1,
@@ -208,6 +411,12 @@ export class ExportExcelService {
       false,
     );
 
+    updateProgress(50);
+
+    const fileName = `webinars-${Date.now()}.xlsx`;
+    const userDir = this.getUserDirectory(adminId);
+    const filePath = path.join(userDir, fileName);
+
     const payload = {
       data: aggregationResult.result || [],
       columns: columns.map((col) => ({
@@ -215,13 +424,26 @@ export class ExportExcelService {
         key: col,
         width: 20,
       })),
+      filePath,
+      isKey: true,
     };
 
     const workerPath = path.resolve(
       __dirname,
       '../workers/generate-excel.worker.js',
     );
-    return this.generateExcel(payload, workerPath);
+    const fileData = await this.generateExcel(payload, workerPath);
+    updateProgress(80);
+    this.createUserDocuments({
+      userId: adminId,
+      filePath: filePath,
+      fileName: fileName,
+      fileSize: fileData.fileSize,
+      filters: filterData,
+    });
+
+    updateProgress(100);
+    return fileData;
   }
 
   async generateExcelForEmployees(
@@ -230,12 +452,29 @@ export class ExportExcelService {
     filterData: EmployeeFilterDTO,
     adminId: string,
   ): Promise<UserDocumentResponse> {
+    const socketId = this.websocketGateway.activeUsers.get(String(adminId));
+    let lastProgress = 0;
+    const updateProgress = (current) => {
+      if (current - lastProgress >= 5) {
+        // 5% increments
+        this.emitProgress(socketId, current);
+        lastProgress = current;
+      }
+    };
+
+    updateProgress(10);
+
     const aggregationResult = await this.usersService.getEmployees(
       adminId,
       1,
       limit,
       filterData,
     );
+    updateProgress(50);
+
+    const fileName = `Employees-${Date.now()}.xlsx`;
+    const userDir = this.getUserDirectory(adminId);
+    const filePath = path.join(userDir, fileName);
 
     const payload = {
       data: aggregationResult.result || [],
@@ -244,13 +483,26 @@ export class ExportExcelService {
         key: col,
         width: 20,
       })),
+      filePath,
+      isKey: true,
     };
 
     const workerPath = path.resolve(
       __dirname,
       '../workers/generate-excel.worker.js',
     );
-    return this.generateExcel(payload, workerPath);
+    const fileData = await this.generateExcel(payload, workerPath);
+    updateProgress(80);
+    this.createUserDocuments({
+      userId: adminId,
+      filePath: filePath,
+      fileName: fileName,
+      fileSize: fileData.fileSize,
+      filters: filterData,
+    });
+
+    updateProgress(100);
+    return fileData;
   }
 
   // async generateExcelForClientsOld(limit: number, columns: string[], filterData: GetClientsFilterDto): Promise<string> {

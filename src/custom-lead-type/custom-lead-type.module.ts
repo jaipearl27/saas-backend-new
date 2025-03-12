@@ -22,6 +22,7 @@ import { UsersModule } from 'src/users/users.module';
   ],
   controllers: [CustomLeadTypeController],
   providers: [CustomLeadTypeService],
+  exports: [CustomLeadTypeService]
 })
 export class CustomLeadTypeModule {
   configure(consumer: MiddlewareConsumer) {
