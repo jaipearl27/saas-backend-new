@@ -70,7 +70,7 @@ export class Subscription extends Document {
 
 const SubscriptionSchema = SchemaFactory.createForClass(Subscription);
 
-SubscriptionSchema.index({ admin: 1 });
+SubscriptionSchema.index({ admin: 1 }, { unique: true });
 SubscriptionSchema.index({ plan: 1 });
 SubscriptionSchema.index({ admin: 1, plan: 1 });
 

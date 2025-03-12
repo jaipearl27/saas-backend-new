@@ -102,4 +102,34 @@ export class SubscriptionAddonService {
       },
     ]).exec();
   }
+
+  async updateSubscriptionAddons(){ // boilerplate
+    this.SubscriptionAddOnModel.aggregate([
+      // Step 1: Filter valid addons (deadline >= current date)
+      { $match: { deadline: { $gte: new Date() } } },
+    
+      // Step 2: Group by userId and sum valid contacts
+      { $group: { 
+          _id: "$userId", 
+          totalContacts: { $sum: "$contacts" } 
+      }},
+    
+      // Step 3: Rename _id to userId (to match subscription's userId field)
+      { $project: { 
+          userId: "$_id", 
+          totalContacts: 1, 
+          _id: 0 
+      }},
+    
+      // Step 4: Merge results into the subscription collection
+      { $merge: { 
+          into: "subscription",
+          on: "userId",               // Match subscription.userId = addons.userId
+          whenMatched: [{
+            $set: { contactAddons: "$totalContacts" } // Update contactAddons
+          }],
+          whenNotMatched: "discard"   // Ignore users with no valid addons
+      }}
+    ]);
+  }
 }

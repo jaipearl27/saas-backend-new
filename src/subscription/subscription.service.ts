@@ -327,14 +327,13 @@ export class SubscriptionService {
     discountAmount: number;
     gst: number;
   }> {
-    const itemAmount = amount * monthMultiplier[durationType];
+    let itemAmount = 0;
+    if (durationType === 'custom') itemAmount = amount;
+    else itemAmount = amount * monthMultiplier[durationType];
     const discountAmount =
       durationConfig.discountType === 'flat'
         ? durationConfig.discountValue
-        : (amount *
-            monthMultiplier[durationType] *
-            durationConfig.discountValue) /
-          100;
+        : (itemAmount * durationConfig.discountValue) / 100;
 
     const subTotal = itemAmount - discountAmount;
     const gst = subTotal * 0.18; // 18% GST

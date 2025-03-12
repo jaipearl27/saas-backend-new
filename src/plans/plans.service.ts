@@ -51,7 +51,7 @@ export class PlansService {
       query = {
         $or: [
           { planType: PlanType.NORMAL, isActive: true },
-          { assignedUsers: { $in: [userId] } },
+          { assignedUsers: userId, isActive: true },
           { _id: subscription.plan },
         ],
       };
@@ -94,7 +94,13 @@ export class PlansService {
 
     // Create the new plan
     const plan = new this.plansModel(createPlanDto);
-    return await plan.save();
+    try {
+      return await plan.save();
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to create plan: ${error.message}`,
+      );
+    }
   }
 
   async updatePlan(id: string, updatePlanDto: UpdatePlansDto): Promise<any> {

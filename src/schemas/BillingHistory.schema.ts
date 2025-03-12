@@ -9,6 +9,7 @@ export enum DurationType {
   QUARTER = 'quarterly',
   HALF_YEAR = 'halfyearly',
   ONE_YEAR = 'yearly',
+  CUSTOM = 'custom'
 }
 
 export const monthMultiplier = {

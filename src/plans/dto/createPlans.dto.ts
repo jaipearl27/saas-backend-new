@@ -51,21 +51,27 @@ export class CreatePlansDto {
   @IsMongoId({ each: true })
   assignedUsers: string[];
 
+  @IsOptional()
   @IsBoolean()
   whatsappNotificationOnAlarms: boolean;
 
+  @IsOptional()
   @IsBoolean()
   employeeInactivity: boolean;
 
+  @IsOptional()
   @IsBoolean()
   employeeRealTimeStatusUpdate: boolean;
 
+  @IsOptional()
   @IsBoolean()
   calendarFeatures: boolean;
 
+  @IsOptional()
   @IsBoolean()
   productRevenueMetrics: boolean;
 
+  @IsOptional()
   @IsBoolean()
   setAlarm: boolean;
 }

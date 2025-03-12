@@ -136,7 +136,7 @@ export class Plans extends Document {
   >;
 
   static async validatePlanDurationConfig(this: Plans) {
-    const requiredDurations = ['monthly', 'quarterly', 'halfyearly', 'yearly'];
+    const requiredDurations = ['monthly', 'quarterly', 'halfyearly', 'yearly', 'custom'];
     const durationDays = {
       monthly: 30,
       quarterly: 90,
@@ -146,12 +146,12 @@ export class Plans extends Document {
 
     for (const key of requiredDurations) {
       if (!this.planDurationConfig.has(key)) {
-        throw new Error(`Plan must include a "${key}" duration.`);
+        continue;
       }
 
       const durationConfig = this.planDurationConfig.get(key);
 
-      if (durationConfig.duration !== durationDays[key]) {
+      if (durationConfig.duration !== durationDays[key] && key !== 'custom') {
         throw new Error(
           `The "${key}" duration must be ${durationDays[key]} days.`,
         );
