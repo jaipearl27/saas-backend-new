@@ -3,7 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Worker } from 'worker_threads';
 import * as path from 'path';
-import { User } from '../schemas/User.schema';
 import { GetClientsFilterDto } from 'src/users/dto/filters.dto';
 import { UsersService } from 'src/users/users.service';
 import {
@@ -26,7 +25,6 @@ import { CustomLeadTypeService } from 'src/custom-lead-type/custom-lead-type.ser
 @Injectable()
 export class ExportExcelService {
   constructor(
-    @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectModel(UserDocuments.name)
     private readonly userDocumentsModel: Model<UserDocuments>,
     private readonly usersService: UsersService,

@@ -18,14 +18,12 @@ import { CreateClientDto } from 'src/auth/dto/createClient.dto';
 import { Plans } from 'src/schemas/Plans.schema';
 import { BillingHistoryService } from 'src/billing-history/billing-history.service';
 import { SubscriptionService } from 'src/subscription/subscription.service';
-import { BillingHistoryDto } from 'src/billing-history/dto/bililngHistory.dto';
 import { SubscriptionDto } from 'src/subscription/dto/subscription.dto';
 import { UpdateUserInfoDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import { UpdatePasswordDto } from './dto/updatePassword.dto';
-import { Roles, RolesModel } from 'src/schemas/Roles.schema';
+import { Roles } from 'src/schemas/Roles.schema';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
-import { Subscription } from 'src/schemas/Subscription.schema';
 import { JwtService } from '@nestjs/jwt';
 import { GetClientsFilterDto } from './dto/filters.dto';
 import { EmployeeFilterDTO } from './dto/employee-filter.dto';
@@ -35,11 +33,7 @@ import {
   notificationActionType,
   notificationType,
 } from 'src/schemas/notification.schema';
-import exp from 'constants';
-import {
-  BillingType,
-  monthMultiplier,
-} from 'src/schemas/BillingHistory.schema';
+import { BillingType } from 'src/schemas/BillingHistory.schema';
 
 @Injectable()
 export class UsersService {
@@ -71,7 +65,10 @@ export class UsersService {
     hasFilters: boolean = true,
     skip: number,
     limit: number,
-  ): mongoose.PipelineStage[] {
+  ): {
+    pipeline: mongoose.PipelineStage[];
+    initialPipeline: mongoose.PipelineStage[];
+  } {
     const matchFilters: Record<string, any> = {};
     if (filterData.email)
       matchFilters['email'] = { $regex: filterData.email.toLowerCase() };
@@ -194,7 +191,7 @@ export class UsersService {
     const empSalesId = this.configService.get('appRoles').EMPLOYEE_SALES;
     const empReminderId = this.configService.get('appRoles').EMPLOYEE_REMINDER;
 
-    return [
+    const initialPipeline = [
       // Match clients with the admin role
       {
         $match: {
@@ -202,6 +199,11 @@ export class UsersService {
           ...matchFilters,
         },
       },
+    ];
+
+    const pipeline = [
+      ...initialPipeline,
+
       ...(!hasFilters
         ? [
             { $sort: { createdAt: -1 as const } },
@@ -362,6 +364,11 @@ export class UsersService {
         },
       },
     ];
+
+    return {
+      pipeline,
+      initialPipeline,
+    };
   }
 
   async getClients(
@@ -371,13 +378,15 @@ export class UsersService {
     usePagination: boolean = true,
   ): Promise<any> {
     const hasFilters = Object.keys(filterData).length > 0;
+    console.log(hasFilters);
 
-    const pipeline = this.createClientPipeline(
+    const { pipeline, initialPipeline } = this.createClientPipeline(
       filterData,
       hasFilters,
       skip,
       limit,
     );
+    console.log(pipeline);
 
     const mainPipeline = [
       ...pipeline,
@@ -391,7 +400,10 @@ export class UsersService {
     ];
 
     if (usePagination) {
-      const totalUsersPipeline = [...pipeline, { $count: 'totalUsers' }];
+      const totalUsersPipeline = [
+        ...(hasFilters ? pipeline : initialPipeline),
+        { $count: 'totalUsers' },
+      ];
 
       const [result, totalUsersResult] = await Promise.all([
         this.userModel.aggregate(mainPipeline),
@@ -400,6 +412,7 @@ export class UsersService {
 
       const totalUsers = totalUsersResult[0]?.totalUsers || 0;
       const totalPages = Math.ceil(totalUsers / limit);
+      console.log(totalPages, totalUsers, limit);
 
       return { result, totalPages };
     } else {
@@ -933,19 +946,12 @@ export class UsersService {
     const subscription =
       await this.subscriptionService.addSubscription(subscriptionPayload);
 
-    const itemAmount =
-      plan.amount * monthMultiplier[createClientDto.durationType];
-    const discountAmount =
-      durationConfig.discountType === 'flat'
-        ? durationConfig.discountValue
-        : (plan.amount *
-            monthMultiplier[createClientDto.durationType] *
-            durationConfig.discountValue) /
-          100;
-
-    const subTotal = itemAmount - discountAmount;
-    const gst = subTotal * 0.18; // 18% GST
-    const totalWithGST = subTotal + gst;
+    const { totalWithGST, itemAmount, discountAmount, gst } =
+      await this.subscriptionService.generatePriceForPlan(
+        plan.amount,
+        createClientDto.durationType,
+        durationConfig,
+      );
 
     const billingHistory = await this.billingHistoryService.addBillingHistory(
       {

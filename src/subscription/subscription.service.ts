@@ -97,6 +97,10 @@ export class SubscriptionService {
     try {
       const addOn = await this.addOnService.getAddOnById(addonId);
 
+      if(!addOn){
+        throw new NotFoundException('Addon not found');
+      }
+
       const subscription = await this.SubscriptionModel.findOne({
         admin: new Types.ObjectId(`${adminId}`),
       }).session(session); // Use session for the query
@@ -130,6 +134,8 @@ export class SubscriptionService {
           subscription._id as string,
           addOnExpiry,
           addOn._id as string,
+          addOn.employeeLimit,
+          addOn.contactLimit,
         )
         .catch(() => {
           throw new Error('Failed to create subscription addon');

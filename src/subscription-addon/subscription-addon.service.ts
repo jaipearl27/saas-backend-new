@@ -17,11 +17,15 @@ export class SubscriptionAddonService {
     subscriptionId: string,
     expiryDate: Date,
     addOnId: string,
+    employeeLimit: number = 0,
+    contactLimit: number = 0,
   ): Promise<SubscriptionAddOn> {
     const subscriptionAddon = new this.SubscriptionAddOnModel({
       subscription: subscriptionId,
       expiryDate,
       addOn: addOnId,
+      employeeLimit,
+      contactLimit,
     });
     return subscriptionAddon.save();
   }
@@ -128,7 +132,7 @@ export class SubscriptionAddonService {
           whenMatched: [{
             $set: { contactAddons: "$totalContacts" } // Update contactAddons
           }],
-          whenNotMatched: "discard"   // Ignore users with no valid addons
+          whenNotMatched: "insert"
       }}
     ]);
   }

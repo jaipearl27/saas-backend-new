@@ -13,10 +13,16 @@ export class SubscriptionAddOn extends Document {
 
   @Prop({ type: Date, required: true })
   expiryDate: Date;
+
+  @Prop({ type: Number, min: 0, default: 0 })
+  employeeLimit: number;
+
+  @Prop({ type: Number, min: 0, default: 0 })
+  contactLimit: number;
 }
 
 const SubscriptionAddOnSchema = SchemaFactory.createForClass(SubscriptionAddOn);
 
 SubscriptionAddOnSchema.index({ subscription: 1 });
-
+SubscriptionAddOnSchema.index({ expiryDate: 1 }, { expireAfterSeconds: 0 });
 export { SubscriptionAddOnSchema };
