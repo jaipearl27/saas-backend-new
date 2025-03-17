@@ -1,17 +1,53 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Model, Types } from 'mongoose';
 import { SubscriptionAddOn } from 'src/schemas/SubscriptionAddon.schema';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 
 @Injectable()
 export class SubscriptionAddonService {
+  private readonly logger = new Logger(SubscriptionAddOn.name);
+
   constructor(
     @InjectModel(SubscriptionAddOn.name)
     private SubscriptionAddOnModel: Model<SubscriptionAddOn>,
     @Inject(forwardRef(() => SubscriptionService))
     private readonly subscriptionService: SubscriptionService,
+    @InjectConnection() private readonly connection: Connection,
   ) {}
+
+  async onModuleInit() {
+    this.logger.log('Starting MongoDB Change Stream for subscription addons...');
+    this.watchSubscriptionAddons();
+  }
+
+  
+
+  private async watchSubscriptionAddons() {
+    const pipeline = [{ $match: { operationType: 'delete' } }];
+
+    const changeStream = this.SubscriptionAddOnModel.watch(pipeline, {
+      fullDocumentBeforeChange: "whenAvailable"
+    });
+
+    changeStream.on('change', async (change) => {
+      this.logger.log(`Detected expired add-on: ${JSON.stringify(change)}`);
+      
+      const deletedDocument = change.fullDocumentBeforeChange;
+      if (!deletedDocument) {
+        this.logger.error('No document found before deletion');
+        return;
+      }
+
+      const subscriptionId = deletedDocument.subscription.toString();
+      console.log(subscriptionId);
+      await this.subscriptionService.updateSingleSubscriptionAddon(subscriptionId);
+    });
+
+    changeStream.on('error', (err) => {
+      this.logger.error('Change Stream Error:', err);
+    });
+  }
 
   async createSubscriptionAddon(
     subscriptionId: string,
@@ -28,49 +64,6 @@ export class SubscriptionAddonService {
       contactLimit,
     });
     return subscriptionAddon.save();
-  }
-
-  async getExpiredSubscriptionAddons(): Promise<any[]> {
-    const session = await this.SubscriptionAddOnModel.db.startSession(); // Start a session
-    session.startTransaction(); // Begin transaction
-
-    try {
-      // Find all expired subscription add-ons
-      const result: any = await this.SubscriptionAddOnModel.find({
-        expiryDate: { $lt: new Date() }, // Expired add-ons
-      })
-        .populate('addOn', 'employeeLimit contactLimit')
-        .session(session); // Associate session with this query
-
-      // Loop through the expired subscription add-ons
-      for (const subscriptionAddon of result) {
-        // Decrement subscription add-ons
-        await this.subscriptionService.decrementSubscriptionAddons(
-          subscriptionAddon.addOn?.employeeLimit || 0, // Default to 0 if undefined
-          subscriptionAddon.addOn?.contactLimit || 0, // Default to 0 if undefined
-          subscriptionAddon.subscription,
-          session, // Pass session to the decrement method
-        );
-      }
-
-      // Delete all expired add-ons after processing
-      await this.SubscriptionAddOnModel.deleteMany({
-        expiryDate: { $lt: new Date() }, // Delete all expired ones
-      }).session(session); // Associate session with this query
-
-      // Commit the transaction
-      await session.commitTransaction();
-
-      // Return the result for logging or further use
-      return result;
-    } catch (error) {
-      // If any error occurs, abort the transaction
-      await session.abortTransaction();
-      throw error; // Rethrow the error
-    } finally {
-      // End the session, regardless of success or failure
-      session.endSession();
-    }
   }
 
   async getUserAddons(subscriptionId: string) {
@@ -105,35 +98,5 @@ export class SubscriptionAddonService {
         },
       },
     ]).exec();
-  }
-
-  async updateSubscriptionAddons(){ // boilerplate
-    this.SubscriptionAddOnModel.aggregate([
-      // Step 1: Filter valid addons (deadline >= current date)
-      { $match: { deadline: { $gte: new Date() } } },
-    
-      // Step 2: Group by userId and sum valid contacts
-      { $group: { 
-          _id: "$userId", 
-          totalContacts: { $sum: "$contacts" } 
-      }},
-    
-      // Step 3: Rename _id to userId (to match subscription's userId field)
-      { $project: { 
-          userId: "$_id", 
-          totalContacts: 1, 
-          _id: 0 
-      }},
-    
-      // Step 4: Merge results into the subscription collection
-      { $merge: { 
-          into: "subscription",
-          on: "userId",               // Match subscription.userId = addons.userId
-          whenMatched: [{
-            $set: { contactAddons: "$totalContacts" } // Update contactAddons
-          }],
-          whenNotMatched: "insert"
-      }}
-    ]);
   }
 }

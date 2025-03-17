@@ -47,7 +47,6 @@ export class ExportExcelService {
     const userDocument = new this.userDocumentsModel(payload);
     await userDocument.save();
     const socketId = this.websocketGateway.activeUsers.get(`${payload.userId}`);
-    console.log(socketId, '--------');
     if (socketId) {
       this.websocketGateway.server
         .to(socketId)
@@ -92,7 +91,6 @@ export class ExportExcelService {
     }
 
     if (document.filePath && fs.existsSync(document.filePath)) {
-      console.log('im deleting stuff');
       try {
         fs.unlinkSync(document.filePath);
       } catch (err) {
@@ -265,7 +263,6 @@ export class ExportExcelService {
       sort,
       false,
     );
-    console.log(aggregationResult);
     const leadTypes = await this.leadTypeService.getLeadTypes(adminId);
 
     const parsetResult = aggregationResult.map((attendee) => ({
@@ -299,7 +296,6 @@ export class ExportExcelService {
       filePath,
       isKey: true,
     };
-    console.log('payload', fileName, filePath);
     updateProgress(50);
 
     const workerPath = path.resolve(
@@ -327,7 +323,6 @@ export class ExportExcelService {
     adminId: string,
     sort?: GroupedAttendeesSortObject,
   ) {
-    console.log(columns);
     const socketId = this.websocketGateway.activeUsers.get(String(adminId));
     let lastProgress = 0;
     const updateProgress = (current) => {
@@ -362,7 +357,6 @@ export class ExportExcelService {
       filePath,
       isKey: true,
     };
-    console.log('payload', fileName, filePath);
     updateProgress(50);
 
     const workerPath = path.resolve(

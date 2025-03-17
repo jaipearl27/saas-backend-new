@@ -378,7 +378,6 @@ export class UsersService {
     usePagination: boolean = true,
   ): Promise<any> {
     const hasFilters = Object.keys(filterData).length > 0;
-    console.log(hasFilters);
 
     const { pipeline, initialPipeline } = this.createClientPipeline(
       filterData,
@@ -386,7 +385,6 @@ export class UsersService {
       skip,
       limit,
     );
-    console.log(pipeline);
 
     const mainPipeline = [
       ...pipeline,
@@ -412,7 +410,6 @@ export class UsersService {
 
       const totalUsers = totalUsersResult[0]?.totalUsers || 0;
       const totalPages = Math.ceil(totalUsers / limit);
-      console.log(totalPages, totalUsers, limit);
 
       return { result, totalPages };
     } else {

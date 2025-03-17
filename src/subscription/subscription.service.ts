@@ -97,7 +97,7 @@ export class SubscriptionService {
     try {
       const addOn = await this.addOnService.getAddOnById(addonId);
 
-      if(!addOn){
+      if (!addOn) {
         throw new NotFoundException('Addon not found');
       }
 
@@ -368,5 +368,204 @@ export class SubscriptionService {
     ];
     const result = await this.SubscriptionModel.aggregate(pipeline).exec();
     return result;
+  }
+
+  async updateSubscriptionAddons() {
+    // read it before making any changes
+    // it is used to update the subscription document with the addons Limits when the addon is expired
+    const pipeline: PipelineStage[] = [
+      {
+        $lookup: {
+          from: 'subscriptionaddons',
+          localField: '_id',
+          foreignField: 'subscription',
+          as: 'addonDetails',
+        },
+      },
+      {
+        $match: {
+          $or: [
+            { addonDetails: { $ne: [] } },
+            { employeeLimitAddon: { $gt: 0 } },
+            { contactLimitAddon: { $gt: 0 } },
+          ],
+        },
+      },
+      {
+        $addFields: {
+          totalEmployeeLimitAddon: {
+            $sum: {
+              $map: {
+                input: '$addonDetails',
+                as: 'addon',
+                in: { $ifNull: ['$$addon.employeeLimit', 0] },
+              },
+            },
+          },
+          totalContactLimitAddon: {
+            $sum: {
+              $map: {
+                input: '$addonDetails',
+                as: 'addon',
+                in: { $ifNull: ['$$addon.contactLimit', 0] },
+              },
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          addonDetails: 0,
+        },
+      },
+      {
+        $match: {
+          $or: [
+            {
+              $expr: {
+                $ne: ['$employeeLimitAddon', '$totalEmployeeLimitAddon'],
+              },
+            },
+            {
+              $expr: { $ne: ['$contactLimitAddon', '$totalContactLimitAddon'] },
+            },
+          ],
+        },
+      },
+      {
+        $set: {
+          employeeLimitAddon: { $ifNull: ['$totalEmployeeLimitAddon', 0] },
+          contactLimitAddon: { $ifNull: ['$totalContactLimitAddon', 0] },
+        },
+      },
+
+      {
+        $unset: ['totalEmployeeLimitAddon', 'totalContactLimitAddon'],
+      },
+      {
+        $merge: {
+          into: 'subscriptions',
+          on: '_id',
+          whenMatched: 'merge',
+          whenNotMatched: 'discard',
+        },
+      },
+    ];
+    const result = await this.SubscriptionModel.aggregate(pipeline).exec();
+    console.log('result -------- >', result);
+    return result;
+  }
+
+  async updateSingleSubscriptionAddon(subscriptionId: string) {
+    const subscription = await this.SubscriptionModel.findById(subscriptionId);
+    if (!subscription) {
+      throw new NotFoundException('Subscription not found');
+    }
+
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          _id: new Types.ObjectId(`${subscriptionId}`),
+        },
+      },
+      {
+        $lookup: {
+          from: 'subscriptionaddons',
+          localField: '_id',
+          foreignField: 'subscription',
+          as: 'addonDetails',
+        },
+      },
+      {
+        $project: {
+          totalEmployeeLimitAddon: {
+            $sum: {
+              $map: {
+                input: '$addonDetails',
+                as: 'addon',
+                in: { $ifNull: ['$$addon.employeeLimit', 0] },
+              },
+            },
+          },
+          totalContactLimitAddon: {
+            $sum: {
+              $map: {
+                input: '$addonDetails',
+                as: 'addon',
+                in: { $ifNull: ['$$addon.contactLimit', 0] },
+              },
+            },
+          },
+        },
+      },
+    ];
+
+    const result = await this.SubscriptionModel.aggregate(pipeline).exec();
+    if (result && result.length === 0) {
+      throw new NotFoundException('No addons found');
+    } else {
+      subscription.employeeLimitAddon = result[0].totalEmployeeLimitAddon;
+      subscription.contactLimitAddon = result[0].totalContactLimitAddon;
+      await subscription.save();
+    }
+    console.log('result -------- >', result);
+    return result;
+  }
+
+  async revalidateUsedContactCounts() {
+    const pipeline: PipelineStage[] = [
+      {
+        $lookup: {
+          from: 'attendees',
+          let: { adminId: '$admin' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ['$adminId', '$$adminId'],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: '$email',
+              },
+            },
+            {
+              $count: 'total',
+            },
+          ],
+          as: 'attendeeCount',
+        },
+      },
+      {
+        $unwind: {
+          path: '$attendeeCount',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $set: {
+          contactCount: {
+            $ifNull: ['$attendeeCount.total', 0],
+          },
+        },
+      },
+      {
+        $project: {
+          attendeeCount: 0,
+        },
+      },
+      {
+        $merge: {
+          into: 'subscriptions',
+          on: '_id',
+          whenMatched: 'merge',
+          whenNotMatched: 'discard',
+        },
+      },
+    ];
+
+    return this.SubscriptionModel.aggregate(pipeline).exec();
   }
 }
