@@ -113,6 +113,9 @@ export class Plans extends Document {
   @Prop({ type: Boolean, default: false })
   productRevenueMetrics: boolean;
 
+  @Prop({ type: Boolean, default: false })
+  renewalNotAllowed: boolean;
+
   @Prop({
     type: Map,
     of: new mongoose.Schema({

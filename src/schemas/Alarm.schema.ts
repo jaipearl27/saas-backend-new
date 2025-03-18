@@ -46,6 +46,8 @@ export class Alarm extends Document {
 
 export const AlarmSchema = SchemaFactory.createForClass(Alarm);
 
+AlarmSchema.index({ user: 1, date: 1 });
+
 AlarmSchema.pre('save', function (next) {
   if(typeof this.user === 'string'){
     this.user = new Types.ObjectId(`${this.user}`)

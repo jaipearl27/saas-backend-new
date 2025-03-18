@@ -145,7 +145,10 @@ export class AssignmentController {
     const empContactCount = employee?.dailyContactCount ?? 0;
     const attendeeCount = body.attendees.length;
 
-    if (empContactCount + attendeeCount > empContactLimit) {
+    if (
+      empContactCount + attendeeCount > empContactLimit &&
+      !body.forceAssign
+    ) {
       throw new BadRequestException('Daily Contact Limit Exceeded');
     }
 
@@ -258,16 +261,15 @@ export class AssignmentController {
     );
   }
 
-
   @Get('metrics/daily')
   async getDailyAssignmentStats(
     @Id() userId: string,
     @AdminId() adminId: string,
     @Query() query: DateRangeDto,
-    @Role() role: string
+    @Role() role: string,
   ) {
-    if(!query.employeeId){
-      throw new BadRequestException("EmployeeId Is Required");
+    if (!query.employeeId) {
+      throw new BadRequestException('EmployeeId Is Required');
     }
 
     const { startDate, endDate } = this.assignmentService.validateDate(
@@ -280,7 +282,7 @@ export class AssignmentController {
       adminId,
       startDate,
       endDate,
-      query.webinarId
+      query.webinarId,
     );
   }
 
@@ -298,7 +300,7 @@ export class AssignmentController {
       adminId,
       startDate,
       endDate,
-      query.webinarId
+      query.webinarId,
     );
   }
 }

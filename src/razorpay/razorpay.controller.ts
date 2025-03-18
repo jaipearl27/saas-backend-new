@@ -8,9 +8,7 @@ import {
   Redirect,
 } from '@nestjs/common';
 import { RazorpayService } from './razorpay.service';
-import { PlansService } from 'src/plans/plans.service';
 import { SubscriptionService } from 'src/subscription/subscription.service';
-import { AddOnService } from 'src/addon/addon.service';
 import {
   RazorPayAddOnDTO,
   RazorPayCheckoutPlanDTO,
@@ -18,14 +16,11 @@ import {
 } from './dto/razorpay.dto';
 import { ConfigService } from '@nestjs/config';
 import crypto from 'crypto';
-import { monthMultiplier } from 'src/schemas/BillingHistory.schema';
 import { Id } from 'src/decorators/custom.decorator';
 @Controller('razorpay')
 export class RazorpayController {
   constructor(
     private razorpayService: RazorpayService,
-    private plansService: PlansService,
-    private addonService: AddOnService,
     private subscriptionService: SubscriptionService,
     private readonly configService: ConfigService,
   ) {}

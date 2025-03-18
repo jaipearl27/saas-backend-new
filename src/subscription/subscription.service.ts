@@ -240,6 +240,10 @@ export class SubscriptionService {
 
     const plan = await this.plansService.getPlan(planId);
 
+    // if (plan.renewalNotAllowed) {
+    //   throw new BadRequestException('Renewal not allowed');
+    // }
+
     const isDurationConfig = plan.planDurationConfig.has(durationType);
     if (!isDurationConfig) {
       throw new NotFoundException('Duration type not found');
@@ -297,6 +301,12 @@ export class SubscriptionService {
       await this.userService.updateClient(adminId, { isActive: true });
 
     await subscription.save();
+
+    const user = await this.userService.getUserById(adminId);
+    if (user) {
+      user.isActive = true;
+      await user.save();
+    }
 
     return { subscription, billing };
   }

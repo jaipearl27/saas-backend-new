@@ -34,6 +34,10 @@ export class AssignmentDto {
   @IsString()
   @IsNotEmpty()
   recordType: 'preWebinar' | 'postWebinar';
+
+  @IsOptional()
+  @IsBoolean()
+  forceAssign: boolean;
 }
 
 export class preWebinarAssignmentDto {

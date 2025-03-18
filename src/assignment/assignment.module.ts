@@ -66,6 +66,14 @@ export class AssignmentModule {
           method: RequestMethod.PATCH,
         },
         {
+          path: 'assignment/reassign/fetch',
+          method: RequestMethod.GET,
+        },
+        {
+          path: 'assignment/reassign/fetch',
+          method: RequestMethod.POST,
+        },
+        {
           path: 'assignment/metrics/daily',
           method: RequestMethod.GET,
         },
@@ -85,5 +93,14 @@ export class AssignmentModule {
       path: 'assignment/metrics/daily',
       method: RequestMethod.GET,
     });
+
+    consumer.apply(AuthAdminTokenMiddleware).forRoutes({
+      path: 'assignment/reassign/fetch',
+      method: RequestMethod.GET,
+    },
+    {
+      path: 'assignment/reassign/fetch',
+      method: RequestMethod.POST,
+    },);
   }
 }

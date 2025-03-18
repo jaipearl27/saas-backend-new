@@ -22,7 +22,7 @@ export class AuthActiveUserMiddleware implements NestMiddleware {
        
         next();
       } else {
-        throw new BadRequestException('User is Inactive, kindly recharge or contact the administrator.');
+        throw new BadRequestException('Plan Expired, kindly renew your plan or contact the administrator.');
       }
     } catch (error) {
       throw error;

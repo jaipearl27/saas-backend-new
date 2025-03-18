@@ -638,6 +638,7 @@ export class UsersService {
   async getEmployeesCount(AdminId: string): Promise<any> {
     const query = {
       adminId: new Types.ObjectId(`${AdminId}`),
+      isActive: true,
     };
 
     const totalContacts = (await this.userModel.countDocuments(query)) || 0;
