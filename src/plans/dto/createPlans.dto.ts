@@ -86,6 +86,10 @@ export class CreatePlansDto {
   @IsOptional()
   @IsString()
   customRibbonColor: string;
+
+  @IsOptional()
+  @IsBoolean()
+  assignmentMetrics: boolean;
 }
 
 class PlanDTO {
