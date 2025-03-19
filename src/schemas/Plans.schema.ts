@@ -116,6 +116,12 @@ export class Plans extends Document {
   @Prop({ type: Boolean, default: false })
   renewalNotAllowed: boolean;
 
+  @Prop({ type: String, default: '' })
+  customRibbon: string;
+
+  @Prop({ type: String, default: '' })
+  customRibbonColor: string;
+
   @Prop({
     type: Map,
     of: new mongoose.Schema({

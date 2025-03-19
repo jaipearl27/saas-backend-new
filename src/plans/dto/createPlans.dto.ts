@@ -78,6 +78,14 @@ export class CreatePlansDto {
   @IsOptional()
   @IsBoolean()
   renewalNotAllowed: boolean;
+
+  @IsOptional()
+  @IsString()
+  customRibbon: string;
+
+  @IsOptional()
+  @IsString()
+  customRibbonColor: string;
 }
 
 class PlanDTO {
