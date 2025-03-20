@@ -1,17 +1,36 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, NotAcceptableException } from '@nestjs/common';
+import {
+  Injectable,
+  NotAcceptableException,
+  forwardRef,
+  Inject,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { lastValueFrom, map } from 'rxjs';
 import { AlarmMsgDto, ReminderMsgDto } from './dto/msg.dto';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class WhatsappService {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    @Inject(forwardRef(() => UsersService))
+    private readonly usersService: UsersService,
   ) {}
 
   url = this.configService.get('AISENSY_URL');
+  superAdmin: null | {
+    companyName: string;
+    email: string;
+    address: string;
+  } = null;
+  onModuleInit() {
+    this.usersService.getSuperAdminDetails(true).then((superAdmin) => {
+      console.log('superAdmin -------- >', superAdmin);
+      this.superAdmin = superAdmin;
+    });
+  }
 
   private isValidPhoneNumber(phoneNumber: string) {
     // Define the regex pattern for validation
@@ -22,7 +41,7 @@ export class WhatsappService {
   }
 
   async sendAlarmMsg(alarmMsgDto: AlarmMsgDto) {
-    if(!this.isValidPhoneNumber(alarmMsgDto.phone)) return
+    if (!this.isValidPhoneNumber(alarmMsgDto.phone)) return;
 
     try {
       const bodyData = {
@@ -30,10 +49,16 @@ export class WhatsappService {
         campaignName: this.configService.get('ALARM_CAMPAIGN'),
         destination: alarmMsgDto.phone,
         userName: alarmMsgDto.userName,
-        templateParams: [alarmMsgDto.userName, alarmMsgDto.attendeeEmail, alarmMsgDto.note],
+        templateParams: [
+          alarmMsgDto.userName,
+          alarmMsgDto.attendeeEmail,
+          alarmMsgDto.note,
+        ],
       };
       const result = await lastValueFrom(
-        this.httpService.post(this.url, bodyData).pipe(map((resp) => resp.data)),
+        this.httpService
+          .post(this.url, bodyData)
+          .pipe(map((resp) => resp.data)),
       );
       return result;
     } catch (error) {
@@ -43,7 +68,7 @@ export class WhatsappService {
   }
 
   async sendReminderMsg(reminderMsgDto: ReminderMsgDto) {
-    if(!this.isValidPhoneNumber(reminderMsgDto.phone)) return
+    if (!this.isValidPhoneNumber(reminderMsgDto.phone)) return;
 
     try {
       const bodyData = {
@@ -51,10 +76,16 @@ export class WhatsappService {
         campaignName: this.configService.get('REMINDER_CAMPAIGN'),
         destination: reminderMsgDto.phone,
         userName: reminderMsgDto.userName,
-        templateParams: [reminderMsgDto.userName, reminderMsgDto.attendeeEmail, reminderMsgDto.note],
+        templateParams: [
+          reminderMsgDto.userName,
+          reminderMsgDto.attendeeEmail,
+          reminderMsgDto.note,
+        ],
       };
       const result = await lastValueFrom(
-        this.httpService.post(this.url, bodyData).pipe(map((resp) => resp.data)),
+        this.httpService
+          .post(this.url, bodyData)
+          .pipe(map((resp) => resp.data)),
       );
       return result;
     } catch (error) {
@@ -62,5 +93,4 @@ export class WhatsappService {
       return { error: error.message };
     }
   }
-
 }

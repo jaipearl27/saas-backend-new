@@ -186,6 +186,13 @@ export class User extends Document {
     required: false,
   })
   tags: string[];
+
+  @Prop({
+    type: String,
+    required: false,
+    select: false
+  })
+  whatsappToken: string;
 }
 
 const UserSchema = SchemaFactory.createForClass(User);

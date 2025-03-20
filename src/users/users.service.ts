@@ -1080,13 +1080,16 @@ export class UsersService {
     );
   }
 
-  async getSuperAdminDetails() {
+  async getSuperAdminDetails(whatsappToken: boolean = false) {
     const role = this.configService.get('appRoles').SUPER_ADMIN;
     const superAdmin = await this.userModel
       .findOne({ role: new Types.ObjectId(`${role}`) })
-      .select('companyName email address')
+      .select(
+        `companyName email address ${whatsappToken ? 'whatsappToken' : ''}`,
+      )
       .exec();
     return superAdmin;
+    
   }
 
   async getClientsForDropdown() {

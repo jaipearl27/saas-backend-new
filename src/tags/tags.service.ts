@@ -14,7 +14,7 @@ export class TagsService {
   ): Promise<Tag> {
     const sanitizedName = createTagDto.name
       .toLowerCase()
-      .replace(/[^a-z0-9_]/g, '');
+      .replace(/[^a-z0-9_\-\.]/g, '');
 
     const existingTag = await this.tagModel.findOne({
       name: sanitizedName,
