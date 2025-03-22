@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { Subscription } from 'rxjs';
 import { AddOn } from 'src/schemas/addon.schema';
 import { Alarm } from 'src/schemas/Alarm.schema';
+import { Assignments } from 'src/schemas/Assignments.schema';
 import { AttendeeAssociation } from 'src/schemas/attendee-association.schema';
 import { Attendee } from 'src/schemas/Attendee.schema';
 import { BillingHistory } from 'src/schemas/BillingHistory.schema';
@@ -21,7 +22,10 @@ import { StatusDropdown } from 'src/schemas/StatusDropdown.schema';
 import { User } from 'src/schemas/User.schema';
 import { UserActivity } from 'src/schemas/UserActivity.schema';
 import { Webinar } from 'src/schemas/Webinar.schema';
-
+import { ProductLevel } from 'src/schemas/product-level.schema';
+import { SubscriptionAddOn } from 'src/schemas/SubscriptionAddon.schema';
+import { Tag } from 'src/schemas/tags.schema';
+import { UserDocuments } from 'src/schemas/user-documents.schema';
 @Injectable()
 export class DeleteDataService {
     constructor(
@@ -42,7 +46,12 @@ export class DeleteDataService {
         @InjectModel(Notification.name) private readonly notificationModel: Model<Notification>,
         @InjectModel(UserActivity.name) private readonly userActivityModel: Model<UserActivity>,
         @InjectModel(FilterPreset.name) private readonly filterPresetModel: Model<FilterPreset>,
-        
+        @InjectModel(Assignments.name) private readonly assignmentsModel: Model<Assignments>,
+        @InjectModel(Location.name) private readonly locationModel: Model<Location>,
+        @InjectModel(ProductLevel.name) private readonly productLevelModel: Model<ProductLevel>,
+        @InjectModel(SubscriptionAddOn.name) private readonly subscriptionAddOnModel: Model<SubscriptionAddOn>,
+        @InjectModel(Tag.name) private readonly tagModel: Model<Tag>,
+        @InjectModel(UserDocuments.name) private readonly userDocumentsModel: Model<UserDocuments>,
     ) { }
 
     async deleteData(id: string): Promise<any> {
@@ -64,8 +73,12 @@ export class DeleteDataService {
                 this.notificationModel.deleteMany({}),
                 this.userActivityModel.deleteMany({}),
                 this.filterPresetModel.deleteMany({}),
-                
-
+                this.assignmentsModel.deleteMany({}),
+                this.locationModel.deleteMany({}),
+                this.productLevelModel.deleteMany({}),
+                this.subscriptionAddOnModel.deleteMany({}),
+                this.tagModel.deleteMany({}),
+                this.userDocumentsModel.deleteMany({}),
                 // Delete records in User and StatusDropdown but exclude those with adminId equal to provided id
                 this.userModel.deleteMany({ _id: { $ne: new Types.ObjectId(`${id}`) } }), // Do not delete users with adminId == id
                 this.statusDropdownModel.deleteMany({ createdBy: { $ne: id } }) // Do not delete StatusDropdown with adminId == id

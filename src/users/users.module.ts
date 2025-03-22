@@ -22,7 +22,10 @@ import {
 import { diskStorage } from 'multer';
 import { MulterModule } from '@nestjs/platform-express';
 import { CustomLeadTypeService } from 'src/custom-lead-type/custom-lead-type.service';
-import { CustomLeadType, CustomLeadTypeSchema } from 'src/schemas/custom-lead-type.schema';
+import {
+  CustomLeadType,
+  CustomLeadTypeSchema,
+} from 'src/schemas/custom-lead-type.schema';
 import { CustomLeadTypeModule } from 'src/custom-lead-type/custom-lead-type.module';
 import { NotificationModule } from 'src/notification/notification.module';
 
@@ -54,10 +57,10 @@ import { NotificationModule } from 'src/notification/notification.module';
       {
         name: CustomLeadType.name,
         schema: CustomLeadTypeSchema,
-      }
+      },
     ]),
     BillingHistoryModule,
-    NotificationModule
+    NotificationModule,
   ],
   controllers: [UsersController],
   providers: [UsersService, CustomLeadTypeService],
@@ -82,6 +85,12 @@ export class UsersModule {
 
     consumer
       .apply(AuthSuperAdminMiddleware)
-      .forRoutes({ path: 'users/clients/*', method: RequestMethod.ALL });
+      .forRoutes(
+        { path: 'users/clients/*', method: RequestMethod.ALL },
+        {
+          path: 'users/super-admin/whatsapp-token',
+          method: RequestMethod.PATCH,
+        },
+      );
   }
 }

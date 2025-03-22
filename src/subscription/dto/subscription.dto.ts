@@ -83,3 +83,14 @@ export class AddAddOnDTO {
   @IsMongoId()
   addonId: string;
 }
+
+export class ValidateUserEligibilityDTO {
+  @IsNotEmpty()
+  @IsMongoId()
+  planId: string;
+
+  @IsEnum(DurationType, {
+    message: 'Duration type must be one of the allowed values.',
+  })
+  durationType: DurationType;
+}

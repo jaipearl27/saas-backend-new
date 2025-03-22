@@ -108,7 +108,6 @@ export class UsersController {
     return clients ? { ...clients, processingTime } : clients;
   }
 
-
   @Get('/clients/:id')
   async getClient(@Param('id') id: string): Promise<any> {
     const client = await this.usersService.getClient(id);
@@ -173,6 +172,14 @@ export class UsersController {
   @Get('/super-admin')
   async getSuperAdminDetails() {
     return await this.usersService.getSuperAdminDetails();
+  }
+
+  @Patch('/super-admin/whatsapp-token')
+  async updateWhatsappToken(
+    @Id() id: string,
+    @Body() body: { whatsappToken: string },
+  ) {
+    return await this.usersService.updateWhatsappToken(id, body.whatsappToken ? body.whatsappToken.trim() : null);
   }
 
   @Get('/dropdown/clients')

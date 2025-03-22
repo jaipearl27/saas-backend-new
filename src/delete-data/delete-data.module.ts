@@ -19,6 +19,12 @@ import { NoticeBoard, NoticeBoardSchema } from 'src/schemas/notice-board.schema'
 import { Notification, NotificationSchema } from 'src/schemas/notification.schema';
 import { UserActivity, UserActivitySchema } from 'src/schemas/UserActivity.schema';
 import { FilterPreset, FilterPresetSchema } from 'src/schemas/FilterPreset.schema';
+import { Assignments, AssignmentsSchema } from 'src/schemas/Assignments.schema';
+import { ProductLevel, ProductLevelSchema } from 'src/schemas/product-level.schema';
+import { Location, LocationSchema } from 'src/schemas/location.schema';
+import { SubscriptionAddOn, SubscriptionAddOnSchema } from 'src/schemas/SubscriptionAddon.schema';
+import { Tag, TagSchema } from 'src/schemas/tags.schema';
+import { UserDocuments, UserDocumentsSchema } from 'src/schemas/user-documents.schema';
 
 @Module({
   imports: [
@@ -92,6 +98,29 @@ import { FilterPreset, FilterPresetSchema } from 'src/schemas/FilterPreset.schem
         name: FilterPreset.name,
         schema: FilterPresetSchema
       },
+      {
+        name: Assignments.name,
+        schema: AssignmentsSchema
+      },
+      {
+        name: ProductLevel.name,
+        schema: ProductLevelSchema
+      },
+      {
+        name: Location.name,
+        schema: LocationSchema
+      },{
+        name: SubscriptionAddOn.name,
+        schema: SubscriptionAddOnSchema
+      },
+      {
+        name: Tag.name,
+        schema: TagSchema
+      },
+      {
+        name: UserDocuments.name,
+        schema: UserDocumentsSchema
+      }
 
     ])
   ],

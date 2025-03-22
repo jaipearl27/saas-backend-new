@@ -20,6 +20,7 @@ import { BillingHistoryModule } from 'src/billing-history/billing-history.module
 import { PlansModule } from 'src/plans/plans.module';
 import { AuthSuperAdminMiddleware } from 'src/middlewares/authSuperAdmin.Middleware';
 import { AttendeesModule } from 'src/attendees/attendees.module';
+import { AuthAdminTokenMiddleware } from 'src/middlewares/authAdmin.Middleware';
 
 @Module({
   imports: [
@@ -52,5 +53,9 @@ export class SubscriptionModule {
         { path: 'subscription/addOn', method: RequestMethod.PATCH },
         { path: 'subscription/update', method: RequestMethod.PATCH },
       );
+
+    consumer
+      .apply(AuthAdminTokenMiddleware)
+      .forRoutes({ path: 'subscription/validate', method: RequestMethod.GET });
   }
 }

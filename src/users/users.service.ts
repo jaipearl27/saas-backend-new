@@ -1092,6 +1092,10 @@ export class UsersService {
     
   }
 
+  async updateWhatsappToken(id: string, whatsappToken: string) {
+    return await this.userModel.findByIdAndUpdate(id, { whatsappToken }, { new: true }).select(' whatsappToken');
+  }
+
   async getClientsForDropdown() {
     const clients = await this.userModel.find({
       role: new Types.ObjectId(`${this.configService.get('appRoles').ADMIN}`),

@@ -1,4 +1,9 @@
-import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, PipelineStage, Types } from 'mongoose';
 import { Webinar } from 'src/schemas/Webinar.schema';
@@ -34,8 +39,7 @@ export class WebinarService {
     private readonly assignmentService: AssignmentService,
     private readonly enrollmentService: EnrollmentsService,
     @Inject(forwardRef(() => SubscriptionService))
-    private readonly subscriptionService: SubscriptionService
-
+    private readonly subscriptionService: SubscriptionService,
   ) {}
 
   async createWebiar(createWebinarDto: CreateWebinarDto): Promise<any> {
@@ -71,8 +75,8 @@ export class WebinarService {
     filters: WebinarFilterDTO = {},
     usePagination: boolean = true, // Flag to enable/disable pagination
   ): Promise<any> {
-    console.log("limterr-r ===> ", limit)
-    
+    console.log('limterr-r ===> ', limit);
+
     const skip = (page - 1) * limit;
 
     const query = { adminId: new Types.ObjectId(`${adminId}`) };
@@ -201,8 +205,12 @@ export class WebinarService {
         },
         {
           $project: {
-            totalPages: { $ceil: { $divide: ['$metadata.total', limit] } },
-            page: { $literal: page },
+            pagination: {
+              totalPages: { $ceil: { $divide: ['$metadata.total', limit] } },
+              page: { $literal: page },
+              total: '$metadata.total',
+              limit: { $literal: limit },
+            },
             result: '$data',
           },
         },
@@ -211,10 +219,13 @@ export class WebinarService {
       const result = await this.webinarModel.aggregate(basePipeline);
       return result.length > 0
         ? result[0]
-        : { result: [], page, totalPages: 0 };
+        : {
+            result: [],
+            pagination: { totalPages: 0, page: 1, total: 0, limit: limit },
+          };
     } else {
       // Add skip and limit directly for consistent output without $facet
-      basePipeline.push({ $skip: skip }, ...(limit ? [{ $limit: limit }]: []));
+      basePipeline.push({ $skip: skip }, ...(limit ? [{ $limit: limit }] : []));
 
       const result = await this.webinarModel.aggregate(basePipeline);
       return {
@@ -259,72 +270,89 @@ export class WebinarService {
     const webinarId = new Types.ObjectId(`${id}`);
     const adminId = new Types.ObjectId(`${admin}`);
     const session = await this.webinarModel.db.startSession();
-    
+
     try {
       session.startTransaction();
-      
+
       // Delete webinar
-      const deletedWebinar = await this.webinarModel.findOneAndDelete({
-        _id: webinarId,
-        adminId: new Types.ObjectId(adminId)
-      }).session(session);
+      const deletedWebinar = await this.webinarModel
+        .findOneAndDelete({
+          _id: webinarId,
+          adminId: new Types.ObjectId(adminId),
+        })
+        .session(session);
 
       if (!deletedWebinar) {
         throw new NotFoundException('Webinar not found');
       }
 
-      const attendees: any = await this.attendeesService.getAttendeeForDeletion(webinarId,session);
-      const attendeeIds = attendees.map(a => a._id);
+      const attendees: any = await this.attendeesService.getAttendeeForDeletion(
+        webinarId,
+        session,
+      );
+      const attendeeIds = attendees.map((a) => a._id);
 
       // Configure deletion workflow
       const DELETION_DEPENDENCIES = [
         {
           service: this.alarmService,
           method: 'deleteAlarmsByAttendeeIds',
-          args: [attendeeIds]
+          args: [attendeeIds],
         },
         {
           service: this.assignmentService,
           method: 'deleteAssignmentsByWebinar',
-          args: [adminId, webinarId]
+          args: [adminId, webinarId],
         },
         {
           service: this.attendeesService,
           method: 'deleteAttendeesByWebinar',
-          args: [webinarId, adminId]
+          args: [webinarId, adminId],
         },
         {
           service: this.enrollmentService,
           method: 'deleteAssignmentsByWebinar',
-          args: [adminId, webinarId]
+          args: [adminId, webinarId],
         },
         {
           service: this.notesService,
           method: 'deleteNotesByAttendees',
-          args: [attendeeIds]
+          args: [attendeeIds],
         },
         {
           service: this.notificationService,
           method: 'deleteNotificationsByWebinar',
-          args: [webinarId]
-        }
+          args: [webinarId],
+        },
       ];
 
       // Execute deletions
       for (const dependency of DELETION_DEPENDENCIES) {
         await dependency.service[dependency.method](
           ...dependency.args,
-          session
+          session,
         );
       }
-      const contactCount = await this.attendeesService.getNonUniqueAttendeesCount([], adminId, session);
+      const contactCount =
+        await this.attendeesService.getNonUniqueAttendeesCount(
+          [],
+          adminId,
+          session,
+        );
 
-      await this.subscriptionService.updateContactCount(adminId, contactCount, session)
+      await this.subscriptionService.updateContactCount(
+        adminId,
+        contactCount,
+        session,
+      );
 
       await session.commitTransaction();
     } catch (error) {
       await session.abortTransaction();
-      this.logger.error(`Partial deletion failure: ${error.message}`, error.stack);
+      this.logger.error(
+        `Partial deletion failure: ${error.message}`,
+        error.stack,
+      );
       throw new Error('Partial deletion failure - check logs');
     } finally {
       await session.endSession();
@@ -358,5 +386,4 @@ export class WebinarService {
       result.assignedEmployees.filter((employee) => employee?.isActive) || []
     );
   }
-
 }

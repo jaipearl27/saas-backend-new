@@ -3,6 +3,7 @@ import {
   forwardRef,
   Inject,
   Injectable,
+  NotAcceptableException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -20,7 +21,7 @@ import {
   DurationType,
   monthMultiplier,
 } from 'src/schemas/BillingHistory.schema';
-import { PlanDurationConfig } from 'src/schemas/Plans.schema';
+import { PlanDurationConfig, Plans } from 'src/schemas/Plans.schema';
 
 @Injectable()
 export class SubscriptionService {
@@ -277,11 +278,7 @@ export class SubscriptionService {
     subscription.toggleLimit = plan.toggleLimit;
 
     const { totalWithGST, itemAmount, discountAmount, gst } =
-      await this.generatePriceForPlan(
-        plan.amount,
-        durationType,
-        durationConfig,
-      );
+      this.generatePriceForPlan(plan.amount, durationType, durationConfig);
 
     const billing = await this.BillingHistoryService.addBillingHistory(
       {
@@ -333,16 +330,16 @@ export class SubscriptionService {
     );
   }
 
-  async generatePriceForPlan(
+  generatePriceForPlan(
     amount: number,
     durationType: DurationType,
     durationConfig: PlanDurationConfig,
-  ): Promise<{
+  ): {
     totalWithGST: number;
     itemAmount: number;
     discountAmount: number;
     gst: number;
-  }> {
+  } {
     let itemAmount = 0;
     if (durationType === 'custom') itemAmount = amount;
     else itemAmount = amount * monthMultiplier[durationType];
@@ -577,5 +574,52 @@ export class SubscriptionService {
     ];
 
     return this.SubscriptionModel.aggregate(pipeline).exec();
+  }
+
+  async validateUserEligibility(
+    adminId: string,
+    planId: string,
+    durationType: DurationType,
+  ): Promise<{ isEligible: boolean; totalWithGST: number; planData: Plans }> {
+    const subscription = await this.getSubscription(adminId);
+
+    if (!subscription) {
+      throw new NotFoundException(
+        `Subscription with admin ID ${adminId} not found`,
+      );
+    }
+
+    const usedContacts = await this.attendeesService.getNonUniqueAttendeesCount(
+      [],
+      new Types.ObjectId(`${adminId}`),
+    );
+    const usedEmployees = await this.userService.getEmployeesCount(adminId);
+
+    const plan = await this.plansService.getPlan(planId);
+
+    const isDurationConfig = plan.planDurationConfig.has(durationType);
+    if (!isDurationConfig) {
+      throw new NotFoundException('Duration type not found');
+    }
+
+    if (usedContacts > plan.contactLimit) {
+      throw new BadRequestException('You cannot downgrade the plan');
+    }
+
+    if (usedEmployees > plan.employeeCount) {
+      throw new BadRequestException('You cannot downgrade the plan');
+    }
+
+    const durationConfig = plan.planDurationConfig.get(durationType);
+    if (!durationConfig)
+      throw new NotAcceptableException('Duration type not found.');
+
+    const { totalWithGST } = this.generatePriceForPlan(
+      plan.amount,
+      durationType,
+      durationConfig,
+    );
+
+    return { isEligible: true, totalWithGST, planData: plan };
   }
 }

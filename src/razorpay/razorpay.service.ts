@@ -49,49 +49,19 @@ export class RazorpayService {
     durationType: DurationType,
     adminId: string,
   ) {
-    const subscription =
-      await this.subscriptionService.getSubscription(adminId);
-
-    if (!subscription) {
-      throw new NotFoundException(
-        `Subscription with admin ID ${adminId} not found`,
-      );
-    }
-
-    const usedContacts = await this.attendeesService.getNonUniqueAttendeesCount(
-      [],
-      new Types.ObjectId(`${adminId}`),
-    );
-    const usedEmployees = await this.userService.getEmployeesCount(adminId);
-
-    const plan = await this.plansService.getPlan(planId);
-
-    const isDurationConfig = plan.planDurationConfig.has(durationType);
-    if (!isDurationConfig) {
-      throw new NotFoundException('Duration type not found');
-    }
-
-    if (usedContacts > plan.contactLimit) {
-      throw new BadRequestException('You cannot downgrade the plan');
-    }
-
-    if (usedEmployees > plan.employeeCount) {
-      throw new BadRequestException('You cannot downgrade the plan');
-    }
-
-    const durationConfig = plan.planDurationConfig.get(durationType);
-    if (!durationConfig)
-      throw new NotAcceptableException('Duration type not found.');
-
-    const { totalWithGST } =
-      await this.subscriptionService.generatePriceForPlan(
-        plan.amount,
+    const { totalWithGST, planData, isEligible } =
+      await this.subscriptionService.validateUserEligibility(
+        adminId,
+        planId,
         durationType,
-        durationConfig,
       );
+
+    if (!isEligible) {
+      throw new BadRequestException('You cannot downgrade the plan');
+    } 
 
     const result = await this.createOrder(totalWithGST);
-    return { planData: plan, result };
+    return { planData, result };
   }
 
   async createAddonOrder(addon: string, adminId: string) {
@@ -105,8 +75,9 @@ export class RazorpayService {
 
     if (!addonData) throw new NotAcceptableException('Addon not found.');
 
-    const { totalAmount } =
-      this.subscriptionService.generatePriceForAddon(addonData.addOnPrice);
+    const { totalAmount } = this.subscriptionService.generatePriceForAddon(
+      addonData.addOnPrice,
+    );
     const result = await this.createOrder(totalAmount);
     return { addonData, result };
   }
